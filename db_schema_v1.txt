@@ -1,0 +1,177 @@
+CREATE TABLE schools (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  address TEXT,
+  phone_number VARCHAR(50),
+  district TEXT,
+  province TEXT,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE TABLE subscription (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  price DOUBLE PRECISION NOT NULL DEFAULT 0,
+  start_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  description TEXT
+);
+
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  subscription_id UUID NULL,
+  school_id UUID NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  phone_number VARCHAR(50),
+  email VARCHAR(255) NOT NULL,
+  role VARCHAR(100) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_users_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE SET NULL,
+  CONSTRAINT fk_users_subscription FOREIGN KEY (subscription_id) REFERENCES subscription(id) ON DELETE SET NULL
+);
+
+CREATE TABLE user_auth (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  google_user_id VARCHAR(255) NULL,
+  email VARCHAR(255) NOT NULL,
+  password_hash VARCHAR(255) NULL,
+  last_login TIMESTAMP WITHOUT TIME ZONE NULL,
+  verification_token VARCHAR(255) NULL,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_userauth_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE teacher_profiles (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  subject_specialty TEXT,
+  grade_levels TEXT,
+  teaching_style TEXT,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_teacherprofiles_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE collections (
+  id UUID PRIMARY KEY,
+  user_id UUID NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  visibility VARCHAR(50) NOT NULL DEFAULT 'private',
+  tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_by UUID,
+  updated_by UUID,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NULL,
+  CONSTRAINT fk_collections_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE prompts (
+  id UUID PRIMARY KEY,
+  user_id UUID NULL,
+  collection_id UUID NULL,
+  instruction TEXT,
+  context TEXT,
+  input_example TEXT,
+  output_format TEXT,
+  constraints TEXT,
+  visibility VARCHAR(50) NOT NULL DEFAULT 'private',
+  tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_by UUID NOT NULL,
+  updated_by UUID NULL,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  deleted_at TIMESTAMP WITHOUT TIME ZONE NULL,
+  CONSTRAINT fk_prompts_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_prompts_collection FOREIGN KEY(collection_id) REFERENCES collections(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_prompts_creator_deleted ON prompts (created_by, is_deleted);
+
+CREATE TABLE prompt_versions (
+  id UUID PRIMARY KEY,
+  prompt_id UUID NOT NULL,
+  instruction TEXT,
+  context TEXT,
+  input_example TEXT,
+  output_format TEXT,
+  constraints TEXT,
+  editor_id UUID NOT NULL,
+  version_number INTEGER NOT NULL,
+  is_ai_generated BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_promptversions_prompt FOREIGN KEY(prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  CONSTRAINT uq_prompt_version_unique UNIQUE (prompt_id, version_number)
+);
+
+ALTER TABLE prompts ADD COLUMN current_version_id UUID NULL;
+ALTER TABLE prompts ADD CONSTRAINT fk_prompts_current_version FOREIGN KEY (current_version_id) REFERENCES prompt_versions(id) ON DELETE SET NULL;
+CREATE INDEX idx_prompts_current_version ON prompts (current_version_id);
+
+CREATE TABLE attachments (
+  id UUID PRIMARY KEY,
+  prompt_version_id UUID NOT NULL,
+  url TEXT NOT NULL,
+  file_type VARCHAR(50) NULL,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  created_by UUID NULL,
+  CONSTRAINT fk_attachments_promptversion FOREIGN KEY(prompt_version_id) REFERENCES prompt_versions(id) ON DELETE CASCADE,
+  CONSTRAINT fk_attachments_user FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE ai_suggestion_logs (
+  id UUID PRIMARY KEY,
+  prompt_id UUID NOT NULL,
+  requested_by UUID NOT NULL,
+  input TEXT NOT NULL,
+  output TEXT,
+  ai_model VARCHAR(255),
+  status VARCHAR(50) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_aisugg_prompt FOREIGN KEY(prompt_id) REFERENCES prompts(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_aisugg_prompt_created ON ai_suggestion_logs (prompt_id, created_at);
+
+CREATE TABLE prompt_ratings (
+  id UUID PRIMARY KEY,
+  prompt_id UUID NOT NULL,
+  user_id UUID NOT NULL,
+  rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT NULL,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_promptratings_prompt FOREIGN KEY(prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_promptratings_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX prompt_ratings_prompt_id_index ON prompt_ratings (prompt_id);
+
+CREATE TABLE prompt_usages (
+  id UUID PRIMARY KEY,
+  prompt_id UUID NOT NULL,
+  user_id UUID NOT NULL,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_promptusages_prompt FOREIGN KEY(prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_promptusages_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX prompt_usages_prompt_id_user_id_index ON prompt_usages (prompt_id, user_id);
+
+CREATE TABLE audit_logs (
+  id UUID PRIMARY KEY,
+  user_id UUID NULL,
+  action_log TEXT NOT NULL,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_auditlogs_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_users_school_id ON users (school_id);
+CREATE INDEX idx_users_created_at ON users (created_at);
