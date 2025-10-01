@@ -1,14 +1,14 @@
-﻿package SEP490.EduPrompt.dto;
+package SEP490.EduPrompt.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.Builder;
+import lombok.AllArgsConstructor;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class LoginRequest {
     private String email;
     private String password;
