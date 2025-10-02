@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -60,18 +61,21 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // Since you mentioned no password hashing, we'll use a simple encoder
-        // that just returns the plain text password
-        //TODO: we NEED password hash
+        //TODO: we NEED password hash - Done
         return new PasswordEncoder() {
+            private static final int WORK_FACTOR = 10;
+
             @Override
             public String encode(CharSequence rawPassword) {
-                return rawPassword.toString();
+                return BCrypt.hashpw(rawPassword.toString(), BCrypt.gensalt(WORK_FACTOR));
             }
 
             @Override
             public boolean matches(CharSequence rawPassword, String encodedPassword) {
-                return rawPassword.toString().equals(encodedPassword);
+                if (encodedPassword == null || encodedPassword.isEmpty()) {
+                    return false;
+                }
+                return BCrypt.checkpw(rawPassword.toString(), encodedPassword);
             }
         };
     }
