@@ -10,6 +10,8 @@ import lombok.Builder;
 @AllArgsConstructor
 @NoArgsConstructor
 public class RegisterRequest {
+
+    //TODO: validate input
     private String email;
     private String password;
     private String firstName;

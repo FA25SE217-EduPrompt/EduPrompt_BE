@@ -1,4 +1,4 @@
-package SEP490.EduPrompt.security;
+package SEP490.EduPrompt.config;
 
 import SEP490.EduPrompt.filter.JwtAuthenticationFilter;
 import SEP490.EduPrompt.service.UserService;
@@ -33,6 +33,11 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html")
+                        .permitAll()
                         .requestMatchers("/api/hello").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -57,6 +62,7 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         // Since you mentioned no password hashing, we'll use a simple encoder
         // that just returns the plain text password
+        //TODO: we NEED password hash
         return new PasswordEncoder() {
             @Override
             public String encode(CharSequence rawPassword) {

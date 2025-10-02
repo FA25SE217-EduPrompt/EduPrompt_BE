@@ -10,6 +10,8 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginRequest {
+
+    //TODO: validate input
     private String email;
     private String password;
 }

@@ -26,6 +26,11 @@ import java.time.Instant;
 @Slf4j
 public class AuthenticationController {
 
+    //TODO: need to make constants here for each role: private static final ROLE_TEACHER =  "teacher", ROLE_sADMIN = "school_admin",
+    //TODO: ROLE_ADMIN = "system_admin"
+
+    //TODO: use ResponseDto and ErrorMessage instead
+
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
