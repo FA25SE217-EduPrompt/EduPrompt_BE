@@ -2,6 +2,9 @@ server:
   servlet:
     context-path: /BE
 
+app:
+  base-url: ${BASE_URL}
+
 spring:
   application:
     name: EduPrompt
@@ -20,6 +23,21 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true
     open-in-view: false
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${SENDER_EMAIL}
+    password: ${SENDER_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: smtp.gmail.com
 
 
 springdoc:
@@ -43,5 +61,6 @@ open:
 jwt:
   secret: "mySecretKey123456789012345678901234567890"
   expiration: 86400000 # 24 hours in milliseconds
+
 
 
