@@ -18,6 +18,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -36,6 +37,7 @@ public class AuthenticationController {
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
     @PostMapping("/login")
@@ -99,7 +101,7 @@ public class AuthenticationController {
             UserAuth userAuth = UserAuth.builder()
                     .user(savedUser)
                     .email(registerRequest.getEmail())
-                    .passwordHash(registerRequest.getPassword()) // still plain text (as per your note)
+                    .passwordHash(passwordEncoder.encode(registerRequest.getPassword()))
                     .createdAt(now)
                     .updatedAt(now)
                     .build();
