@@ -1,8 +1,7 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -10,10 +9,13 @@ import org.hibernate.annotations.OnDeleteAction;
 import java.time.Instant;
 import java.util.UUID;
 
+@Builder
 @Getter
 @Setter
 @Entity
 @Table(name = "users")
+@NoArgsConstructor
+@AllArgsConstructor
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
