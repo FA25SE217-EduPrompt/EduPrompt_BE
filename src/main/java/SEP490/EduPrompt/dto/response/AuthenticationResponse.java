@@ -1,4 +1,4 @@
-package SEP490.EduPrompt.dto;
+package SEP490.EduPrompt.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,14 +1,16 @@
 package SEP490.EduPrompt.controller;
 
-import SEP490.EduPrompt.dto.AuthenticationResponse;
-import SEP490.EduPrompt.dto.LoginRequest;
-import SEP490.EduPrompt.dto.RegisterRequest;
+import SEP490.EduPrompt.dto.response.AuthenticationResponse;
+import SEP490.EduPrompt.dto.request.LoginRequest;
+import SEP490.EduPrompt.dto.request.RegisterRequest;
+import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.model.UserAuth;
 import SEP490.EduPrompt.repo.SubscriptionRepository;
 import SEP490.EduPrompt.repo.UserAuthRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.util.JwtUtil;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -26,10 +28,9 @@ import java.time.Instant;
 @Slf4j
 public class AuthenticationController {
 
-    //TODO: need to make constants here for each role: private static final ROLE_TEACHER =  "teacher", ROLE_sADMIN = "school_admin",
-    //TODO: ROLE_ADMIN = "system_admin"
-
-    //TODO: use ResponseDto and ErrorMessage instead
+    private final static String ROLE_TEACHER = "teacher";
+    private final static String ROLE_sADMIN = "school_admin";
+    private final static String ROLE_ADMIN = "system_admin";
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
@@ -38,7 +39,7 @@ public class AuthenticationController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseDto<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -61,43 +62,47 @@ public class AuthenticationController {
                     .lastName(user.getLastName())
                     .build();
 
-            return ResponseEntity.ok(response);
+            return ResponseDto.success(response);
 
         } catch (AuthenticationException e) {
             log.error("Authentication failed for user: {}", loginRequest.getEmail());
-            return ResponseEntity.badRequest().body("Invalid credentials");
+            return ResponseDto.error("401", "Invalid email or password");
         }
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
+    public ResponseDto<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
         try {
             // Check if user already exists
             if (userAuthRepository.existsByEmail(registerRequest.getEmail())) {
-                return ResponseEntity.badRequest().body("User with this email already exists");
+                return ResponseDto.error("400", "User with this email already exists");
             }
+            Instant now = Instant.now();
 
             // Create User entity
-            User user = new User();
-            user.setFirstName(registerRequest.getFirstName());
-            user.setLastName(registerRequest.getLastName());
-            user.setPhoneNumber(registerRequest.getPhoneNumber());
-            user.setEmail(registerRequest.getEmail());
-            user.setRole("TEACHER");
-            user.setIsActive(true);
-            user.setIsVerified(false);
-            user.setCreatedAt(Instant.now());
-            user.setUpdatedAt(Instant.now());
+            //TODO Change into builder - Everything
+            User user = User.builder()
+                    .firstName(registerRequest.getFirstName())
+                    .lastName(registerRequest.getLastName())
+                    .phoneNumber(registerRequest.getPhoneNumber())
+                    .email(registerRequest.getEmail())
+                    .role(ROLE_TEACHER)
+                    .isActive(true)
+                    .isVerified(false)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
 
             User savedUser = userRepository.save(user);
 
             // Create UserAuth entity
-            UserAuth userAuth = new UserAuth();
-            userAuth.setUser(savedUser);
-            userAuth.setEmail(registerRequest.getEmail());
-            userAuth.setPasswordHash(registerRequest.getPassword()); // Storing as plain text as requested
-            userAuth.setCreatedAt(Instant.now());
-            userAuth.setUpdatedAt(Instant.now());
+            UserAuth userAuth = UserAuth.builder()
+                    .user(savedUser)
+                    .email(registerRequest.getEmail())
+                    .passwordHash(registerRequest.getPassword()) // still plain text (as per your note)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
 
             userAuthRepository.save(userAuth);
 
@@ -112,11 +117,11 @@ public class AuthenticationController {
                     .lastName(savedUser.getLastName())
                     .build();
 
-            return ResponseEntity.ok(response);
+            return ResponseDto.success(response);
 
         } catch (Exception e) {
             log.error("Registration failed: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Registration failed: " + e.getMessage());
+            return ResponseDto.error("500", "Registration failed: " + e.getMessage());
         }
     }
 }

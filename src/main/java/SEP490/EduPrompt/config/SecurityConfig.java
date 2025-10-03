@@ -14,7 +14,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -25,7 +27,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final UserService userService;
+    private final UserDetailsService userService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
@@ -62,7 +64,7 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         //TODO: we NEED password hash - Done
-        return new PasswordEncoder() {
+        /*return new PasswordEncoder() {
             private static final int WORK_FACTOR = 10;
 
             @Override
@@ -77,7 +79,8 @@ public class SecurityConfig {
                 }
                 return BCrypt.checkpw(rawPassword.toString(), encodedPassword);
             }
-        };
+        };*/
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
