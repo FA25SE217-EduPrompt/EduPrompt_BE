@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.service.auth;
 
+import SEP490.EduPrompt.dto.request.ChangePasswordRequest;
 import SEP490.EduPrompt.dto.request.LoginRequest;
 import SEP490.EduPrompt.dto.request.RegisterRequest;
 import SEP490.EduPrompt.dto.response.LoginResponse;
@@ -213,5 +214,27 @@ public class UserServiceImpl implements UserService{
                 newToken);
 
         log.info("Verification email resent to {}", email);
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequest request) throws Exception {
+        log.info("Changing password for user: {}", request.getEmail());
+
+        UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check old password
+        if (!passwordEncoder.matches(request.getOldPassword(), userAuth.getPasswordHash())) {
+            throw new IllegalArgumentException("Old password is incorrect");
+        }
+
+        // Encode and update new password
+        String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
+        userAuth.setPasswordHash(encodedNewPassword);
+        userAuth.setUpdatedAt(Instant.now());
+
+        userAuthRepository.save(userAuth);
+
+        log.info("Password changed successfully for {}", request.getEmail());
     }
 }

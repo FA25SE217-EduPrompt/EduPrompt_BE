@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.controller;
 
+import SEP490.EduPrompt.dto.request.ChangePasswordRequest;
 import SEP490.EduPrompt.dto.request.LoginRequest;
 import SEP490.EduPrompt.dto.request.RegisterRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
@@ -42,11 +43,21 @@ public class AuthenticationController {
     }
 
     @PostMapping("/resend-verification")
-    public ResponseDto<String> resendVerification(@RequestParam String email) {
+    public ResponseDto<String> resendVerification(@Valid @RequestParam String email) {
         try {
             userService.resendVerificationEmail(email);
             return ResponseDto.success("Verification email resent successfully to " + email);
         } catch (Exception e) {
+            return ResponseDto.error("400", "Fail to verify" + e.getMessage());
+        }
+    }
+    @PostMapping("/change-password")
+    public ResponseDto<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        try {
+            userService.changePassword(request);
+            return ResponseDto.success("Password changed ");
+        }
+        catch (Exception e) {
             return ResponseDto.error("400", "Fail to verify" + e.getMessage());
         }
     }
