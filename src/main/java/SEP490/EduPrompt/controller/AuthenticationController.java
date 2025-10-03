@@ -19,6 +19,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -41,6 +42,7 @@ public class AuthenticationController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/login")
+    @Transactional(readOnly = true)
     public ResponseDto<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -68,7 +70,7 @@ public class AuthenticationController {
 
         } catch (AuthenticationException e) {
             log.error("Authentication failed for user: {}", loginRequest.getEmail());
-            return ResponseDto.error("401", "Invalid email or password");
+            return ResponseDto.error("401", "Invalid email or password" + e.getMessage());
         }
     }
 
