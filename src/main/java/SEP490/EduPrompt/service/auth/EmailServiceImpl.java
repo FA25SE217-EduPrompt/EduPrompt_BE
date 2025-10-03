@@ -1,4 +1,4 @@
-package SEP490.EduPrompt.service;
+package SEP490.EduPrompt.service.auth;
 
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +17,8 @@ public class EmailServiceImpl implements EmailService {
 
     private static final String APP_NAME = "EduPrompt";
     private static final String CONTEXT_PATH = "/BE";
-    private static final String HOME_PATH = "/"; //update frontend url here :D
-    private static final String VERIFY_PATH = "/verify-email";
+    private static final String HOME_PATH = "/"; //frontend url here :v
+    private static final String VERIFY_PATH = "/api/auth/verify-email";
     private static final String RESET_PATH = "/reset-password";
 
     private final JavaMailSender mailSender;

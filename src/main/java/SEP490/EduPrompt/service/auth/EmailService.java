@@ -1,4 +1,4 @@
-package SEP490.EduPrompt.service;
+package SEP490.EduPrompt.service.auth;
 
 import org.thymeleaf.context.Context;
 
