@@ -1,9 +1,6 @@
 package SEP490.EduPrompt.controller;
 
-import SEP490.EduPrompt.dto.request.ChangePasswordRequest;
-import SEP490.EduPrompt.dto.request.ForgotPasswordRequest;
-import SEP490.EduPrompt.dto.request.LoginRequest;
-import SEP490.EduPrompt.dto.request.RegisterRequest;
+import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.service.auth.UserService;
 import jakarta.validation.Valid;
@@ -66,5 +63,10 @@ public class AuthenticationController {
     public ResponseDto<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         userService.forgotPassword(request);
         return ResponseDto.success("Password reset email sent successfully.");
+    }
+    @PostMapping("/reset-password")
+    public ResponseDto<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(request);
+        return ResponseDto.success("Password has been reset successfully.");
     }
 }

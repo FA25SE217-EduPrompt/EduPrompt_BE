@@ -1,11 +1,9 @@
 package SEP490.EduPrompt.service.auth;
 
-import SEP490.EduPrompt.dto.request.ChangePasswordRequest;
-import SEP490.EduPrompt.dto.request.ForgotPasswordRequest;
-import SEP490.EduPrompt.dto.request.LoginRequest;
-import SEP490.EduPrompt.dto.request.RegisterRequest;
+import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
+import SEP490.EduPrompt.exception.DuplicatePasswordException;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.model.UserAuth;
 import SEP490.EduPrompt.repo.UserAuthRepository;
@@ -260,4 +258,40 @@ public class UserServiceImpl implements UserService{
 
         log.info("Password reset email sent to {}", request.getEmail());
     }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        log.info("Attempting to reset password using token: {}", request.getToken());
+
+        String email;
+        try {
+            email = jwtUtil.extractUsername(request.getToken());
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid or malformed token");
+        }
+
+        UserAuth userAuth = userAuthRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found for token"));
+
+        if (userAuth.getVerificationToken() == null ||
+                !userAuth.getVerificationToken().equals(request.getToken())) {
+            throw new RuntimeException("Invalid or expired token");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), userAuth.getPasswordHash())) {
+            log.warn("User attempted to reset password to the same as the old one: {}", email);
+            throw new DuplicatePasswordException("New password cannot be the same as the old password.");
+        }
+
+        String hashedPassword = passwordEncoder.encode(request.getNewPassword());
+        userAuth.setPasswordHash(hashedPassword);
+
+        userAuth.setVerificationToken(null);
+        userAuthRepository.save(userAuth);
+
+        log.info("Password successfully reset for user: {}", email);
+    }
+
+
 }
