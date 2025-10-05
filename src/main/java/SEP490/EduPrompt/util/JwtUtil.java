@@ -1,7 +1,9 @@
 package SEP490.EduPrompt.util;
 
+import SEP490.EduPrompt.exception.TokenInvalidException;
 import SEP490.EduPrompt.model.UserAuth;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -119,5 +121,24 @@ public class JwtUtil {
                 .setExpiration(Date.from(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES)))
                 .signWith(SignatureAlgorithm.HS256, secret)
                 .compact();
+    }
+    public String refreshExpiredToken(String oldToken, int newExpirationMinutes) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(oldToken)
+                    .getPayload();
+
+            String email = claims.getSubject();
+            return generateTokenWithExpiration(email, newExpirationMinutes);
+
+        } catch (ExpiredJwtException e) {
+            String email = e.getClaims().getSubject();
+            return generateTokenWithExpiration(email, newExpirationMinutes);
+
+        } catch (Exception ex) {
+            throw new TokenInvalidException("Invalid token: " + ex.getMessage());
+        }
     }
 }

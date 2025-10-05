@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -72,5 +74,14 @@ public class AuthenticationController {
     public ResponseDto<?> logout(HttpServletRequest request) {
         authService.logout(request);
         return ResponseDto.success("Logout successful. Token expired immediately.");
+    }
+    @PostMapping("/refresh-token")
+    @Transactional(readOnly = true)
+    public ResponseDto<?> refreshToken(HttpServletRequest request) {
+        try {
+            return ResponseDto.success(authService.refreshToken(request));
+        } catch (Exception e) {
+            return ResponseDto.error("401", "Token refresh failed: " + e.getMessage());
+        }
     }
 }

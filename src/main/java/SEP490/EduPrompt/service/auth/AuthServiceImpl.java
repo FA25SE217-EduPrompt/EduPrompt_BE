@@ -13,7 +13,6 @@ import SEP490.EduPrompt.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -326,6 +325,62 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             log.error("Logout failed: {}", e.getMessage());
             throw new TokenInvalidException("Invalid or expired token");
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResponse refreshToken(HttpServletRequest request) throws Exception {
+        log.info("Refreshing token");
+
+        String header = request.getHeader("Authorization");
+
+        if (header == null || !header.startsWith("Bearer ")) {
+            throw new TokenInvalidException("Authorization header missing or malformed");
+        }
+
+        String token = header.substring(7);
+
+        try {
+            String email = jwtUtil.extractUsername(token);
+
+            if (email == null || email.isBlank()) {
+                throw new TokenInvalidException("Invalid token: unable to extract email");
+            }
+
+            UserAuth userAuth = userAuthRepository.findByEmail(email)
+                    .orElseThrow(() -> new TokenInvalidException("User not found"));
+
+            User user = userAuth.getUser();
+
+            if (!user.getIsActive() || !user.getIsVerified()) {
+                throw new Exception("User account is not active or verified");
+            }
+
+            if (!jwtUtil.validateToken(token)) {
+                throw new TokenInvalidException("Invalid or expired token");
+            }
+
+            Date issuedAt = jwtUtil.extractIssuedAt(token);
+            if (userAuth.getLastLogin() != null &&
+                    !issuedAt.toInstant().isAfter(userAuth.getLastLogin())) {
+                throw new TokenInvalidException("Token has been invalidated by logout");
+            }
+
+            String newToken = jwtUtil.generateToken(email, ROLE_TEACHER);
+
+            log.info("Token successfully refreshed for user: {}", email);
+
+            return LoginResponse.builder()
+                    .token(newToken)
+                    .build();
+
+        } catch (TokenInvalidException e) {
+            log.error("Token refresh failed: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error during token refresh: {}", e.getMessage());
+            throw new Exception("Token refresh failed");
         }
     }
 }

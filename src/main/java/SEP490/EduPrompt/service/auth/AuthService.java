@@ -17,4 +17,5 @@ public interface AuthService {
     void forgotPassword(ForgotPasswordRequest request);
     void resetPassword(ResetPasswordRequest request);
     void logout(HttpServletRequest authHeader);
+    LoginResponse refreshToken(HttpServletRequest request) throws Exception;
 }
