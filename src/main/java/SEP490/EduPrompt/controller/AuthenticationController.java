@@ -2,12 +2,10 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.ResponseDto;
-import SEP490.EduPrompt.service.auth.UserService;
+import SEP490.EduPrompt.service.auth.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,23 +15,23 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class AuthenticationController {
 
-    private final UserService userService;
+    private final AuthService authService;
 
     @PostMapping("/login")
     @Transactional(readOnly = true)
     public ResponseDto<?> login(@Valid @RequestBody LoginRequest loginRequest) throws Exception {
-        return ResponseDto.success(userService.login(loginRequest));
+        return ResponseDto.success(authService.login(loginRequest));
     }
 
     @PostMapping("/register")
     public ResponseDto<?> register(@Valid @RequestBody RegisterRequest registerRequest) throws Exception {
-        return ResponseDto.success(userService.register(registerRequest));
+        return ResponseDto.success(authService.register(registerRequest));
     }
 
     @GetMapping("/verify-email")
     public ResponseDto<String> verifyEmail(@RequestParam("token") String token) {
         try {
-            userService.verifyEmail(token);
+            authService.verifyEmail(token);
             return ResponseDto.success("Email verified successfully!");
         } catch (Exception e) {
             return ResponseDto.error("404", "Email verification failed: " + e.getMessage());
@@ -43,7 +41,7 @@ public class AuthenticationController {
     @PostMapping("/resend-verification")
     public ResponseDto<String> resendVerification(@Valid @RequestParam String email) {
         try {
-            userService.resendVerificationEmail(email);
+            authService.resendVerificationEmail(email);
             return ResponseDto.success("Verification email resent successfully to " + email);
         } catch (Exception e) {
             return ResponseDto.error("400", "Fail to verify" + e.getMessage());
@@ -52,7 +50,7 @@ public class AuthenticationController {
     @PostMapping("/change-password")
     public ResponseDto<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         try {
-            userService.changePassword(request);
+            authService.changePassword(request);
             return ResponseDto.success("Password changed ");
         }
         catch (Exception e) {
@@ -61,12 +59,17 @@ public class AuthenticationController {
     }
     @PostMapping("/forgot-password")
     public ResponseDto<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        userService.forgotPassword(request);
+        authService.forgotPassword(request);
         return ResponseDto.success("Password reset email sent successfully.");
     }
     @PostMapping("/reset-password")
     public ResponseDto<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        userService.resetPassword(request);
+        authService.resetPassword(request);
         return ResponseDto.success("Password has been reset successfully.");
+    }
+    @PostMapping("/logout")
+    public ResponseDto<?> logout(@RequestHeader("Authorization") String authHeader) {
+        authService.logout(authHeader);
+        return ResponseDto.success("Logout successfully.");
     }
 }

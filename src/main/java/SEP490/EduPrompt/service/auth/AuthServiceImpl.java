@@ -17,14 +17,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class UserServiceImpl implements UserService{
+public class AuthServiceImpl implements AuthService {
 
     private final static String ROLE_TEACHER = "teacher";
     private final static String ROLE_sADMIN = "school_admin";
@@ -33,6 +31,7 @@ public class UserServiceImpl implements UserService{
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
     private final EmailService emailService;
+    private final TokenBlacklistService tokenBlacklistService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
@@ -291,6 +290,22 @@ public class UserServiceImpl implements UserService{
         userAuthRepository.save(userAuth);
 
         log.info("Password successfully reset for user: {}", email);
+    }
+
+    @Override
+    public void logout(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new RuntimeException("Invalid token header");
+        }
+
+        String token = authHeader.substring(7);
+
+        if (tokenBlacklistService.isTokenBlacklisted(token)) {
+            throw new RuntimeException("Token already invalidated");
+        }
+
+        tokenBlacklistService.blacklistToken(token);
+        log.info("Token has been blacklisted (user logged out): {}", token);
     }
 
 

@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.filter;
 
+import SEP490.EduPrompt.service.auth.TokenBlacklistService;
 import SEP490.EduPrompt.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,6 +24,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final TokenBlacklistService tokenBlacklistService;
     private final UserDetailsService userDetailsService;
 
     @Override
@@ -37,10 +39,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
-            try {
-                username = jwtUtil.extractUsername(jwt);
-            } catch (Exception e) {
-                log.error("JWT validation failed: {}", e.getMessage());
+
+            if (jwt != null && !jwt.isBlank()) {
+                if (tokenBlacklistService.isTokenBlacklisted(jwt)) {
+                    log.warn("Blocked request with blacklisted token: {}", jwt);
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.getWriter().write("Token has been invalidated. Please log in again.");
+                    return;
+                }
+                try {
+                    username = jwtUtil.extractUsername(jwt);
+                } catch (Exception e) {
+                    log.error("JWT extraction/validation failed: {}", e.getMessage());
+                }
+            } else {
+                log.warn("JWT is null or blank");
             }
         }
 

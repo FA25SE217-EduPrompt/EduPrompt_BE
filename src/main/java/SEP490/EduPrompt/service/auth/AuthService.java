@@ -3,14 +3,8 @@ package SEP490.EduPrompt.service.auth;
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
-import SEP490.EduPrompt.model.User;
-import SEP490.EduPrompt.model.UserAuth;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-public interface UserService {
+public interface AuthService {
 
     boolean authenticateUser(String email, String password);
     void updateLastLogin(String email);
@@ -21,5 +15,5 @@ public interface UserService {
     void changePassword(ChangePasswordRequest request) throws Exception;
     void forgotPassword(ForgotPasswordRequest request);
     void resetPassword(ResetPasswordRequest request);
-
+    void logout(String authHeader);
 }
