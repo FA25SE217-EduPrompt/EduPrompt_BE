@@ -4,19 +4,23 @@ import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.exception.DuplicatePasswordException;
+import SEP490.EduPrompt.exception.TokenInvalidException;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.model.UserAuth;
 import SEP490.EduPrompt.repo.UserAuthRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Date;
 import java.util.Optional;
 
 @Service
@@ -31,7 +35,6 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
     private final EmailService emailService;
-    private final TokenBlacklistService tokenBlacklistService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
@@ -293,20 +296,36 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new RuntimeException("Invalid token header");
+    @Transactional
+    public void logout(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+
+        if (header == null || !header.startsWith("Bearer ")) {
+            throw new TokenInvalidException("Authorization header missing or malformed");
         }
 
-        String token = authHeader.substring(7);
+        String token = header.substring(7);
 
-        if (tokenBlacklistService.isTokenBlacklisted(token)) {
-            throw new RuntimeException("Token already invalidated");
+        try {
+            String email = jwtUtil.extractUsername(token);
+
+            UserAuth userAuth = userAuthRepository.findByEmail(email)
+                    .orElseThrow(() -> new TokenInvalidException("User not found"));
+
+            Date issuedAt = jwtUtil.extractIssuedAt(token);
+            if (userAuth.getLastLogin() != null &&
+                    !issuedAt.toInstant().isAfter(userAuth.getLastLogin())) {
+                throw new TokenInvalidException("Token already invalidated");
+            }
+
+            userAuth.setLastLogin(Instant.now());
+            userAuthRepository.save(userAuth);
+
+            log.info("User {} logged out. Tokens issued before now are invalid.", email);
+
+        } catch (Exception e) {
+            log.error("Logout failed: {}", e.getMessage());
+            throw new TokenInvalidException("Invalid or expired token");
         }
-
-        tokenBlacklistService.blacklistToken(token);
-        log.info("Token has been blacklisted (user logged out): {}", token);
     }
-
-
 }

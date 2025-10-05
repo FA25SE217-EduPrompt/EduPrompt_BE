@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.util;
 
+import SEP490.EduPrompt.model.UserAuth;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -44,6 +45,9 @@ public class JwtUtil {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
+    public Date extractIssuedAt(String token) {
+        return extractClaim(token, Claims::getIssuedAt);
+    }
 
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
@@ -60,6 +64,17 @@ public class JwtUtil {
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         return createToken(claims, userDetails.getUsername());
+    }
+
+    public boolean isTokenValid(String token, UserAuth userAuth) {
+        final String email = extractUsername(token);
+        Date issuedAt = extractIssuedAt(token);
+
+        boolean notExpired = !isTokenExpired(token);
+        boolean notLoggedOut = userAuth.getLastLogin() == null
+                || issuedAt.toInstant().isAfter(userAuth.getLastLogin());
+
+        return (email.equals(userAuth.getEmail()) && notExpired && notLoggedOut);
     }
 
     public String generateToken(String username, String role) {

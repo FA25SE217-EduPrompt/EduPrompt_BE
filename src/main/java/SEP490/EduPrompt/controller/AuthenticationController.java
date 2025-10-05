@@ -3,6 +3,7 @@ package SEP490.EduPrompt.controller;
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.service.auth.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -68,8 +69,8 @@ public class AuthenticationController {
         return ResponseDto.success("Password has been reset successfully.");
     }
     @PostMapping("/logout")
-    public ResponseDto<?> logout(@RequestHeader("Authorization") String authHeader) {
-        authService.logout(authHeader);
-        return ResponseDto.success("Logout successfully.");
+    public ResponseDto<?> logout(HttpServletRequest request) {
+        authService.logout(request);
+        return ResponseDto.success("Logout successful. Token expired immediately.");
     }
 }
