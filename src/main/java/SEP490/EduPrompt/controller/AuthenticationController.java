@@ -10,8 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -50,31 +48,35 @@ public class AuthenticationController {
             return ResponseDto.error("400", "Fail to verify" + e.getMessage());
         }
     }
+
     @PostMapping("/change-password")
     public ResponseDto<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         try {
             authService.changePassword(request);
             return ResponseDto.success("Password changed ");
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return ResponseDto.error("400", "Fail to verify" + e.getMessage());
         }
     }
+
     @PostMapping("/forgot-password")
     public ResponseDto<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
         return ResponseDto.success("Password reset email sent successfully.");
     }
+
     @PostMapping("/reset-password")
     public ResponseDto<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
         return ResponseDto.success("Password has been reset successfully.");
     }
+
     @PostMapping("/logout")
     public ResponseDto<?> logout(HttpServletRequest request) {
         authService.logout(request);
         return ResponseDto.success("Logout successful. Token expired immediately.");
     }
+
     @PostMapping("/refresh-token")
     @Transactional(readOnly = true)
     public ResponseDto<?> refreshToken(HttpServletRequest request) {

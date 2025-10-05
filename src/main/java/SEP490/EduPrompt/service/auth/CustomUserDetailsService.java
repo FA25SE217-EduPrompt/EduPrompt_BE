@@ -24,7 +24,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         User user = userAuth.getUser();
-        
+
         if (user == null) {
             throw new UsernameNotFoundException("User details not found for email: " + email);
         }

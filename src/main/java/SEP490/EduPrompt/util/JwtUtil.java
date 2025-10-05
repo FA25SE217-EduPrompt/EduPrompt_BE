@@ -5,7 +5,6 @@ import SEP490.EduPrompt.model.UserAuth;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,6 +46,7 @@ public class JwtUtil {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
+
     public Date extractIssuedAt(String token) {
         return extractClaim(token, Claims::getIssuedAt);
     }
@@ -116,12 +116,13 @@ public class JwtUtil {
 
     public String generateTokenWithExpiration(String email, int expirationMinutes) {
         return Jwts.builder()
-                .setSubject(email)
-                .setIssuedAt(new Date())
-                .setExpiration(Date.from(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES)))
-                .signWith(SignatureAlgorithm.HS256, secret)
+                .subject(email)
+                .issuedAt(new Date())
+                .expiration(Date.from(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES)))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
                 .compact();
     }
+
     public String refreshExpiredToken(String oldToken, int newExpirationMinutes) {
         try {
             Claims claims = Jwts.parser()

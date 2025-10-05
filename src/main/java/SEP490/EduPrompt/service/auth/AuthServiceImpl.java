@@ -46,9 +46,9 @@ public class AuthServiceImpl implements AuthService {
             User user = userAuth.getUser();
 
             // Check if user is active and password matches (hashed comparison)
-            return user != null && 
-                   user.getIsActive() && 
-                   passwordEncoder.matches(password, userAuth.getPasswordHash());
+            return user != null &&
+                    user.getIsActive() &&
+                    passwordEncoder.matches(password, userAuth.getPasswordHash());
         }
         return false;
     }
@@ -73,7 +73,7 @@ public class AuthServiceImpl implements AuthService {
             if (!authenticateUser(loginRequest.getEmail(), loginRequest.getPassword())) {
                 throw new Exception("Invalid credentials");
             }
-            
+
             // Update last login time
             updateLastLogin(loginRequest.getEmail());
 
@@ -82,7 +82,7 @@ public class AuthServiceImpl implements AuthService {
 
             // check account isActive and isVerified field
             User user = userAuth.getUser();
-            if(!user.getIsActive() || !user.getIsVerified()) throw new Exception("User not verified");
+            if (!user.getIsActive() || !user.getIsVerified()) throw new Exception("User not verified");
 
             String token = jwtUtil.generateToken(loginRequest.getEmail(), user.getRole());
 
@@ -191,7 +191,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void resendVerificationEmail(String email){
+    public void resendVerificationEmail(String email) {
         log.info("Resending verification email to: {}", email);
 
         UserAuth userAuth = userAuthRepository.findByEmail(email)
