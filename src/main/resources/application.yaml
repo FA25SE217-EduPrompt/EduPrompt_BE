@@ -7,7 +7,7 @@ app:
   frontend-url: ${FRONTEND_URL}
   jwt:
     secret: ${JWT_SECRET}
-    expiration: 60000 * 15 # 15min in milliseconds
+    expiration: 900000 # 15min in milliseconds
 
 spring:
   application:

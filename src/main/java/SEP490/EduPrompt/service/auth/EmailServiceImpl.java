@@ -19,7 +19,7 @@ public class EmailServiceImpl implements EmailService {
     private static final String CONTEXT_PATH = "/BE";
     private static final String HOME_PATH = "/"; //frontend url here :v
     private static final String VERIFY_PATH = "/api/auth/verify-email";
-    private static final String RESET_PATH = "/reset-password";
+    private static final String RESET_PATH = "/api/auth/reset-password";
 
     private final JavaMailSender mailSender;
     private final SpringTemplateEngine templateEngine;

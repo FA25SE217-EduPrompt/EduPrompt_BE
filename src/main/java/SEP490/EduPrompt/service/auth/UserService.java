@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.service.auth;
 
 import SEP490.EduPrompt.dto.request.ChangePasswordRequest;
+import SEP490.EduPrompt.dto.request.ForgotPasswordRequest;
 import SEP490.EduPrompt.dto.request.LoginRequest;
 import SEP490.EduPrompt.dto.request.RegisterRequest;
 import SEP490.EduPrompt.dto.response.LoginResponse;
@@ -21,6 +22,6 @@ public interface UserService {
     void verifyEmail(String token) throws Exception;
     void resendVerificationEmail(String email) throws Exception;
     void changePassword(ChangePasswordRequest request) throws Exception;
-    //TODO forgotPassword, logout
+    void forgotPassword(ForgotPasswordRequest request);
 
 }

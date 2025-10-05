@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.ChangePasswordRequest;
+import SEP490.EduPrompt.dto.request.ForgotPasswordRequest;
 import SEP490.EduPrompt.dto.request.LoginRequest;
 import SEP490.EduPrompt.dto.request.RegisterRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
@@ -60,5 +61,10 @@ public class AuthenticationController {
         catch (Exception e) {
             return ResponseDto.error("400", "Fail to verify" + e.getMessage());
         }
+    }
+    @PostMapping("/forgot-password")
+    public ResponseDto<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        userService.forgotPassword(request);
+        return ResponseDto.success("Password reset email sent successfully.");
     }
 }

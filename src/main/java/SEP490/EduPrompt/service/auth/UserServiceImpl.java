@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.service.auth;
 
 import SEP490.EduPrompt.dto.request.ChangePasswordRequest;
+import SEP490.EduPrompt.dto.request.ForgotPasswordRequest;
 import SEP490.EduPrompt.dto.request.LoginRequest;
 import SEP490.EduPrompt.dto.request.RegisterRequest;
 import SEP490.EduPrompt.dto.response.LoginResponse;
@@ -198,16 +199,11 @@ public class UserServiceImpl implements UserService{
             throw new IllegalStateException("User is already verified");
         }
 
-        // Generate new token
-        String newToken = jwtUtil.generateToken(email, ROLE_TEACHER); // or UUID.randomUUID().toString()
+        String newToken = jwtUtil.generateToken(email, ROLE_TEACHER);
 
         userAuth.setVerificationToken(newToken);
         userAuthRepository.save(userAuth);
 
-        // Build verification URL
-        String verificationUrl = "http://localhost:8080/api/auth/verify-email?token=" + newToken;
-
-        // Send email (assume you have an EmailService)
         emailService.sendVerificationEmail(
                 email,
                 userAuth.getUser().getLastName(),
@@ -236,5 +232,27 @@ public class UserServiceImpl implements UserService{
         userAuthRepository.save(userAuth);
 
         log.info("Password changed successfully for {}", request.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        log.info("Processing forgot password for email: {}", request.getEmail());
+
+        UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Email not found"));
+
+        String token = jwtUtil.generateToken(userAuth.getEmail(), ROLE_TEACHER);
+
+        userAuth.setVerificationToken(token);
+        userAuthRepository.save(userAuth);
+
+        emailService.sendResetPasswordEmail(
+                userAuth.getEmail(),
+                userAuth.getUser().getLastName(),
+                token,
+                300);
+
+        log.info("Password reset email sent to {}", request.getEmail());
     }
 }
