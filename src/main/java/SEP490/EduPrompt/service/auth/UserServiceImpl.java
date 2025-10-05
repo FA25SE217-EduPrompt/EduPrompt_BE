@@ -81,7 +81,10 @@ public class UserServiceImpl implements UserService{
             UserAuth userAuth = userAuthRepository.findByEmail(loginRequest.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+            // check account isActive and isVerified field
             User user = userAuth.getUser();
+            if(!user.getIsActive() || !user.getIsVerified()) throw new Exception("User not verified");
+
             String token = jwtUtil.generateToken(loginRequest.getEmail(), user.getRole());
 
             return LoginResponse.builder()
@@ -239,6 +242,8 @@ public class UserServiceImpl implements UserService{
     public void forgotPassword(ForgotPasswordRequest request) {
         log.info("Processing forgot password for email: {}", request.getEmail());
 
+        int expirationMin = 5;
+
         UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email not found"));
 
@@ -251,7 +256,7 @@ public class UserServiceImpl implements UserService{
                 userAuth.getEmail(),
                 userAuth.getUser().getLastName(),
                 token,
-                300);
+                expirationMin);
 
         log.info("Password reset email sent to {}", request.getEmail());
     }
