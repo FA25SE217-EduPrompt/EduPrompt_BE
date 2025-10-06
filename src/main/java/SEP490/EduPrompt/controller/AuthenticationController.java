@@ -5,6 +5,8 @@ import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.service.auth.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -18,12 +20,12 @@ public class AuthenticationController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseDto<?> login(@Valid @RequestBody LoginRequest loginRequest) throws Exception {
+    public ResponseDto<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         return ResponseDto.success(authService.login(loginRequest));
     }
 
     @PostMapping("/register")
-    public ResponseDto<?> register(@Valid @RequestBody RegisterRequest registerRequest) throws Exception {
+    public ResponseDto<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
         return ResponseDto.success(authService.register(registerRequest));
     }
 
@@ -35,10 +37,14 @@ public class AuthenticationController {
     }
 
     @PostMapping("/resend-verification")
-    public ResponseDto<String> resendVerification(@Valid @RequestParam String email) {
+    public ResponseDto<String> resendVerification(
+            @RequestParam
+            @NotBlank(message = "Email is required")
+            @Email(message = "Invalid email format")
+            String email  //TODO: we should wrap this into a request dto to use @valid
+    ) {
         authService.resendVerificationEmail(email);
         return ResponseDto.success("Verification email resent successfully to " + email);
-
     }
 
     @PostMapping("/change-password")
