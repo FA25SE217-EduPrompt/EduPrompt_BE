@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 
 public class UserNotVerifiedException extends BaseException {
     public UserNotVerifiedException() {
-        super("USER_NOT_VERIFIED", "User is either inactive or not verified.", HttpStatus.FORBIDDEN);
+        super(AuthExceptionCode.USER_NOT_VERIFIED.name(), "User is either inactive or not verified", HttpStatus.FORBIDDEN);
     }
 }
 
