@@ -5,6 +5,9 @@ import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.exception.DuplicatePasswordException;
 import SEP490.EduPrompt.exception.TokenInvalidException;
+import SEP490.EduPrompt.exception.auth.AuthFailedException;
+import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
+import SEP490.EduPrompt.exception.auth.UserNotVerifiedException;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.model.UserAuth;
 import SEP490.EduPrompt.repo.UserAuthRepository;
@@ -71,20 +74,25 @@ public class AuthServiceImpl implements AuthService {
         try {
             // Simple authentication check using our own authenticateUser method
             if (!authenticateUser(loginRequest.getEmail(), loginRequest.getPassword())) {
-                throw new Exception("Invalid credentials");
+                throw new AuthFailedException();
             }
 
             // Update last login time
             updateLastLogin(loginRequest.getEmail());
 
             UserAuth userAuth = userAuthRepository.findByEmail(loginRequest.getEmail())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
             // check account isActive and isVerified field
             User user = userAuth.getUser();
-            if (!user.getIsActive() || !user.getIsVerified()) throw new Exception("User not verified");
+            if (!user.getIsActive() || !user.getIsVerified()) throw new UserNotVerifiedException();
 
             String token = jwtUtil.generateToken(loginRequest.getEmail(), user.getRole());
+
+            // update last login
+            userAuth.setLastLogin(Instant.now());
+            userAuth.setUpdatedAt(Instant.now());
+            userAuthRepository.save(userAuth);
 
             return LoginResponse.builder()
                     .token(token)

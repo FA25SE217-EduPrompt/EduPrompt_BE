@@ -19,7 +19,6 @@ public class AuthenticationController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    @Transactional(readOnly = true)
     public ResponseDto<?> login(@Valid @RequestBody LoginRequest loginRequest) throws Exception {
         return ResponseDto.success(authService.login(loginRequest));
     }
