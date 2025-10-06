@@ -1,5 +1,7 @@
 package SEP490.EduPrompt.dto.response;
 
+import org.springframework.http.HttpStatus;
+
 import java.util.List;
 
 public record ResponseDto<T>(T data, ErrorMessage error) {
@@ -16,7 +18,15 @@ public record ResponseDto<T>(T data, ErrorMessage error) {
         return new ResponseDto<>(null, new ErrorMessage(code, List.of(message)));
     }
 
+    public static <T> ResponseDto<T> error(String code, String message, HttpStatus status) {
+        return new ResponseDto<>(null, new ErrorMessage(code, List.of(message), status));
+    }
+
     public static <T> ResponseDto<T> error(String code, List<String> messages) {
         return new ResponseDto<>(null, new ErrorMessage(code, messages));
+    }
+
+    public static <T> ResponseDto<T> error(String code, List<String> messages, HttpStatus status) {
+        return new ResponseDto<>(null, new ErrorMessage(code, messages, status));
     }
 }
