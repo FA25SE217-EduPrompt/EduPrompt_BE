@@ -11,15 +11,15 @@ public interface AuthService {
 
     void updateLastLogin(String email);
 
-    LoginResponse login(LoginRequest loginRequest) throws Exception;
+    LoginResponse login(LoginRequest loginRequest);
 
-    RegisterResponse register(RegisterRequest registerRequest) throws Exception;
+    RegisterResponse register(RegisterRequest registerRequest);
 
-    void verifyEmail(String token) throws Exception;
+    void verifyEmail(String token);
 
-    void resendVerificationEmail(String email) throws Exception;
+    void resendVerificationEmail(String email);
 
-    void changePassword(ChangePasswordRequest request) throws Exception;
+    void changePassword(ChangePasswordRequest request);
 
     void forgotPassword(ForgotPasswordRequest request);
 
@@ -27,5 +27,5 @@ public interface AuthService {
 
     void logout(HttpServletRequest authHeader);
 
-    LoginResponse refreshToken(HttpServletRequest request) throws Exception;
+    LoginResponse refreshToken(HttpServletRequest request);
 }

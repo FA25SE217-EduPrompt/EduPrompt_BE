@@ -8,6 +8,7 @@ public class AuthFailedException extends BaseException {
     public AuthFailedException() {
         super(AuthExceptionCode.AUTH_FAILED.name(), "Invalid email or password", HttpStatus.UNAUTHORIZED);
     }
+
     public AuthFailedException(String message) {
         super(AuthExceptionCode.AUTH_FAILED.name(), message, HttpStatus.UNAUTHORIZED);
     }

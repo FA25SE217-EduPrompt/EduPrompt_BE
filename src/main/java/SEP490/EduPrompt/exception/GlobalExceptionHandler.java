@@ -21,22 +21,22 @@ public class GlobalExceptionHandler {
 
     //TODO: change those error codes to enum class
 
-//    @ExceptionHandler(MethodArgumentNotValidException.class)
-//    @ResponseStatus(HttpStatus.BAD_REQUEST)
-//    public ResponseDto<?> handleValidationErrors(MethodArgumentNotValidException ex) {
-//        List<String> errors = ex.getBindingResult()
-//                .getFieldErrors()
-//                .stream()
-//                .map(err -> err.getField() + ": " + err.getDefaultMessage())
-//                .collect(Collectors.toList());
-//
-//        return ResponseDto.error(
-//                new ErrorMessage(
-//                        AuthExceptionCode.VALIDATION_ERROR.name(),
-//                        errors
-//                )
-//        );
-//    }
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseDto<?> handleValidationErrors(MethodArgumentNotValidException ex) {
+        List<String> errors = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+                .collect(Collectors.toList());
+
+        return ResponseDto.error(
+                new ErrorMessage(
+                        AuthExceptionCode.VALIDATION_ERROR.name(),
+                        errors
+                )
+        );
+    }
 
     @ExceptionHandler(BaseException.class)
     public ResponseDto<?> handleCustomException(BaseException ex) {

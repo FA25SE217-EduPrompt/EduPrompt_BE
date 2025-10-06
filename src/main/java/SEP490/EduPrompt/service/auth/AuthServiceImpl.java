@@ -70,7 +70,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Transactional
-    public LoginResponse login(LoginRequest loginRequest) throws Exception {
+    public LoginResponse login(LoginRequest loginRequest) {
         try {
             // Simple authentication check using our own authenticateUser method
             if (!authenticateUser(loginRequest.getEmail(), loginRequest.getPassword())) {
@@ -109,7 +109,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Transactional
-    public RegisterResponse register(RegisterRequest registerRequest) throws BaseException {
+    public RegisterResponse register(RegisterRequest registerRequest) {
         try {
             if (userAuthRepository.existsByEmail(registerRequest.getEmail())) {
                 throw new EmailAlreadyExistedException();
@@ -237,7 +237,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void changePassword(ChangePasswordRequest request)  {
+    public void changePassword(ChangePasswordRequest request) {
         log.info("Changing password for user: {}", request.getEmail());
 
         try {
@@ -292,7 +292,7 @@ public class AuthServiceImpl implements AuthService {
             log.info("Password reset email sent to {}", request.getEmail());
 
         } catch (Exception e) {
-            log.error("Failed to send email to : {}, message : {}", request.getEmail() ,e.getMessage(), e);
+            log.error("Failed to send email to : {}, message : {}", request.getEmail(), e.getMessage(), e);
             throw new BaseException(
                     AuthExceptionCode.AUTH_FAILED.name(),
                     "Fail to send email to user " + request.getEmail(),
@@ -375,7 +375,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public LoginResponse refreshToken(HttpServletRequest request) throws Exception {
+    public LoginResponse refreshToken(HttpServletRequest request) {
         log.info("Refreshing token");
 
         String header = request.getHeader("Authorization");
