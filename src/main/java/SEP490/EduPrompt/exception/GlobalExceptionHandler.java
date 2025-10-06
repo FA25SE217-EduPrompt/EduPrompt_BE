@@ -40,7 +40,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BaseException.class)
     public ResponseDto<?> handleCustomException(BaseException ex) {
-        log.warn("Custom exception occurred: {}", ex.getMessage());
+        log.warn("Exception has occurred: {}", ex.getMessage());
         return ResponseDto.error(
                 new ErrorMessage(
                         ex.getCode(),

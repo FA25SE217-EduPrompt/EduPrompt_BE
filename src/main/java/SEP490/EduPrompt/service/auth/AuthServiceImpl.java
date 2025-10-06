@@ -16,7 +16,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,101 +70,84 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest loginRequest) {
-        try {
-            // Simple authentication check using our own authenticateUser method
-            if (!authenticateUser(loginRequest.getEmail(), loginRequest.getPassword())) {
-                throw new AuthFailedException();
-            }
-
-            // Update last login time
-            updateLastLogin(loginRequest.getEmail());
-
-            UserAuth userAuth = userAuthRepository.findByEmail(loginRequest.getEmail())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-            // check account isActive and isVerified field
-            User user = userAuth.getUser();
-            if (!user.getIsActive() || !user.getIsVerified()) throw new UserNotVerifiedException();
-
-            String token = jwtUtil.generateToken(loginRequest.getEmail(), user.getRole());
-
-            // update last login
-            userAuth.setLastLogin(Instant.now());
-            userAuth.setUpdatedAt(Instant.now());
-            userAuthRepository.save(userAuth);
-
-            return LoginResponse.builder()
-                    .token(token)
-                    .build();
-
-        } catch (AuthenticationException e) {
-            log.error("Authentication failed for user: {} , message : {}", loginRequest.getEmail(), e.getMessage(), e);
-            throw new BaseException(
-                    AuthExceptionCode.AUTH_FAILED.name(),
-                    "Login failed due to an unexpected error",
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+        // Simple authentication check using our own authenticateUser method
+        if (!authenticateUser(loginRequest.getEmail(), loginRequest.getPassword())) {
+            throw new AuthFailedException();
         }
+
+        // Update last login time
+        updateLastLogin(loginRequest.getEmail());
+
+        UserAuth userAuth = userAuthRepository.findByEmail(loginRequest.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // check account isActive and isVerified field
+        User user = userAuth.getUser();
+        if (!user.getIsActive() || !user.getIsVerified()) throw new UserNotVerifiedException();
+
+        String token = jwtUtil.generateToken(loginRequest.getEmail(), user.getRole());
+
+        // update last login
+        userAuth.setLastLogin(Instant.now());
+        userAuth.setUpdatedAt(Instant.now());
+        userAuthRepository.save(userAuth);
+
+        return LoginResponse.builder()
+                .token(token)
+                .build();
     }
 
     @Transactional
     public RegisterResponse register(RegisterRequest registerRequest) {
-        try {
-            if (userAuthRepository.existsByEmail(registerRequest.getEmail())) {
-                throw new EmailAlreadyExistedException();
-            }
 
-            Instant now = Instant.now();
-
-            // Create User
-            User user = User.builder()
-                    .firstName(registerRequest.getFirstName())
-                    .lastName(registerRequest.getLastName())
-                    .phoneNumber(registerRequest.getPhoneNumber())
-                    .email(registerRequest.getEmail())
-                    .role(ROLE_TEACHER)
-                    .isActive(false)
-                    .isVerified(false)
-                    .createdAt(now)
-                    .updatedAt(now)
-                    .build();
-
-            User savedUser = userRepository.save(user);
-            String token = jwtUtil.generateToken(registerRequest.getEmail(), user.getRole());
-            // Create UserAuth
-            UserAuth userAuth = UserAuth.builder()
-                    .user(savedUser)
-                    .email(registerRequest.getEmail())
-                    .passwordHash(passwordEncoder.encode(registerRequest.getPassword()))
-                    .verificationToken(token)
-                    .createdAt(now)
-                    .updatedAt(now)
-                    .build();
-
-            userAuthRepository.save(userAuth);
-            try {
-                emailService.sendVerificationEmail(
-                        registerRequest.getEmail(),
-                        registerRequest.getLastName(),
-                        token);
-            } catch (Exception e) {
-                return RegisterResponse.builder()
-                        .message("Check your email again or email not Exist")
-                        .build();
-            }
-
-            return RegisterResponse.builder()
-                    .message("Check your email to verify your account")
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Registration failed: {}", e.getMessage(), e);
-            throw new BaseException(
-                    AuthExceptionCode.AUTH_FAILED.name(),
-                    "Registration failed due to an unexpected error",
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+        if (userAuthRepository.existsByEmail(registerRequest.getEmail())) {
+            throw new EmailAlreadyExistedException();
         }
+
+        Instant now = Instant.now();
+
+        // Create User
+        User user = User.builder()
+                .firstName(registerRequest.getFirstName())
+                .lastName(registerRequest.getLastName())
+                .phoneNumber(registerRequest.getPhoneNumber())
+                .email(registerRequest.getEmail())
+                .role(ROLE_TEACHER)
+                .isActive(false)
+                .isVerified(false)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        User savedUser = userRepository.save(user);
+        String token = jwtUtil.generateToken(registerRequest.getEmail(), user.getRole());
+        // Create UserAuth
+        UserAuth userAuth = UserAuth.builder()
+                .user(savedUser)
+                .email(registerRequest.getEmail())
+                .passwordHash(passwordEncoder.encode(registerRequest.getPassword()))
+                .verificationToken(token)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        userAuthRepository.save(userAuth);
+        try {
+            emailService.sendVerificationEmail(
+                    registerRequest.getEmail(),
+                    registerRequest.getLastName(),
+                    token);
+        } catch (Exception e) {
+            return RegisterResponse.builder()
+                    .message("Check your email again or email not Exist")
+                    .build();
+        }
+
+        return RegisterResponse.builder()
+                .message("Check your email to verify your account")
+                .build();
+
+
     }
 
     @Override
@@ -173,43 +155,26 @@ public class AuthServiceImpl implements AuthService {
     public void verifyEmail(String token) {
         log.info("Verifying email with token: {}", token);
 
-        try {
 
-            String email = jwtUtil.extractUsername(token);
-            if (email == null || email.isBlank()) {
-                throw new InvalidInputException();
-            }
-
-            UserAuth userAuth = userAuthRepository.findByEmail(email)
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
-
-            if (!token.equals(userAuth.getVerificationToken())) {
-                throw new InvalidInputException("Invalid verification token");
-            }
-
-            User user = userAuth.getUser();
-            user.setIsVerified(true);
-            user.setIsActive(true);
-            user.setUpdatedAt(Instant.now());
-
-            userRepository.save(user);
-            log.info("User {} successfully verified", email);
-
-        } catch (IllegalArgumentException e) {
-            log.error("Email verification failed: {}", e.getMessage());
-            throw new BaseException(
-                    AuthExceptionCode.INVALID_INPUT.name(),
-                    "Invalid input",
-                    HttpStatus.BAD_REQUEST
-            );
-        } catch (Exception e) {
-            log.error("Unexpected error during email verification : {}", e.getMessage(), e);
-            throw new BaseException(
-                    AuthExceptionCode.AUTH_FAILED.name(),
-                    "Registration failed due to an unexpected error",
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+        String email = jwtUtil.extractUsername(token);
+        if (email == null || email.isBlank()) {
+            throw new InvalidInputException();
         }
+
+        UserAuth userAuth = userAuthRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
+
+        if (!token.equals(userAuth.getVerificationToken())) {
+            throw new InvalidInputException("Invalid verification token");
+        }
+
+        User user = userAuth.getUser();
+        user.setIsVerified(true);
+        user.setIsActive(true);
+        user.setUpdatedAt(Instant.now());
+
+        userRepository.save(user);
+        log.info("User {} successfully verified", email);
     }
 
     @Override
@@ -240,31 +205,21 @@ public class AuthServiceImpl implements AuthService {
     public void changePassword(ChangePasswordRequest request) {
         log.info("Changing password for user: {}", request.getEmail());
 
-        try {
-            UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+        UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
 
-            // Check old password
-            if (!passwordEncoder.matches(request.getOldPassword(), userAuth.getPasswordHash())) {
-                throw new InvalidInputException("Old password is incorrect");
-            }
-
-            // Encode and update new password
-            String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
-            userAuth.setPasswordHash(encodedNewPassword);
-            userAuth.setUpdatedAt(Instant.now());
-            userAuthRepository.save(userAuth);
-
-            log.info("Password changed successfully for {}", request.getEmail());
-
-        } catch (Exception e) {
-            log.error("Unexpected error during password changing process : {}", e.getMessage(), e);
-            throw new BaseException(
-                    AuthExceptionCode.AUTH_FAILED.name(),
-                    "Password change failed due to an unexpected error",
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+        // Check old password
+        if (!passwordEncoder.matches(request.getOldPassword(), userAuth.getPasswordHash())) {
+            throw new InvalidInputException("Old password is incorrect");
         }
+
+        // Encode and update new password
+        String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
+        userAuth.setPasswordHash(encodedNewPassword);
+        userAuth.setUpdatedAt(Instant.now());
+        userAuthRepository.save(userAuth);
+
+        log.info("Password changed successfully for {}", request.getEmail());
     }
 
     @Override
@@ -345,32 +300,21 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String token = header.substring(7);
+        String email = jwtUtil.extractUsername(token);
 
-        try {
-            String email = jwtUtil.extractUsername(token);
+        UserAuth userAuth = userAuthRepository.findByEmail(email)
+                .orElseThrow(() -> new TokenInvalidException("User not found"));
 
-            UserAuth userAuth = userAuthRepository.findByEmail(email)
-                    .orElseThrow(() -> new TokenInvalidException("User not found"));
-
-            Date issuedAt = jwtUtil.extractIssuedAt(token);
-            if (userAuth.getLastLogin() != null &&
-                    !issuedAt.toInstant().isAfter(userAuth.getLastLogin())) {
-                throw new TokenInvalidException("Token already invalidated");
-            }
-
-            userAuth.setLastLogin(Instant.now());
-            userAuthRepository.save(userAuth);
-
-            log.info("User {} logged out. Tokens issued before now are invalid.", email);
-
-        } catch (Exception e) {
-            log.error("Logout failed: {}", e.getMessage());
-            throw new BaseException(  // this might be no need since logout must be done whatsoever
-                    AuthExceptionCode.AUTH_FAILED.name(),
-                    "Registration failed due to an unexpected error",
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+        Date issuedAt = jwtUtil.extractIssuedAt(token);
+        if (userAuth.getLastLogin() != null &&
+                !issuedAt.toInstant().isAfter(userAuth.getLastLogin())) {
+            throw new TokenInvalidException("Token already invalidated");
         }
+
+        userAuth.setLastLogin(Instant.now());
+        userAuthRepository.save(userAuth);
+
+        log.info("User {} logged out. Tokens issued before now are invalid.", email);
     }
 
     @Override
@@ -420,8 +364,12 @@ public class AuthServiceImpl implements AuthService {
                     .token(newToken)
                     .build();
 
+            // this try/catch may be redundant, yet it's for reference to know there's still another way of handle exception :)
         } catch (TokenInvalidException e) {
             log.error("Token refresh failed: {}", e.getMessage());
+            throw e;
+        } catch (UserNotVerifiedException e) {
+            log.error("User not verified: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error during token refresh: {}", e.getMessage());
