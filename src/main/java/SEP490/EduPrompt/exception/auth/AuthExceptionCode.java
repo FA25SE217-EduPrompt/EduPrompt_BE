@@ -5,6 +5,8 @@ public enum AuthExceptionCode {
     AUTH_FAILED,
     ACCESS_DENIED,
     RESOURCE_NOT_FOUND,
-    VALIDATION_ERROR
+    VALIDATION_ERROR,
+    ALREADY_EXISTED,
+    INVALID_INPUT,
 }
 

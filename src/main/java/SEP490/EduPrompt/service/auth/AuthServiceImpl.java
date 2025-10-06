@@ -3,11 +3,10 @@ package SEP490.EduPrompt.service.auth;
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
+import SEP490.EduPrompt.exception.BaseException;
 import SEP490.EduPrompt.exception.DuplicatePasswordException;
 import SEP490.EduPrompt.exception.TokenInvalidException;
-import SEP490.EduPrompt.exception.auth.AuthFailedException;
-import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
-import SEP490.EduPrompt.exception.auth.UserNotVerifiedException;
+import SEP490.EduPrompt.exception.auth.*;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.model.UserAuth;
 import SEP490.EduPrompt.repo.UserAuthRepository;
@@ -16,6 +15,7 @@ import SEP490.EduPrompt.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -99,18 +99,20 @@ public class AuthServiceImpl implements AuthService {
                     .build();
 
         } catch (AuthenticationException e) {
-            log.error("Authentication failed for user: {}", loginRequest.getEmail());
-            throw new Exception("Login failed");
+            log.error("Authentication failed for user: {} , message : {}", loginRequest.getEmail(), e.getMessage(), e);
+            throw new BaseException(
+                    AuthExceptionCode.AUTH_FAILED.name(),
+                    "Login failed due to an unexpected error",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
     @Transactional
-    public RegisterResponse register(RegisterRequest registerRequest) throws RuntimeException {
+    public RegisterResponse register(RegisterRequest registerRequest) throws BaseException {
         try {
             if (userAuthRepository.existsByEmail(registerRequest.getEmail())) {
-                return RegisterResponse.builder()
-                        .message("User with this email already exists")
-                        .build();
+                throw new EmailAlreadyExistedException();
             }
 
             Instant now = Instant.now();
@@ -157,8 +159,12 @@ public class AuthServiceImpl implements AuthService {
                     .build();
 
         } catch (Exception e) {
-            log.error("Registration failed: {}", e.getMessage());
-            throw new RuntimeException("Registration failed");
+            log.error("Registration failed: {}", e.getMessage(), e);
+            throw new BaseException(
+                    AuthExceptionCode.AUTH_FAILED.name(),
+                    "Registration failed due to an unexpected error",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -171,14 +177,14 @@ public class AuthServiceImpl implements AuthService {
 
             String email = jwtUtil.extractUsername(token);
             if (email == null || email.isBlank()) {
-                throw new IllegalArgumentException("Invalid or expired token");
+                throw new InvalidInputException();
             }
 
             UserAuth userAuth = userAuthRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("User not found for email: " + email));
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
 
             if (!token.equals(userAuth.getVerificationToken())) {
-                throw new IllegalArgumentException("Invalid verification token");
+                throw new InvalidInputException("Invalid verification token");
             }
 
             User user = userAuth.getUser();
@@ -191,10 +197,18 @@ public class AuthServiceImpl implements AuthService {
 
         } catch (IllegalArgumentException e) {
             log.error("Email verification failed: {}", e.getMessage());
-            throw e; // rethrow or wrap in custom exception
+            throw new BaseException(
+                    AuthExceptionCode.INVALID_INPUT.name(),
+                    "Invalid input",
+                    HttpStatus.BAD_REQUEST
+            );
         } catch (Exception e) {
-            log.error("Unexpected error during email verification", e);
-            throw new RuntimeException("Email verification failed", e);
+            log.error("Unexpected error during email verification : {}", e.getMessage(), e);
+            throw new BaseException(
+                    AuthExceptionCode.AUTH_FAILED.name(),
+                    "Registration failed due to an unexpected error",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -203,7 +217,7 @@ public class AuthServiceImpl implements AuthService {
         log.info("Resending verification email to: {}", email);
 
         UserAuth userAuth = userAuthRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
         if (userAuth.getUser().getIsVerified()) {
             throw new IllegalStateException("User is already verified");
@@ -223,25 +237,34 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void changePassword(ChangePasswordRequest request) throws Exception {
+    public void changePassword(ChangePasswordRequest request)  {
         log.info("Changing password for user: {}", request.getEmail());
 
-        UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        try {
+            UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
 
-        // Check old password
-        if (!passwordEncoder.matches(request.getOldPassword(), userAuth.getPasswordHash())) {
-            throw new IllegalArgumentException("Old password is incorrect");
+            // Check old password
+            if (!passwordEncoder.matches(request.getOldPassword(), userAuth.getPasswordHash())) {
+                throw new InvalidInputException("Old password is incorrect");
+            }
+
+            // Encode and update new password
+            String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
+            userAuth.setPasswordHash(encodedNewPassword);
+            userAuth.setUpdatedAt(Instant.now());
+            userAuthRepository.save(userAuth);
+
+            log.info("Password changed successfully for {}", request.getEmail());
+
+        } catch (Exception e) {
+            log.error("Unexpected error during password changing process : {}", e.getMessage(), e);
+            throw new BaseException(
+                    AuthExceptionCode.AUTH_FAILED.name(),
+                    "Password change failed due to an unexpected error",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
-
-        // Encode and update new password
-        String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
-        userAuth.setPasswordHash(encodedNewPassword);
-        userAuth.setUpdatedAt(Instant.now());
-
-        userAuthRepository.save(userAuth);
-
-        log.info("Password changed successfully for {}", request.getEmail());
     }
 
     @Override
@@ -252,20 +275,30 @@ public class AuthServiceImpl implements AuthService {
         int expirationMin = 5;
 
         UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Email not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
 
         String token = jwtUtil.generateToken(userAuth.getEmail(), ROLE_TEACHER);
 
         userAuth.setVerificationToken(token);
         userAuthRepository.save(userAuth);
 
-        emailService.sendResetPasswordEmail(
-                userAuth.getEmail(),
-                userAuth.getUser().getLastName(),
-                token,
-                expirationMin);
+        try {
+            emailService.sendResetPasswordEmail(
+                    userAuth.getEmail(),
+                    userAuth.getUser().getLastName(),
+                    token,
+                    expirationMin);
 
-        log.info("Password reset email sent to {}", request.getEmail());
+            log.info("Password reset email sent to {}", request.getEmail());
+
+        } catch (Exception e) {
+            log.error("Failed to send email to : {}, message : {}", request.getEmail() ,e.getMessage(), e);
+            throw new BaseException(
+                    AuthExceptionCode.AUTH_FAILED.name(),
+                    "Fail to send email to user " + request.getEmail(),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
     @Override
@@ -277,15 +310,15 @@ public class AuthServiceImpl implements AuthService {
         try {
             email = jwtUtil.extractUsername(request.getToken());
         } catch (Exception e) {
-            throw new RuntimeException("Invalid or malformed token");
+            throw new InvalidInputException("Invalid or malformed token");
         }
 
         UserAuth userAuth = userAuthRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found for token"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for token"));
 
         if (userAuth.getVerificationToken() == null ||
                 !userAuth.getVerificationToken().equals(request.getToken())) {
-            throw new RuntimeException("Invalid or expired token");
+            throw new InvalidInputException("Invalid or expired token");
         }
 
         if (passwordEncoder.matches(request.getNewPassword(), userAuth.getPasswordHash())) {
@@ -332,12 +365,16 @@ public class AuthServiceImpl implements AuthService {
 
         } catch (Exception e) {
             log.error("Logout failed: {}", e.getMessage());
-            throw new TokenInvalidException("Invalid or expired token");
+            throw new BaseException(  // this might be no need since logout must be done whatsoever
+                    AuthExceptionCode.AUTH_FAILED.name(),
+                    "Registration failed due to an unexpected error",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse refreshToken(HttpServletRequest request) throws Exception {
         log.info("Refreshing token");
 
@@ -362,7 +399,7 @@ public class AuthServiceImpl implements AuthService {
             User user = userAuth.getUser();
 
             if (!user.getIsActive() || !user.getIsVerified()) {
-                throw new Exception("User account is not active or verified");
+                throw new UserNotVerifiedException();
             }
 
             if (!jwtUtil.validateToken(token)) {
@@ -388,7 +425,11 @@ public class AuthServiceImpl implements AuthService {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error during token refresh: {}", e.getMessage());
-            throw new Exception("Token refresh failed");
+            throw new BaseException(
+                    AuthExceptionCode.AUTH_FAILED.name(),
+                    "Token refresh failed due to an unexpected error",
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 }
