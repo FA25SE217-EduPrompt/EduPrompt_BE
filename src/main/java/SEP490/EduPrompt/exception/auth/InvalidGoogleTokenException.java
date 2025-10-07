@@ -5,11 +5,11 @@ import org.springframework.http.HttpStatus;
 
 
 public class InvalidGoogleTokenException extends BaseException {
-    public InvalidGoogleTokenException(){
+    public InvalidGoogleTokenException() {
         super(
                 AuthExceptionCode.INVALID_GOOGLE_TOKEN.name(),
                 "Invalid Google Token",
                 HttpStatus.BAD_REQUEST
-                );
+        );
     }
 }

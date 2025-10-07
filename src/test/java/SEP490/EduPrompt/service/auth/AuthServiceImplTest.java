@@ -4,8 +4,6 @@ import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.exception.BaseException;
-import SEP490.EduPrompt.exception.auth.DuplicatePasswordException;
-import SEP490.EduPrompt.exception.auth.TokenInvalidException;
 import SEP490.EduPrompt.exception.auth.*;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.model.UserAuth;

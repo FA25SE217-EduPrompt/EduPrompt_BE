@@ -4,9 +4,6 @@ import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.exception.BaseException;
-import SEP490.EduPrompt.exception.auth.DuplicatePasswordException;
-import SEP490.EduPrompt.exception.auth.InvalidGoogleTokenException;
-import SEP490.EduPrompt.exception.auth.TokenInvalidException;
 import SEP490.EduPrompt.exception.auth.*;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.model.UserAuth;
@@ -36,18 +33,16 @@ import java.util.Optional;
 @Slf4j
 public class AuthServiceImpl implements AuthService {
 
-    @Value("${google.client-id}")
-    private String googleClientId;
-
     private final static String ROLE_TEACHER = "teacher";
     private final static String ROLE_sADMIN = "school_admin";
     private final static String ROLE_ADMIN = "system_admin";
-
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    @Value("${google.client-id}")
+    private String googleClientId;
 
     @Transactional
     public LoginResponse login(LoginRequest loginRequest) {
@@ -55,7 +50,7 @@ public class AuthServiceImpl implements AuthService {
         UserAuth userAuth = userAuthRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (userAuth==null ||
+        if (userAuth == null ||
                 !passwordEncoder.matches(loginRequest.getPassword(), userAuth.getPasswordHash())) {
             throw new AuthFailedException("Invalid email or password");
         }

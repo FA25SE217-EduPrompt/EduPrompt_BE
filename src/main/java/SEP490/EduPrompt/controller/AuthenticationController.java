@@ -76,6 +76,7 @@ public class AuthenticationController {
     public ResponseDto<?> refreshToken(HttpServletRequest request) {
         return ResponseDto.success(authService.refreshToken(request));
     }
+
     @PostMapping("/google")
     public ResponseDto<LoginResponse> loginWithGoogle(@RequestBody GoogleLoginRequeset request) {
         return ResponseDto.success(authService.googleLogin(request));

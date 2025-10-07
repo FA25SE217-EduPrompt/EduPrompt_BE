@@ -4,7 +4,6 @@ import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.exception.GlobalExceptionHandler;
-import SEP490.EduPrompt.exception.auth.TokenInvalidException;
 import SEP490.EduPrompt.exception.auth.*;
 import SEP490.EduPrompt.service.auth.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,11 +17,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 class AuthenticationControllerTest {
@@ -42,7 +43,7 @@ class AuthenticationControllerTest {
     private ChangePasswordRequest changePasswordRequest;
     private ForgotPasswordRequest forgotPasswordRequest;
     private ResetPasswordRequest resetPasswordRequest;
-//    private GoogleLoginRequest googleLoginRequest;
+    //    private GoogleLoginRequest googleLoginRequest;
     private String fakeToken;
 
     @BeforeEach

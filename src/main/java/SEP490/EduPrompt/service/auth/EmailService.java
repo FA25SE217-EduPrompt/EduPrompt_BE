@@ -1,7 +1,5 @@
 package SEP490.EduPrompt.service.auth;
 
-import org.thymeleaf.context.Context;
-
 public interface EmailService {
     void sendVerificationEmail(String to, String name, String token);
 
