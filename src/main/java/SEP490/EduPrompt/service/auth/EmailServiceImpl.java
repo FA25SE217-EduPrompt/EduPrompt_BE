@@ -30,7 +30,7 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username}")
     private String from;
 
-    public void sendHtmlEmail(String to, String subject, String templateName, Context ctx) {
+    private void sendHtmlEmail(String to, String subject, String templateName, Context ctx) {
         MimeMessage message = mailSender.createMimeMessage();
         try {
             MimeMessageHelper helper = new MimeMessageHelper(message, "utf-8");
