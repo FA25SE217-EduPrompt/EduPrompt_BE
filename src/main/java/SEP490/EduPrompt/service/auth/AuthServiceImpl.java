@@ -172,8 +172,11 @@ public class AuthServiceImpl implements AuthService {
         user.setIsVerified(true);
         user.setIsActive(true);
         user.setUpdatedAt(Instant.now());
-
         userRepository.save(user);
+
+        //send welcome email
+        emailService.sendWelcomeEmail(user.getEmail(), user.getLastName());
+
         log.info("User {} successfully verified", email);
     }
 
