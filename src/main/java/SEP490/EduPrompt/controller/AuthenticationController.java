@@ -1,16 +1,16 @@
 package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.*;
+import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.service.auth.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -21,67 +21,64 @@ public class AuthenticationController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    @Transactional(readOnly = true)
-    public ResponseDto<?> login(@Valid @RequestBody LoginRequest loginRequest) throws Exception {
+    public ResponseDto<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         return ResponseDto.success(authService.login(loginRequest));
     }
 
     @PostMapping("/register")
-    public ResponseDto<?> register(@Valid @RequestBody RegisterRequest registerRequest) throws Exception {
+    public ResponseDto<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
         return ResponseDto.success(authService.register(registerRequest));
     }
 
     @GetMapping("/verify-email")
     public ResponseDto<String> verifyEmail(@RequestParam("token") String token) {
-        try {
-            authService.verifyEmail(token);
-            return ResponseDto.success("Email verified successfully!");
-        } catch (Exception e) {
-            return ResponseDto.error("404", "Email verification failed: " + e.getMessage());
-        }
+        authService.verifyEmail(token);
+        return ResponseDto.success("Email verified successfully!");
+
     }
 
     @PostMapping("/resend-verification")
-    public ResponseDto<String> resendVerification(@Valid @RequestParam String email) {
-        try {
-            authService.resendVerificationEmail(email);
-            return ResponseDto.success("Verification email resent successfully to " + email);
-        } catch (Exception e) {
-            return ResponseDto.error("400", "Fail to verify" + e.getMessage());
-        }
+    public ResponseDto<String> resendVerification(
+            @RequestParam
+            @NotBlank(message = "Email is required")
+            @Email(message = "Invalid email format")
+            String email  //TODO: we should wrap this into a request dto to use @valid
+    ) {
+        authService.resendVerificationEmail(email);
+        return ResponseDto.success("Verification email resent successfully to " + email);
     }
+
     @PostMapping("/change-password")
     public ResponseDto<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        try {
-            authService.changePassword(request);
-            return ResponseDto.success("Password changed ");
-        }
-        catch (Exception e) {
-            return ResponseDto.error("400", "Fail to verify" + e.getMessage());
-        }
+        authService.changePassword(request);
+        return ResponseDto.success("Password changed ");
     }
+
     @PostMapping("/forgot-password")
     public ResponseDto<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
         return ResponseDto.success("Password reset email sent successfully.");
     }
+
     @PostMapping("/reset-password")
     public ResponseDto<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
         return ResponseDto.success("Password has been reset successfully.");
     }
+
     @PostMapping("/logout")
     public ResponseDto<?> logout(HttpServletRequest request) {
         authService.logout(request);
         return ResponseDto.success("Logout successful. Token expired immediately.");
     }
+
     @PostMapping("/refresh-token")
-    @Transactional(readOnly = true)
     public ResponseDto<?> refreshToken(HttpServletRequest request) {
-        try {
-            return ResponseDto.success(authService.refreshToken(request));
-        } catch (Exception e) {
-            return ResponseDto.error("401", "Token refresh failed: " + e.getMessage());
-        }
+        return ResponseDto.success(authService.refreshToken(request));
+    }
+
+    @PostMapping("/google")
+    public ResponseDto<LoginResponse> loginWithGoogle(@RequestBody GoogleLoginRequeset request) {
+        return ResponseDto.success(authService.googleLogin(request));
     }
 }

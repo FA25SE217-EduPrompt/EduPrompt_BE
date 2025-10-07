@@ -1,0 +1,14 @@
+package SEP490.EduPrompt.exception.auth;
+
+public enum AuthExceptionCode {
+    USER_NOT_VERIFIED,
+    AUTH_FAILED,
+    ACCESS_DENIED,
+    RESOURCE_NOT_FOUND,
+    VALIDATION_ERROR,
+    ALREADY_EXISTS,
+    INVALID_INPUT,
+    INVALID_TOKEN,
+    INVALID_GOOGLE_TOKEN,
+}
+
