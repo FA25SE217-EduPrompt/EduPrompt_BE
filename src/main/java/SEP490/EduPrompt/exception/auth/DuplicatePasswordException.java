@@ -5,8 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 @ResponseStatus(HttpStatus.CONFLICT)
-public class EmailAlreadyExistedException extends BaseException {
-    public EmailAlreadyExistedException() {
-        super(AuthExceptionCode.ALREADY_EXISTS.name(), "Email already exists", HttpStatus.CONFLICT);
+public class DuplicatePasswordException extends BaseException {
+    public DuplicatePasswordException(String message) {
+        super(AuthExceptionCode.INVALID_INPUT.name(), "Duplicate password", HttpStatus.CONFLICT);
     }
 }

@@ -3,6 +3,7 @@ package SEP490.EduPrompt.exception;
 import SEP490.EduPrompt.dto.response.ErrorMessage;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.exception.auth.AuthExceptionCode;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -39,8 +40,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BaseException.class)
-    public ResponseDto<?> handleCustomException(BaseException ex) {
+    public ResponseDto<?> handleCustomException(BaseException ex, HttpServletResponse response) {
         log.warn("Exception has occurred: {}", ex.getMessage());
+        response.setStatus(ex.getStatus().value());
         return ResponseDto.error(
                 new ErrorMessage(
                         ex.getCode(),

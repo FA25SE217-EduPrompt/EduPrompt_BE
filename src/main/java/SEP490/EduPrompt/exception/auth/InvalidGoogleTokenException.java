@@ -1,7 +1,8 @@
-package SEP490.EduPrompt.exception;
+package SEP490.EduPrompt.exception.auth;
 
-import SEP490.EduPrompt.exception.auth.AuthExceptionCode;
+import SEP490.EduPrompt.exception.BaseException;
 import org.springframework.http.HttpStatus;
+
 
 public class InvalidGoogleTokenException extends BaseException {
     public InvalidGoogleTokenException(){

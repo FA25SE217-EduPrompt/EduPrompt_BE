@@ -1,15 +1,15 @@
-package SEP490.EduPrompt.exception;
+package SEP490.EduPrompt.exception.auth;
 
-import SEP490.EduPrompt.exception.auth.AuthExceptionCode;
+import SEP490.EduPrompt.exception.BaseException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-@ResponseStatus(HttpStatus.BAD_REQUEST)
+@ResponseStatus(HttpStatus.UNAUTHORIZED)
 public class TokenInvalidException extends BaseException {
     public TokenInvalidException(String message) {
         super(
-                AuthExceptionCode.INVALID_INPUT.name(),
+                AuthExceptionCode.INVALID_TOKEN.name(),
                 message,
-                HttpStatus.BAD_REQUEST);
+                HttpStatus.UNAUTHORIZED);
     }
 }
