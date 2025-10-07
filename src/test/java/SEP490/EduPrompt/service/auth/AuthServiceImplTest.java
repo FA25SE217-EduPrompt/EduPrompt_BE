@@ -4,16 +4,14 @@ import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.exception.BaseException;
-import SEP490.EduPrompt.exception.DuplicatePasswordException;
-import SEP490.EduPrompt.exception.InvalidGoogleTokenException;
-import SEP490.EduPrompt.exception.TokenInvalidException;
+import SEP490.EduPrompt.exception.auth.DuplicatePasswordException;
+import SEP490.EduPrompt.exception.auth.TokenInvalidException;
 import SEP490.EduPrompt.exception.auth.*;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.model.UserAuth;
 import SEP490.EduPrompt.repo.UserAuthRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.util.JwtUtil;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -136,7 +134,7 @@ class AuthServiceImplTest {
         // Act & Assert
         AuthFailedException exception = assertThrows(AuthFailedException.class, () -> authService.login(validLoginRequest));
 
-        assertEquals("Invalid email or password", exception.getMessage()); // Assuming default msg from exception class
+        assertEquals("Invalid email or password", exception.getMessage());
         verify(userAuthRepository, never()).save(any());
         verify(jwtUtil, never()).generateToken(anyString(), anyString());
     }

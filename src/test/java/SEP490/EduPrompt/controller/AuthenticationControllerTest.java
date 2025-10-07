@@ -3,8 +3,8 @@ package SEP490.EduPrompt.controller;
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
-import SEP490.EduPrompt.dto.response.ResponseDto;
-import SEP490.EduPrompt.exception.TokenInvalidException;
+import SEP490.EduPrompt.exception.GlobalExceptionHandler;
+import SEP490.EduPrompt.exception.auth.TokenInvalidException;
 import SEP490.EduPrompt.exception.auth.*;
 import SEP490.EduPrompt.service.auth.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -46,7 +47,9 @@ class AuthenticationControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(authenticationController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(authenticationController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
         objectMapper = new ObjectMapper();
 
         loginRequest = LoginRequest.builder()
@@ -78,7 +81,8 @@ class AuthenticationControllerTest {
         fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGVtYWlsLmNvbSJ9.signature";
     }
 
-    // LOGIN CONTROLLER
+    //login test
+
     @Test
     void login_ValidRequest_ReturnsSuccess() throws Exception {
         LoginResponse loginResponse = new LoginResponse(fakeToken);
@@ -97,7 +101,7 @@ class AuthenticationControllerTest {
     @Test
     void login_InvalidRequest_ThrowsBadRequest() throws Exception {
         LoginRequest invalidRequest = LoginRequest.builder()
-                .email("") // Invalid email
+                .email("")
                 .password("validPassword")
                 .build();
 
@@ -118,12 +122,13 @@ class AuthenticationControllerTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("AUTH_FAILED"))
-                .andExpect(jsonPath("$.error.message[0]").value("Authentication failed"));
+                .andExpect(jsonPath("$.error.message").value("Authentication failed"));
 
         verify(authService).login(loginRequest);
     }
 
-    // REGISTER CONTROLLER
+    //register test
+
     @Test
     void register_ValidRequest_ReturnsSuccess() throws Exception {
         RegisterResponse registerResponse = new RegisterResponse("Check your email to verify your account");
@@ -157,35 +162,50 @@ class AuthenticationControllerTest {
         verify(authService, never()).register(any(RegisterRequest.class));
     }
 
-    // VERIFY EMAIL CONTROLLER
+    @Test
+    void register_EmailAlreadyExisted_ThrowsException() throws Exception {
+        when(authService.register(any(RegisterRequest.class))).thenThrow(new EmailAlreadyExistedException());
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("ALREADY_EXISTS"))
+                .andExpect(jsonPath("$.error.message").value("Email already exists"));
+
+        verify(authService).register(registerRequest);
+    }
+
+    //verify email test
+
     @Test
     void verifyEmail_ValidToken_ReturnsSuccess() throws Exception {
-        doNothing().when(authService).verifyEmail(fakeToken);
+        doNothing().when(authService).verifyEmail("validToken");
 
         mockMvc.perform(get("/api/auth/verify-email")
-                        .param("token", fakeToken))
+                        .param("token", "validToken"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value("Email verified successfully!"))
                 .andExpect(jsonPath("$.error").isEmpty());
 
-        verify(authService).verifyEmail(fakeToken);
+        verify(authService).verifyEmail("validToken");
     }
 
     @Test
     void verifyEmail_InvalidToken_ThrowsException() throws Exception {
-        doThrow(new InvalidInputException("Invalid verification token")).when(authService).verifyEmail(fakeToken);
+        doThrow(new InvalidInputException("Invalid verification token")).when(authService).verifyEmail("invalidToken");
 
         mockMvc.perform(get("/api/auth/verify-email")
-                        .param("token", fakeToken))
+                        .param("token", "invalidToken"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.data").isEmpty())
-                .andExpect(jsonPath("$.error.code").value(AuthExceptionCode.INVALID_INPUT.name()))
-                .andExpect(jsonPath("$.error.message[0]").value("Invalid verification token"));
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.error.message").value("Invalid verification token"));
 
-        verify(authService).verifyEmail(fakeToken);
+        verify(authService).verifyEmail("invalidToken");
     }
 
-    // RESEND VERIFICATION EMAIL CONTROLLER
+    //resend verification email test
+
     @Test
     void resendVerification_ValidEmail_ReturnsSuccess() throws Exception {
         doNothing().when(authService).resendVerificationEmail("test@email.com");
@@ -202,7 +222,7 @@ class AuthenticationControllerTest {
     @Test
     void resendVerification_InvalidEmail_ThrowsBadRequest() throws Exception {
         mockMvc.perform(post("/api/auth/resend-verification")
-                        .param("email", "invalid")) // Invalid email format
+                        .param("email", ""))
                 .andExpect(status().isBadRequest());
 
         verify(authService, never()).resendVerificationEmail(anyString());
@@ -210,18 +230,20 @@ class AuthenticationControllerTest {
 
     @Test
     void resendVerification_UserNotFound_ThrowsException() throws Exception {
-        doThrow(new ResourceNotFoundException("User not found with email: test@email.com")).when(authService).resendVerificationEmail("test@email.com");
+        doThrow(new ResourceNotFoundException("User not found with email: test@email.com"))
+                .when(authService).resendVerificationEmail(anyString());
 
         mockMvc.perform(post("/api/auth/resend-verification")
                         .param("email", "test@email.com"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("RESOURCE_NOT_FOUND"))
-                .andExpect(jsonPath("$.error.message[0]").value("User not found with email: test@email.com"));
+                .andExpect(jsonPath("$.error.message").value("User not found with email: test@email.com"));
 
         verify(authService).resendVerificationEmail("test@email.com");
     }
 
-    // CHANGE PASSWORD CONTROLLER
+    // change password test
+
     @Test
     void changePassword_ValidRequest_ReturnsSuccess() throws Exception {
         doNothing().when(authService).changePassword(any(ChangePasswordRequest.class));
@@ -239,8 +261,8 @@ class AuthenticationControllerTest {
     @Test
     void changePassword_InvalidRequest_ThrowsBadRequest() throws Exception {
         ChangePasswordRequest invalidRequest = ChangePasswordRequest.builder()
-                .email("")
-                .oldPassword("oldPassword")
+                .email("test@email.com")
+                .oldPassword("")
                 .newPassword("newPassword")
                 .build();
 
@@ -252,7 +274,22 @@ class AuthenticationControllerTest {
         verify(authService, never()).changePassword(any(ChangePasswordRequest.class));
     }
 
-    // FORGOT PASSWORD CONTROLLER
+    @Test
+    void changePassword_InvalidOldPassword_ThrowsException() throws Exception {
+        doThrow(new InvalidInputException()).when(authService).changePassword(any(ChangePasswordRequest.class));
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(changePasswordRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.error.message").value("Invalid input"));
+
+        verify(authService).changePassword(changePasswordRequest);
+    }
+
+    //forgot password test
+
     @Test
     void forgotPassword_ValidRequest_ReturnsSuccess() throws Exception {
         doNothing().when(authService).forgotPassword(any(ForgotPasswordRequest.class));
@@ -281,7 +318,23 @@ class AuthenticationControllerTest {
         verify(authService, never()).forgotPassword(any(ForgotPasswordRequest.class));
     }
 
-    // RESET PASSWORD CONTROLLER
+    @Test
+    void forgotPassword_UserNotFound_ThrowsException() throws Exception {
+        doThrow(new ResourceNotFoundException("User not found with email: test@email.com"))
+                .when(authService).forgotPassword(any(ForgotPasswordRequest.class));
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(forgotPasswordRequest)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("RESOURCE_NOT_FOUND"))
+                .andExpect(jsonPath("$.error.message").value("User not found with email: test@email.com"));
+
+        verify(authService).forgotPassword(forgotPasswordRequest);
+    }
+
+    // reset password test
+
     @Test
     void resetPassword_ValidRequest_ReturnsSuccess() throws Exception {
         doNothing().when(authService).resetPassword(any(ResetPasswordRequest.class));
@@ -311,7 +364,22 @@ class AuthenticationControllerTest {
         verify(authService, never()).resetPassword(any(ResetPasswordRequest.class));
     }
 
-    // LOGOUT CONTROLLER
+    @Test
+    void resetPassword_InvalidToken_ThrowsException() throws Exception {
+        doThrow(new TokenInvalidException("Invalid token")).when(authService).resetPassword(any(ResetPasswordRequest.class));
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resetPasswordRequest)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"))
+                .andExpect(jsonPath("$.error.message").value("Invalid token"));
+
+        verify(authService).resetPassword(resetPasswordRequest);
+    }
+
+    // logout test
+
     @Test
     void logout_ValidRequest_ReturnsSuccess() throws Exception {
         doNothing().when(authService).logout(any());
@@ -332,13 +400,14 @@ class AuthenticationControllerTest {
         mockMvc.perform(post("/api/auth/logout")
                         .header("Authorization", "Bearer " + fakeToken))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error.code").value("TOKEN_INVALID"))
-                .andExpect(jsonPath("$.error.message[0]").value("Invalid token"));
+                .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"))
+                .andExpect(jsonPath("$.error.message").value("Invalid token"));
 
         verify(authService).logout(any());
     }
 
-    // REFRESH TOKEN CONTROLLER
+    // refresh token test
+
     @Test
     void refreshToken_ValidRequest_ReturnsSuccess() throws Exception {
         LoginResponse loginResponse = new LoginResponse(fakeToken);
@@ -360,8 +429,8 @@ class AuthenticationControllerTest {
         mockMvc.perform(post("/api/auth/refresh-token")
                         .header("Authorization", "Bearer " + fakeToken))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error.code").value("TOKEN_INVALID"))
-                .andExpect(jsonPath("$.error.message[0]").value("Invalid token"));
+                .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"))
+                .andExpect(jsonPath("$.error.message").value("Invalid token"));
 
         verify(authService).refreshToken(any());
     }

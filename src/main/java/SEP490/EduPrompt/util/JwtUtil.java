@@ -1,6 +1,6 @@
 package SEP490.EduPrompt.util;
 
-import SEP490.EduPrompt.exception.TokenInvalidException;
+import SEP490.EduPrompt.exception.auth.TokenInvalidException;
 import SEP490.EduPrompt.model.UserAuth;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;

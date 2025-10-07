@@ -4,9 +4,9 @@ import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.exception.BaseException;
-import SEP490.EduPrompt.exception.DuplicatePasswordException;
-import SEP490.EduPrompt.exception.InvalidGoogleTokenException;
-import SEP490.EduPrompt.exception.TokenInvalidException;
+import SEP490.EduPrompt.exception.auth.DuplicatePasswordException;
+import SEP490.EduPrompt.exception.auth.InvalidGoogleTokenException;
+import SEP490.EduPrompt.exception.auth.TokenInvalidException;
 import SEP490.EduPrompt.exception.auth.*;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.model.UserAuth;
@@ -29,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -58,7 +57,7 @@ public class AuthServiceImpl implements AuthService {
 
         if (userAuth==null ||
                 !passwordEncoder.matches(loginRequest.getPassword(), userAuth.getPasswordHash())) {
-            throw new AuthFailedException();
+            throw new AuthFailedException("Invalid email or password");
         }
 
         // check account isActive and isVerified field
