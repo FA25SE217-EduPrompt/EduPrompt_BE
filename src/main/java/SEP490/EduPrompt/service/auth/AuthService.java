@@ -7,9 +7,9 @@ import jakarta.servlet.http.HttpServletRequest;
 
 public interface AuthService {
 
-    boolean authenticateUser(String email, String password);
+//    boolean authenticateUser(String email, String password);
 
-    void updateLastLogin(String email);
+//    void updateLastLogin(String email);
 
     LoginResponse login(LoginRequest loginRequest);
 

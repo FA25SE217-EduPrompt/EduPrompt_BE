@@ -39,47 +39,43 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    // Authentication related methods
-    @Override
-    public boolean authenticateUser(String email, String password) {
-        Optional<UserAuth> userAuthOpt = userAuthRepository.findByEmail(email);
-        if (userAuthOpt.isPresent()) {
-            UserAuth userAuth = userAuthOpt.get();
-            User user = userAuth.getUser();
-
-            // Check if user is active and password matches (hashed comparison)
-            return user != null &&
-                    user.getIsActive() &&
-                    passwordEncoder.matches(password, userAuth.getPasswordHash());
-        }
-        return false;
-    }
-
-    @Override
-    @Transactional
-    public void updateLastLogin(String email) {
-        Optional<UserAuth> userAuthOpt = userAuthRepository.findByEmail(email);
-        if (userAuthOpt.isPresent()) {
-            UserAuth userAuth = userAuthOpt.get();
-            userAuth.setLastLogin(Instant.now());
-            userAuth.setUpdatedAt(Instant.now());
-            userAuthRepository.save(userAuth);
-            log.info("Last login updated for user: {}", email);
-        }
-    }
+    // this is redundant and hard to handle exception throwing
+//    @Override
+//    public boolean authenticateUser(String email, String password) {
+//        Optional<UserAuth> userAuthOpt = userAuthRepository.findByEmail(email);
+//        if (userAuthOpt.isPresent()) {
+//            UserAuth userAuth = userAuthOpt.get();
+//            User user = userAuth.getUser();
+//
+//            return user != null &&
+//                    !user.getIsActive() &&
+//                    passwordEncoder.matches(password, userAuth.getPasswordHash());
+//        }
+//        return false;
+//    }
+//    @Override
+//    @Transactional
+//    public void updateLastLogin(String email) {
+//        Optional<UserAuth> userAuthOpt = userAuthRepository.findByEmail(email);
+//        if (userAuthOpt.isPresent()) {
+//            UserAuth userAuth = userAuthOpt.get();
+//            userAuth.setLastLogin(Instant.now());
+//            userAuth.setUpdatedAt(Instant.now());
+//            userAuthRepository.save(userAuth);
+//            log.info("Last login updated for user: {}", email);
+//        }
+//    }
 
     @Transactional
     public LoginResponse login(LoginRequest loginRequest) {
-        // Simple authentication check using our own authenticateUser method
-        if (!authenticateUser(loginRequest.getEmail(), loginRequest.getPassword())) {
-            throw new AuthFailedException();
-        }
-
-        // Update last login time
-        updateLastLogin(loginRequest.getEmail());
 
         UserAuth userAuth = userAuthRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (userAuth==null ||
+                !passwordEncoder.matches(loginRequest.getPassword(), userAuth.getPasswordHash())) {
+            throw new AuthFailedException();
+        }
 
         // check account isActive and isVerified field
         User user = userAuth.getUser();
@@ -91,6 +87,7 @@ public class AuthServiceImpl implements AuthService {
         userAuth.setLastLogin(Instant.now());
         userAuth.setUpdatedAt(Instant.now());
         userAuthRepository.save(userAuth);
+        log.info("Login successful by user : {}", userAuth.getEmail());
 
         return LoginResponse.builder()
                 .token(token)
