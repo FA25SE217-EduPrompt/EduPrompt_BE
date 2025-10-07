@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.*;
+import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.service.auth.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -74,5 +75,9 @@ public class AuthenticationController {
     @PostMapping("/refresh-token")
     public ResponseDto<?> refreshToken(HttpServletRequest request) {
         return ResponseDto.success(authService.refreshToken(request));
+    }
+    @PostMapping("/google")
+    public ResponseDto<LoginResponse> loginWithGoogle(@RequestBody GoogleLoginRequeset request) {
+        return ResponseDto.success(authService.googleLogin(request));
     }
 }

@@ -5,6 +5,7 @@ import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.exception.BaseException;
 import SEP490.EduPrompt.exception.DuplicatePasswordException;
+import SEP490.EduPrompt.exception.InvalidGoogleTokenException;
 import SEP490.EduPrompt.exception.TokenInvalidException;
 import SEP490.EduPrompt.exception.auth.*;
 import SEP490.EduPrompt.model.User;
@@ -12,9 +13,14 @@ import SEP490.EduPrompt.model.UserAuth;
 import SEP490.EduPrompt.repo.UserAuthRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.util.JwtUtil;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,12 +28,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AuthServiceImpl implements AuthService {
+
+    @Value("${google.client-id}")
+    private String googleClientId;
 
     private final static String ROLE_TEACHER = "teacher";
     private final static String ROLE_sADMIN = "school_admin";
@@ -38,33 +49,6 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-
-    // this is redundant and hard to handle exception throwing
-//    @Override
-//    public boolean authenticateUser(String email, String password) {
-//        Optional<UserAuth> userAuthOpt = userAuthRepository.findByEmail(email);
-//        if (userAuthOpt.isPresent()) {
-//            UserAuth userAuth = userAuthOpt.get();
-//            User user = userAuth.getUser();
-//
-//            return user != null &&
-//                    !user.getIsActive() &&
-//                    passwordEncoder.matches(password, userAuth.getPasswordHash());
-//        }
-//        return false;
-//    }
-//    @Override
-//    @Transactional
-//    public void updateLastLogin(String email) {
-//        Optional<UserAuth> userAuthOpt = userAuthRepository.findByEmail(email);
-//        if (userAuthOpt.isPresent()) {
-//            UserAuth userAuth = userAuthOpt.get();
-//            userAuth.setLastLogin(Instant.now());
-//            userAuth.setUpdatedAt(Instant.now());
-//            userAuthRepository.save(userAuth);
-//            log.info("Last login updated for user: {}", email);
-//        }
-//    }
 
     @Transactional
     public LoginResponse login(LoginRequest loginRequest) {
@@ -378,6 +362,72 @@ public class AuthServiceImpl implements AuthService {
                     "Token refresh failed due to an unexpected error",
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
+        }
+    }
+
+    @Override
+    public LoginResponse googleLogin(GoogleLoginRequeset request) {
+        log.info("Attempting Google login");
+
+        try {
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                    GoogleNetHttpTransport.newTrustedTransport(),
+                    GsonFactory.getDefaultInstance()
+            )
+                    .setAudience(List.of(googleClientId))
+                    .build();
+
+            GoogleIdToken idToken = verifier.verify(request.getTokenId());
+            if (idToken == null) {
+                throw new InvalidGoogleTokenException();
+            }
+
+            GoogleIdToken.Payload payload = idToken.getPayload();
+            String email = payload.getEmail();
+            String googleId = payload.getSubject();
+
+            log.info("Google login - email: {}, googleId: {}", email, googleId);
+
+            Optional<UserAuth> existingAuth = userAuthRepository
+                    .findByGoogleUserId(googleId);
+
+            User user;
+            if (existingAuth.isPresent()) {
+                user = existingAuth.get().getUser();
+            } else {
+                user = User.builder()
+                        .email(email)
+                        .firstName((String) payload.get("given_name"))
+                        .lastName((String) payload.get("family_name"))
+                        .isActive(true)
+                        .isVerified(true)
+                        .role(ROLE_TEACHER)
+                        .createdAt(Instant.now())
+                        .updatedAt(Instant.now())
+                        .build();
+
+                userRepository.save(user);
+
+                UserAuth auth = UserAuth.builder()
+                        .user(user)
+                        .googleUserId("google")
+                        .email(email)
+                        .createdAt(Instant.now())
+                        .lastLogin(Instant.now())
+                        .build();
+
+                userAuthRepository.save(auth);
+            }
+
+            String token = jwtUtil.generateToken(email, ROLE_TEACHER);
+
+            return LoginResponse.builder()
+                    .token(token)
+                    .build();
+
+        } catch (Exception ex) {
+            log.error("Google login failed", ex);
+            throw new InvalidGoogleTokenException();
         }
     }
 }

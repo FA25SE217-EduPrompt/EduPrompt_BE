@@ -28,4 +28,6 @@ public interface AuthService {
     void logout(HttpServletRequest authHeader);
 
     LoginResponse refreshToken(HttpServletRequest request);
+
+    LoginResponse googleLogin(GoogleLoginRequeset requeset);
 }

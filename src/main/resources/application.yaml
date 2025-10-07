@@ -9,6 +9,9 @@ app:
     secret: ${JWT_SECRET}
     expiration: 900000 # 15min in milliseconds
 
+google:
+  client-id: ${GOOGLE_CLIENT_ID}
+
 spring:
   application:
     name: EduPrompt
