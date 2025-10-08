@@ -1,0 +1,52 @@
+-- Add soft-delete and group fields to collections
+ALTER TABLE collections 
+ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+ADD COLUMN deleted_at TIMESTAMP WITHOUT TIME ZONE NULL,
+ADD COLUMN deleted_by UUID NULL,
+ADD COLUMN group_id UUID NULL;
+
+-- Create groups table
+CREATE TABLE groups (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  school_id UUID NULL,
+  created_by UUID NULL,
+  updated_by UUID NULL,  
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_groups_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE,
+  CONSTRAINT fk_groups_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_groups_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Create group_members table
+CREATE TABLE group_members (
+  id UUID PRIMARY KEY,
+  group_id UUID NOT NULL,
+  user_id UUID NOT NULL,
+  role VARCHAR(50) NULL,  -- 'admin' or 'member'
+  status VARCHAR(50) NULL,  --  'pending'/'active'
+  joined_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_groupmembers_group FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  CONSTRAINT fk_groupmembers_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE (group_id, user_id)
+);
+
+-- FK for deleted_by and group_id
+ALTER TABLE collections 
+ADD CONSTRAINT fk_collections_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL,
+ADD CONSTRAINT fk_collections_group FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL; 
+
+-- Indexes for collections
+CREATE INDEX idx_collections_creator_deleted ON collections (created_by, is_deleted);
+CREATE INDEX idx_collections_deleted ON collections (deleted_by, deleted_at) WHERE is_deleted = TRUE;
+CREATE INDEX idx_collections_active ON collections (id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_collections_group ON collections (group_id) WHERE is_deleted = FALSE;
+
+-- Indexes for groups and members
+CREATE INDEX idx_groups_school ON groups (school_id) WHERE is_active = TRUE;
+CREATE INDEX idx_groups_updated ON groups (updated_at);
+CREATE INDEX idx_group_members_group ON group_members (group_id);
+CREATE INDEX idx_group_members_user ON group_members (user_id);
+CREATE INDEX idx_group_members_status ON group_members (status);
