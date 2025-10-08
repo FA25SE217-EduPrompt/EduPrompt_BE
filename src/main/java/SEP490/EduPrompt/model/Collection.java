@@ -10,7 +10,8 @@ import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Builder
@@ -44,7 +45,7 @@ public class Collection {
     @ColumnDefault("'[]'::jsonb")
     @Column(name = "tags", nullable = false)
     @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, Object> tags;
+    private List<Tag> tags = new ArrayList<>();
 
     @Column(name = "created_by")
     private UUID createdBy;
