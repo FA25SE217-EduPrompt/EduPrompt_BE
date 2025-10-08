@@ -3,6 +3,7 @@ package SEP490.EduPrompt.service.auth;
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
+import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.exception.BaseException;
 import SEP490.EduPrompt.exception.auth.*;
 import SEP490.EduPrompt.model.User;
@@ -33,9 +34,10 @@ import java.util.Optional;
 @Slf4j
 public class AuthServiceImpl implements AuthService {
 
-    private final static String ROLE_TEACHER = "teacher";
-    private final static String ROLE_sADMIN = "school_admin";
-    private final static String ROLE_ADMIN = "system_admin";
+//    private final static String ROLE_TEACHER = "teacher";
+//    private final static String ROLE_sADMIN = "school_admin";
+//    private final static String ROLE_ADMIN = "system_admin";
+
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
     private final EmailService emailService;
@@ -87,7 +89,7 @@ public class AuthServiceImpl implements AuthService {
                 .lastName(registerRequest.getLastName())
                 .phoneNumber(registerRequest.getPhoneNumber())
                 .email(registerRequest.getEmail())
-                .role(ROLE_TEACHER)
+                .role(Role.TEACHER.name())
                 .isActive(false)
                 .isVerified(false)
                 .createdAt(now)
@@ -166,7 +168,7 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("User is already verified");
         }
 
-        String newToken = jwtUtil.generateToken(email, ROLE_TEACHER);
+        String newToken = jwtUtil.generateToken(email, Role.TEACHER.name());
 
         userAuth.setVerificationToken(newToken);
         userAuthRepository.save(userAuth);
@@ -210,7 +212,7 @@ public class AuthServiceImpl implements AuthService {
         UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
 
-        String token = jwtUtil.generateToken(userAuth.getEmail(), ROLE_TEACHER);
+        String token = jwtUtil.generateToken(userAuth.getEmail(), Role.TEACHER.name());
 
         userAuth.setVerificationToken(token);
         userAuthRepository.save(userAuth);
@@ -334,7 +336,7 @@ public class AuthServiceImpl implements AuthService {
                 throw new TokenInvalidException("Token has been invalidated by logout");
             }
 
-            String newToken = jwtUtil.generateToken(email, ROLE_TEACHER);
+            String newToken = jwtUtil.generateToken(email, Role.TEACHER.name());
 
             log.info("Token successfully refreshed for user: {}", email);
 
@@ -395,7 +397,7 @@ public class AuthServiceImpl implements AuthService {
                         .lastName((String) payload.get("family_name"))
                         .isActive(true)
                         .isVerified(true)
-                        .role(ROLE_TEACHER)
+                        .role(Role.TEACHER.name())
                         .createdAt(Instant.now())
                         .updatedAt(Instant.now())
                         .build();
@@ -413,7 +415,7 @@ public class AuthServiceImpl implements AuthService {
                 userAuthRepository.save(auth);
             }
 
-            String token = jwtUtil.generateToken(email, ROLE_TEACHER);
+            String token = jwtUtil.generateToken(email, Role.TEACHER.name());
 
             return LoginResponse.builder()
                     .token(token)
