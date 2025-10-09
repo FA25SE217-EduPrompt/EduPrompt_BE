@@ -25,4 +25,6 @@ public interface CollectionRepository extends JpaRepository<Collection, UUID> {
 
     // count own collections
     long countByCreatedByAndIsDeletedFalse(UUID createdBy);
+
+    Optional<Collection> findByIdAndIsDeletedFalse(UUID id);
 }
