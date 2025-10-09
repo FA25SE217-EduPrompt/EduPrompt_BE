@@ -324,9 +324,10 @@ public class AuthServiceImpl implements AuthService {
                 throw new UserNotVerifiedException();
             }
 
-            if (!jwtUtil.validateToken(token)) {
-                throw new TokenInvalidException("Invalid or expired token");
-            }
+            // why still check if the token invalid or expire , bro, this is for refresh
+//            if (!jwtUtil.validateToken(token)) {
+//                throw new TokenInvalidException("Invalid or expired token");
+//            }
 
             Date issuedAt = jwtUtil.extractIssuedAt(token);
             if (userAuth.getLastLogin() != null &&

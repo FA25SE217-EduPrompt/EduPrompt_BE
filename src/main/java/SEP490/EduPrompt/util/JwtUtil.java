@@ -73,8 +73,9 @@ public class JwtUtil {
         Date issuedAt = extractIssuedAt(token);
 
         boolean notExpired = !isTokenExpired(token);
-        boolean notLoggedOut = userAuth.getLastLogin() == null
-                || issuedAt.toInstant().isAfter(userAuth.getLastLogin());
+        boolean notLoggedOut = userAuth.getLastLogin() == null;
+        //this is always false
+//                || issuedAt.toInstant().isAfter(userAuth.getLastLogin());
 
         return (email.equals(userAuth.getEmail()) && notExpired && notLoggedOut);
     }
