@@ -255,10 +255,15 @@ public class CollectionServiceImpl implements CollectionService {
 
         Optional<Collection> opt = collectionRepository.findByIdAndIsDeletedFalse(id);
         if (opt.isEmpty()) {
-            // still allow admin to delete resources beside owner
             throw new ResourceNotFoundException("Collection not found");
         }
         Collection collection = opt.get();
+
+        boolean owner = collection.getCreatedBy().equals(currentUserId);
+        // only owner and admins can perform delete
+        if (!owner && !isAdmin(currentUser)) {
+            throw new AccessDeniedException("Not allowed to delete this collection");
+        }
 
         collection.setIsDeleted(true);
         collection.setDeletedAt(Instant.now());
