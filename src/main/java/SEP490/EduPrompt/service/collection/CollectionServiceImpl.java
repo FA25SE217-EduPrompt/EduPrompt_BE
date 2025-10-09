@@ -118,7 +118,7 @@ public class CollectionServiceImpl implements CollectionService {
 
     private boolean isAdmin(UserPrincipal user) {
         String role = user.getRole();
-        return !Role.SYSTEM_ADMIN.name().equalsIgnoreCase(role) && !Role.SCHOOL_ADMIN.name().equalsIgnoreCase(role);
+        return Role.SYSTEM_ADMIN.name().equalsIgnoreCase(role) || Role.SCHOOL_ADMIN.name().equalsIgnoreCase(role);
     }
 
     @Override
@@ -140,7 +140,7 @@ public class CollectionServiceImpl implements CollectionService {
             // creator must be a member of the group
             boolean isAllowed = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
                     group.getId(), currentUserId, "active");
-            if (!isAllowed && isAdmin(currentUser)) {
+            if (!isAllowed && !isAdmin(currentUser)) {
                 throw new AccessDeniedException("You must be a member of the group to create a group collection");
             }
         }
@@ -181,7 +181,7 @@ public class CollectionServiceImpl implements CollectionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
 
         boolean owner = collection.getCreatedBy().equals(currentUserId);
-        if (!owner && isAdmin(currentUser)) {
+        if (!owner && !isAdmin(currentUser)) {
             throw new AccessDeniedException("Not allowed to update this collection");
         }
 
@@ -189,13 +189,27 @@ public class CollectionServiceImpl implements CollectionService {
         //partial update
         if (req.name() != null) collection.setName(req.name());
         if (req.description() != null) collection.setDescription(req.description());
-        if (req.visibility() != null) collection.setVisibility(req.visibility());
         if (req.tags() != null) collection.setTags(req.tags());
-        if (req.groupId() != null && Visibility.GROUP.name().equalsIgnoreCase(req.visibility())) {
-            Group group = groupRepository.findById(req.groupId())
+
+        Visibility vis = parseVisibility(req.visibility());
+        Group group = null;
+        if (vis == Visibility.GROUP) {
+            if (req.groupId() == null) {
+                throw new InvalidInputException("groupId is required for group visibility");
+            }
+            group = groupRepository.findById(req.groupId())
                     .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
-            collection.setGroup(group);
+
+            // creator must be a member of the group
+            boolean isAllowed = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
+                    group.getId(), currentUserId, "active");
+            if (!isAllowed && !isAdmin(currentUser)) {
+                throw new AccessDeniedException("You must be a member of the group to create a group collection");
+            }
         }
+
+        collection.setVisibility(req.visibility());
+        collection.setGroup(group);
 
         collection.setUpdatedBy(currentUserId);
         collection.setUpdatedAt(Instant.now());
@@ -239,8 +253,12 @@ public class CollectionServiceImpl implements CollectionService {
         UUID currentUserId = currentUser.getUserId();
         User currentUserEntity = userRepository.getReferenceById(currentUserId);
 
-        Collection collection = collectionRepository.findByIdAndCreatedByAndIsDeletedFalse(id, currentUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
+        Optional<Collection> opt = collectionRepository.findByIdAndIsDeletedFalse(id);
+        if (opt.isEmpty()) {
+            // still allow admin to delete resources beside owner
+            throw new ResourceNotFoundException("Collection not found");
+        }
+        Collection collection = opt.get();
 
         collection.setIsDeleted(true);
         collection.setDeletedAt(Instant.now());
