@@ -1,12 +1,10 @@
 package SEP490.EduPrompt.controller;
 
-import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.group.CreateGroupRequest;
 import SEP490.EduPrompt.dto.request.group.UpdateGroupRequest;
 import SEP490.EduPrompt.dto.request.groupMember.AddGroupMembersRequest;
 import SEP490.EduPrompt.dto.request.groupMember.RemoveGroupMemberRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
-import SEP490.EduPrompt.repo.GroupRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.group.GroupService;
 import jakarta.validation.Valid;
