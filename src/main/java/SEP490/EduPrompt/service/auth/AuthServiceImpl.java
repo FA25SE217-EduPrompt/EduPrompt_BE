@@ -36,11 +36,13 @@ public class AuthServiceImpl implements AuthService {
     private final static String ROLE_TEACHER = "teacher";
     private final static String ROLE_sADMIN = "school_admin";
     private final static String ROLE_ADMIN = "system_admin";
+
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final TokenBlacklistService blacklistService;
     @Value("${google.client-id}")
     private String googleClientId;
 
@@ -271,28 +273,32 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void logout(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
+        String token = extractTokenFromRequest(request);
 
-        if (header == null || !header.startsWith("Bearer ")) {
-            throw new TokenInvalidException("Authorization header missing or malformed");
-        }
-
-        String token = header.substring(7);
-        String email = jwtUtil.extractUsername(token);
-
-        UserAuth userAuth = userAuthRepository.findByEmail(email)
-                .orElseThrow(() -> new TokenInvalidException("User not found"));
-
-        Date issuedAt = jwtUtil.extractIssuedAt(token);
-        if (userAuth.getLastLogin() != null &&
-                !issuedAt.toInstant().isAfter(userAuth.getLastLogin())) {
+        // check if already blacklisted
+        if (jwtUtil.isTokenBlacklisted(token)) {
             throw new TokenInvalidException("Token already invalidated");
         }
 
-        userAuth.setLastLogin(Instant.now());
-        userAuthRepository.save(userAuth);
+        String email = jwtUtil.extractUsername(token);
+        Date expiresAt = jwtUtil.extractExpiration(token);
 
-        log.info("User {} logged out. Tokens issued before now are invalid.", email);
+        // verify user exists
+        userAuthRepository.findByEmail(email)
+                .orElseThrow(() -> new TokenInvalidException("User not found"));
+
+        // blacklist the token
+        blacklistService.blacklistToken(token, expiresAt);
+
+        log.info("User {} logged out. Token blacklisted.", email);
+    }
+
+    private String extractTokenFromRequest(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) {
+            throw new TokenInvalidException("Authorization header missing or malformed");
+        }
+        return header.substring(7);
     }
 
     @Override
@@ -300,65 +306,40 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse refreshToken(HttpServletRequest request) {
         log.info("Refreshing token");
 
-        String header = request.getHeader("Authorization");
+        String token = extractTokenFromRequest(request);
 
-        if (header == null || !header.startsWith("Bearer ")) {
-            throw new TokenInvalidException("Authorization header missing or malformed");
+        // check if token is blacklisted
+        if (jwtUtil.isTokenBlacklisted(token)) {
+            throw new TokenInvalidException("Token has been invalidated");
         }
 
-        String token = header.substring(7);
+        String email = jwtUtil.extractUsername(token);
 
-        try {
-            String email = jwtUtil.extractUsername(token);
-
-            if (email == null || email.isBlank()) {
-                throw new TokenInvalidException("Invalid token: unable to extract email");
-            }
-
-            UserAuth userAuth = userAuthRepository.findByEmail(email)
-                    .orElseThrow(() -> new TokenInvalidException("User not found"));
-
-            User user = userAuth.getUser();
-
-            if (!user.getIsActive() || !user.getIsVerified()) {
-                throw new UserNotVerifiedException();
-            }
-
-            // why still check if the token invalid or expire , bro, this is for refresh
-//            if (!jwtUtil.validateToken(token)) {
-//                throw new TokenInvalidException("Invalid or expired token");
-//            }
-
-            Date issuedAt = jwtUtil.extractIssuedAt(token);
-            if (userAuth.getLastLogin() != null &&
-                    !issuedAt.toInstant().isAfter(userAuth.getLastLogin())) {
-                throw new TokenInvalidException("Token has been invalidated by logout");
-            }
-
-            String newToken = jwtUtil.generateToken(email, ROLE_TEACHER);
-
-            log.info("Token successfully refreshed for user: {}", email);
-
-            return LoginResponse.builder()
-                    .token(newToken)
-                    .build();
-
-            // this try/catch may be redundant, yet it's for reference to know there's still another way of handle exception :)
-        } catch (TokenInvalidException e) {
-            log.error("Token refresh failed: {}", e.getMessage());
-            throw e;
-        } catch (UserNotVerifiedException e) {
-            log.error("User not verified: {}", e.getMessage());
-            throw e;
-        } catch (Exception e) {
-            log.error("Unexpected error during token refresh: {}", e.getMessage());
-            throw new BaseException(
-                    AuthExceptionCode.AUTH_FAILED.name(),
-                    "Token refresh failed due to an unexpected error",
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+        if (email == null || email.isBlank()) {
+            throw new TokenInvalidException("Invalid token: unable to extract email");
         }
+
+        UserAuth userAuth = userAuthRepository.findByEmail(email)
+                .orElseThrow(() -> new TokenInvalidException("User not found"));
+
+        User user = userAuth.getUser();
+        if (!user.getIsActive() || !user.getIsVerified()) {
+            throw new UserNotVerifiedException();
+        }
+
+        // blacklist the old token
+        Date expiresAt = jwtUtil.extractExpiration(token);
+        blacklistService.blacklistToken(token, expiresAt);
+
+        // generate new token
+        String newToken = jwtUtil.generateToken(email, user.getRole());
+        log.info("Token successfully refreshed for user: {}", email);
+
+        return LoginResponse.builder()
+                .token(newToken)
+                .build();
     }
+
 
     @Override
     public LoginResponse googleLogin(GoogleLoginRequeset request) {

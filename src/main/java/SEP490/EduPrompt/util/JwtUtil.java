@@ -2,10 +2,12 @@ package SEP490.EduPrompt.util;
 
 import SEP490.EduPrompt.exception.auth.TokenInvalidException;
 import SEP490.EduPrompt.model.UserAuth;
+import SEP490.EduPrompt.service.auth.TokenBlacklistService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,6 +24,7 @@ import java.util.function.Function;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class JwtUtil {
 
     @Value("${app.jwt.secret}")
@@ -29,6 +32,8 @@ public class JwtUtil {
 
     @Value("${app.jwt.expiration}")
     private Long expiration;
+
+    private final TokenBlacklistService blacklistService;
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -69,20 +74,29 @@ public class JwtUtil {
     }
 
     public boolean isTokenValid(String token, UserAuth userAuth) {
-        final String email = extractUsername(token);
-        Date issuedAt = extractIssuedAt(token);
+        try {
+            final String email = extractUsername(token);
+            boolean notExpired = !isTokenExpired(token);
+            boolean notBlacklisted = !blacklistService.isTokenBlacklisted(token);
+            boolean userNotBlacklisted = !blacklistService.areAllUserTokensBlacklisted(email);
 
-        boolean notExpired = !isTokenExpired(token);
-        boolean notLoggedOut = userAuth.getLastLogin() == null;
-        //this is always false
-//                || issuedAt.toInstant().isAfter(userAuth.getLastLogin());
+            return email.equals(userAuth.getEmail())
+                    && notExpired
+                    && notBlacklisted
+                    && userNotBlacklisted;
+        } catch (Exception e) {
+            log.error("Token validation failed: {}", e.getMessage());
+            return false;
+        }
+    }
 
-        return (email.equals(userAuth.getEmail()) && notExpired && notLoggedOut);
+    public boolean isTokenBlacklisted(String token) {
+        return blacklistService.isTokenBlacklisted(token);
     }
 
     public String generateToken(String username, String role) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", role);
+        claims.put("role", role.toUpperCase());
         return createToken(claims, username);
     }
 
