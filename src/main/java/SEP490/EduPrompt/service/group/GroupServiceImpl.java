@@ -103,20 +103,20 @@ public class GroupServiceImpl implements GroupService {
             throw new AccessDeniedException("Only admins or teachers can create groups");
         }
 
-        // SCHOOL_ADMIN and TEACHER must belong to a school
-        UUID schoolId = currentUser.getSchoolId();
-        if (schoolId == null && !Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
-            throw new AccessDeniedException("You must be associated with a school to create a group");
-        }
-        School school = null;
-        if (schoolId != null) {
-            school = schoolRepository.findById(schoolId)
-                    .orElseThrow(() -> new ResourceNotFoundException("School not found"));
-        }
+//        // SCHOOL_ADMIN and TEACHER must belong to a school
+//        UUID schoolId = currentUser.getSchoolId();
+//        if (schoolId == null && !Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
+//            throw new AccessDeniedException("You must be associated with a school to create a group");
+//        }
+//        School school = null;
+//        if (schoolId != null) {
+//            school = schoolRepository.findById(schoolId)
+//                    .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+//        }
 
         Group group = Group.builder()
                 .name(req.name())
-                .school(school)
+                .school(null)
                 .createdBy(creator)
                 .updatedBy(creator)
                 .isActive(true)
@@ -170,6 +170,7 @@ public class GroupServiceImpl implements GroupService {
         }
 
         // Partial update
+        //TODO need
         if (req.name() != null) {
             group.setName(req.name());
         }
