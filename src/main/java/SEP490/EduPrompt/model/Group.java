@@ -8,6 +8,8 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Builder
@@ -56,5 +58,8 @@ public class Group {
     @ColumnDefault("now()")
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @OneToMany(mappedBy = "group")
+    private Set<GroupMember> groupMembers = new LinkedHashSet<>();
 
 }
