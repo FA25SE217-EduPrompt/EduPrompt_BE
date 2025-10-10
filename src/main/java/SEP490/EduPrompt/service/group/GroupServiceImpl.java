@@ -2,10 +2,14 @@ package SEP490.EduPrompt.service.group;
 
 import SEP490.EduPrompt.dto.request.group.CreateGroupRequest;
 import SEP490.EduPrompt.dto.request.group.UpdateGroupRequest;
+import SEP490.EduPrompt.dto.request.groupMember.AddGroupMembersRequest;
+import SEP490.EduPrompt.dto.request.groupMember.RemoveGroupMemberRequest;
 import SEP490.EduPrompt.dto.response.group.GroupResponse;
 import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.UpdateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
+import SEP490.EduPrompt.dto.response.groupMember.GroupMemberResponse;
+import SEP490.EduPrompt.dto.response.groupMember.PageGroupMemberResponse;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
@@ -26,7 +30,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -90,6 +96,13 @@ public class GroupServiceImpl implements GroupService {
         if (!isMember) {
             throw new AccessDeniedException("You are not an active member of this group");
         }
+    }
+
+    @Override
+    public boolean isGroupAdmin(UUID groupId, UserPrincipal currentUser) {
+        return groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
+                groupId, currentUser.getUserId(), "active", List.of("admin")
+        );
     }
 
     @Override
@@ -169,24 +182,164 @@ public class GroupServiceImpl implements GroupService {
             }
         }
 
-        // Partial update
-        //TODO need
-        if (req.name() != null) {
-            group.setName(req.name());
-        }
-        group.setUpdatedBy(userRepository.getReferenceById(currentUserId));
-        group.setUpdatedAt(Instant.now());
+        // Track if any changes were made
+        boolean updated = false;
 
-        Group updatedGroup = groupRepository.save(group);
-        log.info("Group updated: {} by user: {}", id, currentUserId);
+        // Update name if provided
+        if (req.name() != null && !req.name().isBlank()) {
+            group.setName(req.name());
+            updated = true;
+        }
+
+        // Update isActive if provided
+        if (req.isActive() != null && !req.isActive().equals(group.getIsActive())) {
+            group.setIsActive(req.isActive());
+            updated = true;
+        }
+
+        // Update group metadata if changes were made
+        if (updated) {
+            group.setUpdatedBy(userRepository.getReferenceById(currentUserId));
+            group.setUpdatedAt(Instant.now());
+            groupRepository.save(group);
+            log.info("Group updated: {} by user: {}", id, currentUserId);
+        } else {
+            log.info("No changes applied to group: {} by user: {}", id, currentUserId);
+        }
 
         return UpdateGroupResponse.builder()
-                .id(updatedGroup.getId())
-                .name(updatedGroup.getName())
-                .schoolId(updatedGroup.getSchool() != null ? updatedGroup.getSchool().getId() : null)
-                .isActive(updatedGroup.getIsActive())
-                .updatedAt(updatedGroup.getUpdatedAt())
+                .id(group.getId())
+                .name(group.getName())
+                .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
+                .isActive(group.getIsActive())
+                .updatedAt(group.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public UpdateGroupResponse addMembersToGroup(UUID id, AddGroupMembersRequest req, UserPrincipal currentUser) {
+        UUID currentUserId = currentUser.getUserId();
+        Group group = groupRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
+
+        // Only group admins or system/school admins can add members
+        boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
+                id, currentUserId, "active", List.of("admin")
+        );
+        if (!isGroupAdmin && !isAdmin(currentUser)) {
+            throw new AccessDeniedException("Only group admins or system/school admins can add members to this group");
+        }
+
+        // SCHOOL_ADMIN can only manage groups in their school
+        if (Role.SCHOOL_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
+            UUID currentSchoolId = currentUser.getSchoolId();
+            UUID groupSchoolId = group.getSchool() != null ? group.getSchool().getId() : null;
+            if (groupSchoolId == null || !groupSchoolId.equals(currentSchoolId)) {
+                throw new AccessDeniedException("You can only manage groups in your school");
+            }
+        }
+
+        Set<GroupMember> currentMembers = group.getGroupMembers();
+        for (AddGroupMembersRequest.MemberRequest memberRequest : req.members()) {
+            // Validate user exists
+            User user = userRepository.findById(memberRequest.userId())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + memberRequest.userId()));
+
+            // Check if user is already a member
+            GroupMember existingMember = groupMemberRepository.findByGroupIdAndUserId(group.getId(), memberRequest.userId())
+                    .orElse(null);
+
+            if (existingMember == null) {
+                // Add new member
+                GroupMember newMember = GroupMember.builder()
+                        .group(group)
+                        .user(user)
+                        .role(memberRequest.role() != null && !memberRequest.role().isBlank() ? memberRequest.role().toLowerCase() : "member")
+                        .status(memberRequest.status() != null && !memberRequest.status().isBlank() ? memberRequest.status().toLowerCase() : "active")
+                        .joinedAt(Instant.now())
+                        .build();
+                groupMemberRepository.save(newMember);
+                currentMembers.add(newMember);
+                log.info("Added member {} to group {}", memberRequest.userId(), id);
+            } else {
+                // Update existing member
+                boolean memberUpdated = false;
+                if (memberRequest.role() != null && !memberRequest.role().isBlank() && !memberRequest.role().equalsIgnoreCase(existingMember.getRole())) {
+                    existingMember.setRole(memberRequest.role().toLowerCase());
+                    memberUpdated = true;
+                }
+                if (memberRequest.status() != null && !memberRequest.status().isBlank() && !memberRequest.status().equalsIgnoreCase(existingMember.getStatus())) {
+                    existingMember.setStatus(memberRequest.status().toLowerCase());
+                    memberUpdated = true;
+                }
+                if (memberUpdated) {
+                    groupMemberRepository.save(existingMember);
+                    log.info("Updated member {} in group {}", memberRequest.userId(), id);
+                }
+            }
+        }
+        group.setGroupMembers(currentMembers);
+        group.setUpdatedBy(userRepository.getReferenceById(currentUserId));
+        group.setUpdatedAt(Instant.now());
+        groupRepository.save(group);
+        log.info("Group members updated for group: {} by user: {}", id, currentUserId);
+
+        return UpdateGroupResponse.builder()
+                .id(group.getId())
+                .name(group.getName())
+                .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
+                .isActive(group.getIsActive())
+                .updatedAt(group.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void removeMemberFromGroup(UUID id, RemoveGroupMemberRequest req, UserPrincipal currentUser) {
+        UUID currentUserId = currentUser.getUserId();
+        Group group = groupRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
+
+        // Only group admins or system/school admins can remove members
+        boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
+                id, currentUserId, "active", List.of("admin")
+        );
+        if (!isGroupAdmin && !isAdmin(currentUser)) {
+            throw new AccessDeniedException("Only group admins or system/school admins can remove members from this group");
+        }
+
+        // SCHOOL_ADMIN can only manage groups in their school
+        if (Role.SCHOOL_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
+            UUID currentSchoolId = currentUser.getSchoolId();
+            UUID groupSchoolId = group.getSchool() != null ? group.getSchool().getId() : null;
+            if (groupSchoolId == null || !groupSchoolId.equals(currentSchoolId)) {
+                throw new AccessDeniedException("You can only manage groups in your school");
+            }
+        }
+
+        // Prevent removing the creator or the last admin
+        GroupMember member = groupMemberRepository.findByGroupIdAndUserId(group.getId(), req.userId())
+                .orElseThrow(() -> new ResourceNotFoundException("Member not found in group: " + req.userId()));
+        if (group.getCreatedBy().getId().equals(req.userId())) {
+            throw new IllegalArgumentException("Cannot remove the group creator");
+        }
+        if ("admin".equalsIgnoreCase(member.getRole())) {
+            long adminCount = group.getGroupMembers().stream()
+                    .filter(m -> "admin".equalsIgnoreCase(m.getRole()) && "active".equalsIgnoreCase(m.getStatus()))
+                    .count();
+            if (adminCount <= 1) {
+                throw new IllegalArgumentException("Cannot remove the last active admin of the group");
+            }
+        }
+
+        // Remove the member
+        group.getGroupMembers().remove(member);
+        groupMemberRepository.delete(member);
+        group.setUpdatedBy(userRepository.getReferenceById(currentUserId));
+        group.setUpdatedAt(Instant.now());
+        groupRepository.save(group);
+        log.info("Removed member {} from group {} by user: {}", req.userId(), id, currentUserId);
     }
 
     @Override
@@ -271,5 +424,39 @@ public class GroupServiceImpl implements GroupService {
                 .pageNumber(page.getNumber())
                 .pageSize(page.getSize())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public PageGroupMemberResponse getMembersByGroupId(UUID id, UserPrincipal currentUser, Pageable pageable) {
+        Group group = groupRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
+
+        // Validate access (SYSTEM_ADMIN, SCHOOL_ADMIN, or active group members)
+        validateAccess(group, currentUser);
+
+        Page<GroupMember> memberPage = groupMemberRepository.findByGroupId(id, pageable);
+        log.info("Retrieved {} members for group {} by user: {}, page: {}",
+                memberPage.getContent().size(), id, currentUser.getUserId(), pageable.getPageNumber());
+
+        List<GroupMemberResponse> content = memberPage.getContent().stream()
+                .map(member -> new GroupMemberResponse(
+                        member.getUser().getId(),
+                        member.getUser().getFirstName(),
+                        member.getUser().getLastName(),
+                        member.getUser().getEmail(),
+                        member.getRole(),
+                        member.getStatus(),
+                        member.getJoinedAt()
+                ))
+                .collect(Collectors.toList());
+
+        return new PageGroupMemberResponse(
+                content,
+                memberPage.getTotalElements(),
+                memberPage.getTotalPages(),
+                memberPage.getNumber(),
+                memberPage.getSize()
+        );
     }
 }
