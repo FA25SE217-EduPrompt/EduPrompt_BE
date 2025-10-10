@@ -17,10 +17,10 @@ public class ChangePasswordRequest {
     private String email;
 
     @NotBlank(message = "Old password is required")
-    @Size(min = 8, max = 64, message = "Old password must be between 8 and 64 characters")
+    @Size(min = 3, max = 32, message = "Old password must be between 3 and 32 characters")
     private String oldPassword;
 
     @NotBlank(message = "New password is required")
-    @Size(min = 8, max = 64, message = "New password must be between 8 and 64 characters")
+    @Size(min = 3, max = 32, message = "New password must be between 3 and 32 characters")
     private String newPassword;
 }
