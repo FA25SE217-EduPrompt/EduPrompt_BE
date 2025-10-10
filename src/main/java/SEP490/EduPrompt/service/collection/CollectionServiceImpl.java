@@ -155,6 +155,7 @@ public class CollectionServiceImpl implements CollectionService {
                 .updatedBy(currentUserId)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
+                .isDeleted(false)
                 .build();
 
         //TODO: we might need to check collection tags here (not allow illegal tags pass throw)
