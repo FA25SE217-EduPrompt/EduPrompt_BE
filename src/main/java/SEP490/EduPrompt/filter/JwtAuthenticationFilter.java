@@ -37,6 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
         final String path = request.getRequestURI();
 
+        // skip auth endpoints
         if (path.startsWith("/api/auth/")) {
             log.debug("Skipping JWT validation for public endpoint: {}", path);
             filterChain.doFilter(request, response);
@@ -49,16 +50,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
+
+        // check if token is blacklisted early
+        if (jwtUtil.isTokenBlacklisted(jwt)) {
+            log.warn("Blacklisted token attempted to access: {}", path);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
         String email = null;
 
         try {
             email = jwtUtil.extractUsername(jwt);
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            if (path.startsWith("/api/auth/refresh-logout-token")) {
-                log.info("Expired token used for refresh — allowed");
-                filterChain.doFilter(request, response);
-                return;
-            }
             log.warn("Expired JWT token: {}", e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
@@ -79,7 +83,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             } else {
-                log.warn("Invalid, expired, or logged-out token for user: {}", email);
+                log.warn("Invalid or blacklisted token for user: {}", email);
             }
         }
 
