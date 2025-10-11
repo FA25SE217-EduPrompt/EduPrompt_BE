@@ -3,7 +3,9 @@ package SEP490.EduPrompt.filter;
 import SEP490.EduPrompt.model.UserAuth;
 import SEP490.EduPrompt.repo.UserAuthRepository;
 import SEP490.EduPrompt.service.auth.CustomUserDetailsService;
+import SEP490.EduPrompt.service.auth.TokenValidationService;
 import SEP490.EduPrompt.util.JwtUtil;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserAuthRepository userAuthRepository;
     private final CustomUserDetailsService userDetailsService;
+    private final TokenValidationService tokenValidationService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -37,6 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
         final String path = request.getRequestURI();
 
+        // Skip auth for public endpoints
         if (path.startsWith("/api/auth/")) {
             log.debug("Skipping JWT validation for public endpoint: {}", path);
             filterChain.doFilter(request, response);
@@ -52,13 +56,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String email = null;
 
         try {
-            email = jwtUtil.extractUsername(jwt);
-        } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            if (path.startsWith("/api/auth/refresh-logout-token")) {
-                log.info("Expired token used for refresh — allowed");
-                filterChain.doFilter(request, response);
+            // Check blacklist (Redis check)
+            if (tokenValidationService.isTokenBlacklisted(jwt)) {
+                log.warn("Blacklisted token attempted access: {}", path);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
+
+            email = jwtUtil.extractUsername(jwt);
+
+            // Check if all user tokens are blacklisted
+            if (email != null && tokenValidationService.areAllUserTokensBlacklisted(email)) {
+                log.warn("User {} has all tokens blacklisted", email);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+
+        } catch (ExpiredJwtException e) {
             log.warn("Expired JWT token: {}", e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
@@ -70,16 +84,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserAuth userAuth = userAuthRepository.findByEmail(email).orElse(null);
-            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            if (userAuth != null && jwtUtil.isTokenValid(jwt, userAuth)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            } else {
-                log.warn("Invalid, expired, or logged-out token for user: {}", email);
+            if (userAuth != null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+                // blacklist check
+                if (tokenValidationService.isTokenValid(jwt, userAuth)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                } else {
+                    log.warn("Invalid or blacklisted token for user: {}", email);
+                }
             }
         }
 
