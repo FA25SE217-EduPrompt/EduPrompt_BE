@@ -188,7 +188,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
         if (userAuth.getUser().getIsVerified()) {
-            throw new IllegalStateException("User is already verified");
+            throw new UserVerifiedException("User is already verified");
         }
 
         String newToken = jwtUtil.generateTokenWithExpiration(email, 1440); // 24 hours

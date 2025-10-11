@@ -9,6 +9,7 @@ public enum AuthExceptionCode {
     ALREADY_EXISTS,
     INVALID_INPUT,
     INVALID_TOKEN,
+    ALREADY_VERIFIED,
     INVALID_GOOGLE_TOKEN,
 }
 
