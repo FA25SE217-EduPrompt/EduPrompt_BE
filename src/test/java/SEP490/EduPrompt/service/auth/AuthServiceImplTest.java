@@ -1,236 +1,236 @@
-//package SEP490.EduPrompt.service.auth;
-//
-//import SEP490.EduPrompt.dto.request.*;
-//import SEP490.EduPrompt.dto.response.LoginResponse;
-//import SEP490.EduPrompt.dto.response.RegisterResponse;
-//import SEP490.EduPrompt.exception.BaseException;
-//import SEP490.EduPrompt.exception.auth.*;
-//import SEP490.EduPrompt.model.User;
-//import SEP490.EduPrompt.model.UserAuth;
-//import SEP490.EduPrompt.repo.UserAuthRepository;
-//import SEP490.EduPrompt.repo.UserRepository;
-//import SEP490.EduPrompt.util.JwtUtil;
-//import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
-//import jakarta.servlet.http.HttpServletRequest;
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.Test;
-//import org.junit.jupiter.api.extension.ExtendWith;
-//import org.mockito.InjectMocks;
-//import org.mockito.Mock;
-//import org.mockito.junit.jupiter.MockitoExtension;
-//import org.springframework.security.crypto.password.PasswordEncoder;
-//
-//import java.time.Instant;
-//import java.util.Date;
-//import java.util.Optional;
-//import java.util.UUID;
-//
-//import static org.junit.jupiter.api.Assertions.*;
-//import static org.mockito.ArgumentMatchers.*;
-//import static org.mockito.Mockito.*;
-//
-//@ExtendWith(MockitoExtension.class)
-//class AuthServiceImplTest {
-//
-//    @Mock
-//    private UserRepository userRepository;
-//
-//    @Mock
-//    private UserAuthRepository userAuthRepository;
-//
-//    @Mock
-//    private EmailService emailService;
-//
-//    @Mock
-//    private PasswordEncoder passwordEncoder;
-//
-//    @Mock
-//    private JwtUtil jwtUtil;
-//
-//    @Mock
-//    private GoogleIdTokenVerifier googleIdTokenVerifier;
-//
-//    @Mock
-//    private HttpServletRequest httpServletRequest;
-//
-//    @InjectMocks
-//    private AuthServiceImpl authService;
-//
-//    private User sampleUser;
-//    private UserAuth sampleUserAuth;
-//    private LoginRequest validLoginRequest;
-//    private RegisterRequest validRegisterRequest;
-//    private String fakeToken;
-//
-//    @BeforeEach
-//    void setUp() {
-//        // Sample User - using Lombok @Builder
-//        sampleUser = User.builder()
-//                .id(UUID.randomUUID())
-//                .firstName("John")
-//                .lastName("Doe")
-//                .email("test@email.com")
-//                .role("teacher")
-//                .isActive(true)
-//                .isVerified(true)
-//                .createdAt(Instant.now())
-//                .updatedAt(Instant.now())
-//                .build();
-//
-//        // Sample UserAuth
-//        sampleUserAuth = UserAuth.builder()
-//                .id(UUID.randomUUID())
-//                .user(sampleUser)
-//                .email("test@email.com")
-//                .passwordHash("$2a$10$placeholderHashForTest")
-//                .createdAt(Instant.now())
-//                .updatedAt(Instant.now())
-//                .build();
-//
-//        // Valid requests
-//        validLoginRequest = LoginRequest.builder()
-//                .email("test@email.com")
-//                .password("validPassword")
-//                .build();
-//        validRegisterRequest = RegisterRequest.builder()
-//                .firstName("Jane")
-//                .lastName("Doe")
-//                .email("new@email.com")
-//                .password("validPassword")
-//                .phoneNumber("1234567890")
-//                .build();
-//
-//        fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGVtYWlsLmNvbSJ9.signature";
-//    }
-//
-//    // LOGIN TESTS
-//
-//    @Test
-//    void login_ValidCredentials_ReturnsLoginResponse() {
-//        // Arrange
-//        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        when(passwordEncoder.matches(validLoginRequest.getPassword(), sampleUserAuth.getPasswordHash())).thenReturn(true);
-//        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
-//        when(jwtUtil.generateToken(validLoginRequest.getEmail(), sampleUser.getRole())).thenReturn(fakeToken);
-//
-//        // Act
-//        LoginResponse response = authService.login(validLoginRequest);
-//
-//        // Assert
-//        assertNotNull(response);
-//        assertEquals(fakeToken, response.token());
-//        verify(userAuthRepository).save(any(UserAuth.class)); // Last login update
-//        verify(jwtUtil).generateToken(validLoginRequest.getEmail(), sampleUser.getRole());
-//    }
-//
-//    @Test
-//    void login_InvalidPassword_ThrowsAuthFailedException() {
-//        // Arrange
-//        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        when(passwordEncoder.matches(validLoginRequest.getPassword(), sampleUserAuth.getPasswordHash())).thenReturn(false);
-//
-//        // Act & Assert
-//        AuthFailedException exception = assertThrows(AuthFailedException.class, () -> authService.login(validLoginRequest));
-//
-//        assertEquals("Invalid email or password", exception.getMessage());
-//        verify(userAuthRepository, never()).save(any());
-//        verify(jwtUtil, never()).generateToken(anyString(), anyString());
-//    }
-//
-//    @Test
-//    void login_UserNotFound_ThrowsAuthFailedException() {
-//        // Arrange
-//        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.empty());
-//
-//        // Act & Assert
-//        assertThrows(ResourceNotFoundException.class, () -> authService.login(validLoginRequest));
-//        verify(passwordEncoder, never()).matches(anyString(), anyString());
-//    }
-//
-//    @Test
-//    void login_InactiveUser_ThrowsUserNotVerifiedException() {
-//        // Arrange
-//        sampleUser.setIsActive(false);
-//        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        when(passwordEncoder.matches(validLoginRequest.getPassword(), sampleUserAuth.getPasswordHash())).thenReturn(true);
-//
-//        // Act & Assert
-//        assertThrows(UserNotVerifiedException.class, () -> authService.login(validLoginRequest));
-//        verify(jwtUtil, never()).generateToken(anyString(), anyString());
-//    }
-//
-//    @Test
-//    void login_UnverifiedUser_ThrowsUserNotVerifiedException() {
-//        // Arrange
-//        sampleUser.setIsVerified(false);
-//        sampleUser.setIsActive(true);
-//        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        when(passwordEncoder.matches(validLoginRequest.getPassword(), sampleUserAuth.getPasswordHash())).thenReturn(true);
-//
-//        // Act & Assert
-//        assertThrows(UserNotVerifiedException.class, () -> authService.login(validLoginRequest));
-//        verify(jwtUtil, never()).generateToken(anyString(), anyString());
-//    }
-//
-//    // REGISTER TESTS
-//
-//    @Test
-//    void register_NewUser_ReturnsRegisterResponse() {
-//        // Arrange
-//        when(userAuthRepository.existsByEmail(validRegisterRequest.getEmail())).thenReturn(false);
-//        User savedUserMock = User.builder().id(UUID.randomUUID()).build();
-//        when(userRepository.save(any(User.class))).thenReturn(savedUserMock);
-//        UserAuth savedUserAuthMock = UserAuth.builder().id(UUID.randomUUID()).build();
-//        when(userAuthRepository.save(any(UserAuth.class))).thenReturn(savedUserAuthMock);
-//        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuZXdAZW1haWwuY29tIn0.signature";  // fake JWT , we all know :D
-//        when(jwtUtil.generateToken(validRegisterRequest.getEmail(), "teacher")).thenReturn(fakeToken);
-//        doNothing().when(emailService).sendVerificationEmail(eq(validRegisterRequest.getEmail()), eq(validRegisterRequest.getLastName()), eq(fakeToken));
-//
-//        // Act
-//        RegisterResponse response = authService.register(validRegisterRequest);
-//
-//        // Assert r
-//        assertNotNull(response);
-//        assertEquals("Check your email to verify your account", response.message());
-//        verify(userRepository).save(any(User.class));
-//        verify(userAuthRepository).save(any(UserAuth.class));
-//        verify(emailService).sendVerificationEmail(validRegisterRequest.getEmail(), validRegisterRequest.getLastName(), fakeToken);
-//    }
-//
-//    @Test
-//    void register_DuplicateEmail_ThrowsEmailAlreadyExistedException() {
-//        // Arrange
-//        when(userAuthRepository.existsByEmail(validRegisterRequest.getEmail())).thenReturn(true);
-//
-//        // Act & Assert
-//        assertThrows(EmailAlreadyExistedException.class, () -> authService.register(validRegisterRequest));
-//        verify(userRepository, never()).save(any());
-//        verify(emailService, never()).sendVerificationEmail(anyString(), anyString(), anyString());
-//    }
-//
-//    @Test
-//    void register_EmailSendFailure_ReturnsErrorResponse() {
-//        // Arrange
-//        when(userAuthRepository.existsByEmail(validRegisterRequest.getEmail())).thenReturn(false);
-//        User savedUserMock = User.builder().id(UUID.randomUUID()).build();
-//        when(userRepository.save(any(User.class))).thenReturn(savedUserMock);
-//        UserAuth savedUserAuthMock = UserAuth.builder().id(UUID.randomUUID()).build();
-//        when(userAuthRepository.save(any(UserAuth.class))).thenReturn(savedUserAuthMock);
-//        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuZXdAZW1haWwuY29tIn0.signature"; //fake
-//        when(jwtUtil.generateToken(validRegisterRequest.getEmail(), "teacher")).thenReturn(fakeToken);
-//        doThrow(new RuntimeException("Email send failed")).when(emailService).sendVerificationEmail(eq(validRegisterRequest.getEmail()), eq(validRegisterRequest.getLastName()), eq(fakeToken));
-//
-//        // Act
-//        RegisterResponse response = authService.register(validRegisterRequest);
-//
-//        // Assert
-//        assertNotNull(response);
-//        assertEquals("Check your email again or email not Exist", response.message());
-//        verify(userRepository).save(any(User.class));
-//        verify(userAuthRepository).save(any(UserAuth.class));
-//        verify(emailService).sendVerificationEmail(validRegisterRequest.getEmail(), validRegisterRequest.getLastName(), fakeToken);
-//    }
-//
+package SEP490.EduPrompt.service.auth;
+
+import SEP490.EduPrompt.dto.request.*;
+import SEP490.EduPrompt.dto.response.LoginResponse;
+import SEP490.EduPrompt.dto.response.RegisterResponse;
+import SEP490.EduPrompt.exception.BaseException;
+import SEP490.EduPrompt.exception.auth.*;
+import SEP490.EduPrompt.model.User;
+import SEP490.EduPrompt.model.UserAuth;
+import SEP490.EduPrompt.repo.UserAuthRepository;
+import SEP490.EduPrompt.repo.UserRepository;
+import SEP490.EduPrompt.util.JwtUtil;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.time.Instant;
+import java.util.Date;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class AuthServiceImplTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private UserAuthRepository userAuthRepository;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private JwtUtil jwtUtil;
+
+    @Mock
+    private GoogleIdTokenVerifier googleIdTokenVerifier;
+
+    @Mock
+    private HttpServletRequest httpServletRequest;
+
+    @InjectMocks
+    private AuthServiceImpl authService;
+
+    private User sampleUser;
+    private UserAuth sampleUserAuth;
+    private LoginRequest validLoginRequest;
+    private RegisterRequest validRegisterRequest;
+    private String fakeToken;
+
+    @BeforeEach
+    void setUp() {
+        // Sample User - using Lombok @Builder
+        sampleUser = User.builder()
+                .id(UUID.randomUUID())
+                .firstName("John")
+                .lastName("Doe")
+                .email("test@email.com")
+                .role("teacher")
+                .isActive(true)
+                .isVerified(true)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        // Sample UserAuth
+        sampleUserAuth = UserAuth.builder()
+                .id(UUID.randomUUID())
+                .user(sampleUser)
+                .email("test@email.com")
+                .passwordHash("$2a$10$placeholderHashForTest")
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        // Valid requests
+        validLoginRequest = LoginRequest.builder()
+                .email("test@email.com")
+                .password("validPassword")
+                .build();
+        validRegisterRequest = RegisterRequest.builder()
+                .firstName("Jane")
+                .lastName("Doe")
+                .email("new@email.com")
+                .password("validPassword")
+                .phoneNumber("1234567890")
+                .build();
+
+        fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGVtYWlsLmNvbSJ9.signature";
+    }
+
+    // LOGIN TESTS
+
+    @Test
+    void login_ValidCredentials_ReturnsLoginResponse() {
+        // Arrange
+        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+        when(passwordEncoder.matches(validLoginRequest.getPassword(), sampleUserAuth.getPasswordHash())).thenReturn(true);
+        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGVtYWlsLmNvbSJ9.signature";  // Fake JWT string
+        when(jwtUtil.generateToken(validLoginRequest.getEmail(), sampleUser.getRole())).thenReturn(fakeToken);
+
+        // Act
+        LoginResponse response = authService.login(validLoginRequest);
+
+        // Assert - using record accessor
+        assertNotNull(response);
+        assertEquals(fakeToken, response.token());
+        verify(userAuthRepository).save(any(UserAuth.class)); // Last login update
+        verify(jwtUtil).generateToken(validLoginRequest.getEmail(), sampleUser.getRole());
+    }
+
+    @Test
+    void login_InvalidPassword_ThrowsAuthFailedException() {
+        // Arrange
+        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+        when(passwordEncoder.matches(validLoginRequest.getPassword(), sampleUserAuth.getPasswordHash())).thenReturn(false);
+
+        // Act & Assert
+        AuthFailedException exception = assertThrows(AuthFailedException.class, () -> authService.login(validLoginRequest));
+        assertEquals("Invalid email or password", exception.getMessage()); // Updated to match service code
+        verify(userAuthRepository, never()).save(any());
+        verify(jwtUtil, never()).generateToken(anyString(), anyString());
+    }
+
+    @Test
+    void login_UserNotFound_ThrowsResourceNotFoundException() { // Updated to match service code
+        // Arrange
+        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.empty());
+
+        // Act & Assert
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> authService.login(validLoginRequest));
+        assertEquals("User not found", exception.getMessage()); // Updated to match service code
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+    }
+
+    @Test
+    void login_InactiveUser_ThrowsUserNotVerifiedException() {
+        // Arrange
+        sampleUser.setIsActive(false);
+        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+        when(passwordEncoder.matches(validLoginRequest.getPassword(), sampleUserAuth.getPasswordHash())).thenReturn(true);
+
+        // Act & Assert
+        assertThrows(UserNotVerifiedException.class, () -> authService.login(validLoginRequest));
+        verify(jwtUtil, never()).generateToken(anyString(), anyString());
+    }
+
+    @Test
+    void login_UnverifiedUser_ThrowsUserNotVerifiedException() {
+        // Arrange
+        sampleUser.setIsVerified(false);
+        sampleUser.setIsActive(true);
+        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+        when(passwordEncoder.matches(validLoginRequest.getPassword(), sampleUserAuth.getPasswordHash())).thenReturn(true);
+
+        // Act & Assert
+        assertThrows(UserNotVerifiedException.class, () -> authService.login(validLoginRequest));
+        verify(jwtUtil, never()).generateToken(anyString(), anyString());
+    }
+
+    // REGISTER TESTS
+
+    @Test
+    void register_NewUser_ReturnsRegisterResponse() {
+        // Arrange
+        when(userAuthRepository.existsByEmail(validRegisterRequest.getEmail())).thenReturn(false);
+        User savedUserMock = User.builder().id(UUID.randomUUID()).build();  // Mock saved User
+        when(userRepository.save(any(User.class))).thenReturn(savedUserMock);
+        UserAuth savedUserAuthMock = UserAuth.builder().id(UUID.randomUUID()).build();  // Mock saved UserAuth
+        when(userAuthRepository.save(any(UserAuth.class))).thenReturn(savedUserAuthMock);
+        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuZXdAZW1haWwuY29tIn0.signature";  // Fake JWT
+        when(jwtUtil.generateTokenWithExpiration(validRegisterRequest.getEmail(), 1440)).thenReturn(fakeToken);  // Updated to mock the correct method
+        doNothing().when(emailService).sendVerificationEmail(eq(validRegisterRequest.getEmail()), eq(validRegisterRequest.getLastName()), eq(fakeToken));
+
+        // Act
+        RegisterResponse response = authService.register(validRegisterRequest);
+
+        // Assert - using record accessor
+        assertNotNull(response);
+        assertEquals("Check your email to verify your account", response.message());
+        verify(userRepository).save(any(User.class));
+        verify(userAuthRepository).save(any(UserAuth.class));
+        verify(emailService).sendVerificationEmail(validRegisterRequest.getEmail(), validRegisterRequest.getLastName(), fakeToken);
+    }
+
+    @Test
+    void register_DuplicateEmail_ThrowsEmailAlreadyExistedException() {
+        // Arrange
+        when(userAuthRepository.existsByEmail(validRegisterRequest.getEmail())).thenReturn(true);
+
+        // Act & Assert
+        assertThrows(EmailAlreadyExistedException.class, () -> authService.register(validRegisterRequest));
+        verify(userRepository, never()).save(any());
+        verify(emailService, never()).sendVerificationEmail(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void register_EmailSendFailure_ReturnsErrorResponse() {
+        // Arrange
+        when(userAuthRepository.existsByEmail(validRegisterRequest.getEmail())).thenReturn(false);
+        User savedUserMock = User.builder().id(UUID.randomUUID()).build();
+        when(userRepository.save(any(User.class))).thenReturn(savedUserMock);
+        UserAuth savedUserAuthMock = UserAuth.builder().id(UUID.randomUUID()).build();
+        when(userAuthRepository.save(any(UserAuth.class))).thenReturn(savedUserAuthMock);
+        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuZXdAZW1haWwuY29tIn0.signature";
+        when(jwtUtil.generateTokenWithExpiration(validRegisterRequest.getEmail(), 1440)).thenReturn(fakeToken);  // Updated to mock the correct method
+        doThrow(new RuntimeException("Email send failed")).when(emailService).sendVerificationEmail(eq(validRegisterRequest.getEmail()), eq(validRegisterRequest.getLastName()), eq(fakeToken));
+
+        // Act
+        RegisterResponse response = authService.register(validRegisterRequest);
+
+        // Assert - using record accessor
+        assertNotNull(response);
+        assertEquals("Registration successful but email sending failed. Please contact support.", response.message()); // Updated to match service code
+        verify(userRepository).save(any(User.class)); // Saves still happen per your try-catch
+        verify(userAuthRepository).save(any(UserAuth.class));
+        verify(emailService).sendVerificationEmail(validRegisterRequest.getEmail(), validRegisterRequest.getLastName(), fakeToken);
+    }
+
 //    // VERIFY EMAIL TESTS
 //
 //    @Test
@@ -549,7 +549,7 @@
 //        assertThrows(TokenInvalidException.class, () -> authService.refreshToken(httpServletRequest));
 //        verify(jwtUtil, never()).extractUsername(anyString());
 //    }
-//
+
 /// /    // GOOGLE LOGIN TESTS
 /// /
 /// /    @Test
@@ -614,4 +614,4 @@
 /// /        assertThrows(InvalidGoogleTokenException.class, () -> authService.googleLogin(request));
 /// /        verify(userAuthRepository, never()).findByGoogleUserId(anyString());
 /// /    }
-//}
+}
