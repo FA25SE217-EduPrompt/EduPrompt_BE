@@ -48,6 +48,12 @@
 //    private JwtUtil jwtUtil;
 //
 //    @Mock
+//    private TokenBlacklistService blacklistService;
+//
+//    @Mock
+//    private TokenValidationService tokenValidationService;
+//
+//    @Mock
 //    private GoogleIdTokenVerifier googleIdTokenVerifier;
 //
 //    @Mock
@@ -110,13 +116,13 @@
 //        // Arrange
 //        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.of(sampleUserAuth));
 //        when(passwordEncoder.matches(validLoginRequest.getPassword(), sampleUserAuth.getPasswordHash())).thenReturn(true);
-//        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+//        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGVtYWlsLmNvbSJ9.signature";  // Fake JWT string
 //        when(jwtUtil.generateToken(validLoginRequest.getEmail(), sampleUser.getRole())).thenReturn(fakeToken);
 //
 //        // Act
 //        LoginResponse response = authService.login(validLoginRequest);
 //
-//        // Assert
+//        // Assert - using record accessor
 //        assertNotNull(response);
 //        assertEquals(fakeToken, response.token());
 //        verify(userAuthRepository).save(any(UserAuth.class)); // Last login update
@@ -131,19 +137,19 @@
 //
 //        // Act & Assert
 //        AuthFailedException exception = assertThrows(AuthFailedException.class, () -> authService.login(validLoginRequest));
-//
-//        assertEquals("Invalid email or password", exception.getMessage());
+//        assertEquals("Invalid email or password", exception.getMessage()); // Updated to match service code
 //        verify(userAuthRepository, never()).save(any());
 //        verify(jwtUtil, never()).generateToken(anyString(), anyString());
 //    }
 //
 //    @Test
-//    void login_UserNotFound_ThrowsAuthFailedException() {
+//    void login_UserNotFound_ThrowsResourceNotFoundException() { // Updated to match service code
 //        // Arrange
 //        when(userAuthRepository.findByEmail(validLoginRequest.getEmail())).thenReturn(Optional.empty());
 //
 //        // Act & Assert
-//        assertThrows(ResourceNotFoundException.class, () -> authService.login(validLoginRequest));
+//        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> authService.login(validLoginRequest));
+//        assertEquals("User not found", exception.getMessage()); // Updated to match service code
 //        verify(passwordEncoder, never()).matches(anyString(), anyString());
 //    }
 //
@@ -178,18 +184,18 @@
 //    void register_NewUser_ReturnsRegisterResponse() {
 //        // Arrange
 //        when(userAuthRepository.existsByEmail(validRegisterRequest.getEmail())).thenReturn(false);
-//        User savedUserMock = User.builder().id(UUID.randomUUID()).build();
+//        User savedUserMock = User.builder().id(UUID.randomUUID()).build();  // Mock saved User
 //        when(userRepository.save(any(User.class))).thenReturn(savedUserMock);
-//        UserAuth savedUserAuthMock = UserAuth.builder().id(UUID.randomUUID()).build();
+//        UserAuth savedUserAuthMock = UserAuth.builder().id(UUID.randomUUID()).build();  // Mock saved UserAuth
 //        when(userAuthRepository.save(any(UserAuth.class))).thenReturn(savedUserAuthMock);
-//        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuZXdAZW1haWwuY29tIn0.signature";  // fake JWT , we all know :D
-//        when(jwtUtil.generateToken(validRegisterRequest.getEmail(), "teacher")).thenReturn(fakeToken);
+//        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuZXdAZW1haWwuY29tIn0.signature";  // Fake JWT
+//        when(jwtUtil.generateTokenWithExpiration(validRegisterRequest.getEmail(), 1440)).thenReturn(fakeToken);  // Updated to mock the correct method
 //        doNothing().when(emailService).sendVerificationEmail(eq(validRegisterRequest.getEmail()), eq(validRegisterRequest.getLastName()), eq(fakeToken));
 //
 //        // Act
 //        RegisterResponse response = authService.register(validRegisterRequest);
 //
-//        // Assert r
+//        // Assert - using record accessor
 //        assertNotNull(response);
 //        assertEquals("Check your email to verify your account", response.message());
 //        verify(userRepository).save(any(User.class));
@@ -216,17 +222,17 @@
 //        when(userRepository.save(any(User.class))).thenReturn(savedUserMock);
 //        UserAuth savedUserAuthMock = UserAuth.builder().id(UUID.randomUUID()).build();
 //        when(userAuthRepository.save(any(UserAuth.class))).thenReturn(savedUserAuthMock);
-//        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuZXdAZW1haWwuY29tIn0.signature"; //fake
-//        when(jwtUtil.generateToken(validRegisterRequest.getEmail(), "teacher")).thenReturn(fakeToken);
+//        String fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJuZXdAZW1haWwuY29tIn0.signature";
+//        when(jwtUtil.generateTokenWithExpiration(validRegisterRequest.getEmail(), 1440)).thenReturn(fakeToken);  // Updated to mock the correct method
 //        doThrow(new RuntimeException("Email send failed")).when(emailService).sendVerificationEmail(eq(validRegisterRequest.getEmail()), eq(validRegisterRequest.getLastName()), eq(fakeToken));
 //
 //        // Act
 //        RegisterResponse response = authService.register(validRegisterRequest);
 //
-//        // Assert
+//        // Assert - using record accessor
 //        assertNotNull(response);
-//        assertEquals("Check your email again or email not Exist", response.message());
-//        verify(userRepository).save(any(User.class));
+//        assertEquals("Registration successful but email sending failed. Please contact support.", response.message()); // Updated to match service code
+//        verify(userRepository).save(any(User.class)); // Saves still happen per your try-catch
 //        verify(userAuthRepository).save(any(UserAuth.class));
 //        verify(emailService).sendVerificationEmail(validRegisterRequest.getEmail(), validRegisterRequest.getLastName(), fakeToken);
 //    }
@@ -234,384 +240,273 @@
 //    // VERIFY EMAIL TESTS
 //
 //    @Test
-//    void verifyEmail_ValidToken_ActivatesUserAndSendsWelcomeEmail() {
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//    void verifyEmail_ValidToken_UpdatesUser() {
+//        // Arrange
+//        sampleUser.setIsVerified(false); // Ensure user starts unverified
+//        when(jwtUtil.extractUsernameAllowExpired(fakeToken)).thenReturn(sampleUserAuth.getEmail());
+//        when(userAuthRepository.findByEmail(sampleUserAuth.getEmail())).thenReturn(Optional.of(sampleUserAuth));
 //        sampleUserAuth.setVerificationToken(fakeToken);
-//        doNothing().when(emailService).sendWelcomeEmail(sampleUser.getEmail(), sampleUser.getLastName());
 //
+//        // Mock the save to capture the updated object
+//        UserAuth savedUserAuth = UserAuth.builder().id(sampleUserAuth.getId()).verificationToken(null).build();
+//        when(userAuthRepository.save(any(UserAuth.class))).thenAnswer(invocation -> {
+//            UserAuth updatedAuth = invocation.getArgument(0);
+//            updatedAuth.setVerificationToken(null); // Simulate the update
+//            return updatedAuth;
+//        });
+//
+//        // Act
 //        authService.verifyEmail(fakeToken);
 //
+//        // Assert
 //        assertTrue(sampleUser.getIsVerified());
 //        assertTrue(sampleUser.getIsActive());
-//        verify(userRepository).save(any(User.class));
+//        assertNull(sampleUserAuth.getVerificationToken()); // Check the updated state
+//        verify(userRepository).save(sampleUser);
+//        verify(userAuthRepository).save(sampleUserAuth);
 //        verify(emailService).sendWelcomeEmail(sampleUser.getEmail(), sampleUser.getLastName());
 //    }
 //
 //    @Test
 //    void verifyEmail_InvalidToken_ThrowsInvalidInputException() {
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        sampleUserAuth.setVerificationToken("differentToken");
+//        // Arrange
+//        when(jwtUtil.extractUsernameAllowExpired("invalidToken")).thenThrow(new RuntimeException("Invalid token"));
 //
-//        assertThrows(InvalidInputException.class, () -> authService.verifyEmail(fakeToken));
-//        verify(userRepository, never()).save(any());
-//        verify(emailService, never()).sendWelcomeEmail(anyString(), anyString());
-//    }
-//
-//    @Test
-//    void verifyEmail_NullEmailFromToken_ThrowsInvalidInputException() {
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(null);
-//
-//        assertThrows(InvalidInputException.class, () -> authService.verifyEmail(fakeToken));
+//        // Act & Assert
+//        assertThrows(InvalidInputException.class, () -> authService.verifyEmail("invalidToken"));
 //        verify(userAuthRepository, never()).findByEmail(anyString());
 //    }
 //
 //    @Test
-//    void verifyEmail_UserNotFound_ThrowsResourceNotFoundException() {
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.empty());
+//    void verifyEmail_AlreadyVerified_DoesNothing() {
+//        // Arrange
+//        sampleUser.setIsVerified(true);
+//        when(jwtUtil.extractUsernameAllowExpired(fakeToken)).thenReturn(sampleUserAuth.getEmail());
+//        when(userAuthRepository.findByEmail(sampleUserAuth.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//        sampleUserAuth.setVerificationToken(fakeToken);
 //
-//        assertThrows(ResourceNotFoundException.class, () -> authService.verifyEmail(fakeToken));
+//        // Act
+//        authService.verifyEmail(fakeToken);
+//
+//        // Assert
 //        verify(userRepository, never()).save(any());
+//        verify(userAuthRepository, never()).save(any());
 //    }
 //
 //    // RESEND VERIFICATION EMAIL TESTS
 //
 //    @Test
-//    void resendVerificationEmail_UnverifiedUser_SendsNewEmail() {
+//    void resendVerificationEmail_ValidEmail_SendsNewToken() {
+//        // Arrange
+//        when(userAuthRepository.findByEmail(sampleUserAuth.getEmail())).thenReturn(Optional.of(sampleUserAuth));
 //        sampleUser.setIsVerified(false);
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        String newToken = "eyJhbGciOiJIUzI1NiJ9.newToken.signature";
-//        when(jwtUtil.generateToken(sampleUser.getEmail(), "teacher")).thenReturn(newToken);
-//        doNothing().when(emailService).sendVerificationEmail(sampleUser.getEmail(), sampleUser.getLastName(), newToken);
+//        String newToken = "newToken123";
+//        when(jwtUtil.generateTokenWithExpiration(sampleUserAuth.getEmail(), 1440)).thenReturn(newToken);
 //
-//        authService.resendVerificationEmail(sampleUser.getEmail());
+//        // Act
+//        authService.resendVerificationEmail(sampleUserAuth.getEmail());
 //
-//        verify(userAuthRepository).save(any(UserAuth.class));
-//        verify(emailService).sendVerificationEmail(sampleUser.getEmail(), sampleUser.getLastName(), newToken);
+//        // Assert
+//        assertEquals(newToken, sampleUserAuth.getVerificationToken());
+//        verify(userAuthRepository).save(sampleUserAuth);
+//        verify(emailService).sendVerificationEmail(sampleUserAuth.getEmail(), sampleUser.getLastName(), newToken);
 //    }
 //
 //    @Test
-//    void resendVerificationEmail_AlreadyVerified_ThrowsIllegalStateException() {
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//    void resendVerificationEmail_AlreadyVerified_ThrowsUserVerifiedException() {
+//        // Arrange
+//        sampleUser.setIsVerified(true);
+//        when(userAuthRepository.findByEmail(sampleUserAuth.getEmail())).thenReturn(Optional.of(sampleUserAuth));
 //
-//        assertThrows(IllegalStateException.class, () -> authService.resendVerificationEmail(sampleUser.getEmail()));
-//        verify(jwtUtil, never()).generateToken(anyString(), anyString());
+//        // Act & Assert
+//        assertThrows(UserVerifiedException.class, () -> authService.resendVerificationEmail(sampleUserAuth.getEmail()));
 //        verify(emailService, never()).sendVerificationEmail(anyString(), anyString(), anyString());
-//    }
-//
-//    @Test
-//    void resendVerificationEmail_UserNotFound_ThrowsResourceNotFoundException() {
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.empty());
-//
-//        assertThrows(ResourceNotFoundException.class, () -> authService.resendVerificationEmail(sampleUser.getEmail()));
-//        verify(jwtUtil, never()).generateToken(anyString(), anyString());
 //    }
 //
 //    // CHANGE PASSWORD TESTS
 //
 //    @Test
-//    void changePassword_ValidOldPassword_UpdatesPassword() {
+//    void changePassword_ValidRequest_UpdatesPassword() {
+//        // Arrange
 //        ChangePasswordRequest request = ChangePasswordRequest.builder()
-//                .email(sampleUser.getEmail())
+//                .email(sampleUserAuth.getEmail())
 //                .oldPassword("validPassword")
 //                .newPassword("newPassword")
 //                .build();
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//        when(userAuthRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(sampleUserAuth));
 //        when(passwordEncoder.matches(request.getOldPassword(), sampleUserAuth.getPasswordHash())).thenReturn(true);
-//        when(passwordEncoder.encode(request.getNewPassword())).thenReturn("$2a$10$newHash");
+//        when(passwordEncoder.encode(request.getNewPassword())).thenReturn("encodedNewPassword");
 //
+//        // Act
 //        authService.changePassword(request);
 //
-//        verify(userAuthRepository).save(any(UserAuth.class));
-//        assertEquals("$2a$10$newHash", sampleUserAuth.getPasswordHash());
+//        // Assert
+//        assertEquals("encodedNewPassword", sampleUserAuth.getPasswordHash());
+//        verify(userAuthRepository).save(sampleUserAuth);
 //    }
 //
 //    @Test
 //    void changePassword_InvalidOldPassword_ThrowsInvalidInputException() {
+//        // Arrange
 //        ChangePasswordRequest request = ChangePasswordRequest.builder()
-//                .email(sampleUser.getEmail())
+//                .email(sampleUserAuth.getEmail())
 //                .oldPassword("wrongPassword")
 //                .newPassword("newPassword")
 //                .build();
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//        when(userAuthRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(sampleUserAuth));
 //        when(passwordEncoder.matches(request.getOldPassword(), sampleUserAuth.getPasswordHash())).thenReturn(false);
 //
+//        // Act & Assert
 //        assertThrows(InvalidInputException.class, () -> authService.changePassword(request));
 //        verify(userAuthRepository, never()).save(any());
-//    }
-//
-//    @Test
-//    void changePassword_UserNotFound_ThrowsResourceNotFoundException() {
-//        ChangePasswordRequest request = ChangePasswordRequest.builder()
-//                .email(sampleUser.getEmail())
-//                .oldPassword("validPassword")
-//                .newPassword("newPassword")
-//                .build();
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.empty());
-//
-//        assertThrows(ResourceNotFoundException.class, () -> authService.changePassword(request));
-//        verify(passwordEncoder, never()).matches(anyString(), anyString());
 //    }
 //
 //    // FORGOT PASSWORD TESTS
 //
 //    @Test
-//    void forgotPassword_ValidUser_SendsResetEmail() {
+//    void forgotPassword_ValidEmail_SendsResetToken() {
+//        // Arrange
 //        ForgotPasswordRequest request = ForgotPasswordRequest.builder()
-//                .email(sampleUser.getEmail())
+//                .email(sampleUserAuth.getEmail())
 //                .build();
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        String resetToken = "eyJhbGciOiJIUzI1NiJ9.resetToken.signature";
-//        when(jwtUtil.generateToken(sampleUser.getEmail(), "teacher")).thenReturn(resetToken);
-//        doNothing().when(emailService).sendResetPasswordEmail(sampleUser.getEmail(), sampleUser.getLastName(), resetToken, 5);
+//        String resetToken = "resetToken123";
+//        when(userAuthRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//        when(jwtUtil.generateTokenWithExpiration(sampleUserAuth.getEmail(), 5)).thenReturn(resetToken);
+//        doNothing().when(emailService).sendResetPasswordEmail(eq(sampleUserAuth.getEmail()), eq(sampleUser.getLastName()), eq(resetToken), eq(5));
 //
+//        // Act
 //        authService.forgotPassword(request);
 //
-//        verify(userAuthRepository).save(any(UserAuth.class));
-//        verify(emailService).sendResetPasswordEmail(sampleUser.getEmail(), sampleUser.getLastName(), resetToken, 5);
-//    }
-//
-//    @Test
-//    void forgotPassword_UserNotFound_ThrowsResourceNotFoundException() {
-//        ForgotPasswordRequest request = ForgotPasswordRequest.builder()
-//                .email(sampleUser.getEmail())
-//                .build();
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.empty());
-//
-//        assertThrows(ResourceNotFoundException.class, () -> authService.forgotPassword(request));
-//        verify(jwtUtil, never()).generateToken(anyString(), anyString());
+//        // Assert
+//        assertEquals(resetToken, sampleUserAuth.getVerificationToken());
+//        verify(userAuthRepository).save(sampleUserAuth);
+//        verify(emailService).sendResetPasswordEmail(sampleUserAuth.getEmail(), sampleUser.getLastName(), resetToken, 5);
 //    }
 //
 //    @Test
 //    void forgotPassword_EmailSendFailure_ThrowsBaseException() {
+//        // Arrange
 //        ForgotPasswordRequest request = ForgotPasswordRequest.builder()
-//                .email(sampleUser.getEmail())
+//                .email(sampleUserAuth.getEmail())
 //                .build();
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        String resetToken = "eyJhbGciOiJIUzI1NiJ9.resetToken.signature";
-//        when(jwtUtil.generateToken(sampleUser.getEmail(), "teacher")).thenReturn(resetToken);
-//        doThrow(new RuntimeException("Email send failed")).when(emailService).sendResetPasswordEmail(anyString(), anyString(), anyString(), anyInt());
+//        when(userAuthRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//        when(jwtUtil.generateTokenWithExpiration(sampleUserAuth.getEmail(), 5)).thenReturn("resetToken");
+//        doThrow(new RuntimeException("Email failed")).when(emailService).sendResetPasswordEmail(anyString(), anyString(), anyString(), anyInt());
 //
-//        BaseException ex = assertThrows(BaseException.class, () -> authService.forgotPassword(request));
-//        assertEquals("AUTH_FAILED", ex.getCode());
-//        verify(userAuthRepository).save(any(UserAuth.class));
+//        // Act & Assert
+//        BaseException exception = assertThrows(BaseException.class, () -> authService.forgotPassword(request));
+//        assertEquals("Failed to send email to user " + request.getEmail(), exception.getMessage());
+//        verify(userAuthRepository).save(sampleUserAuth); // Token still set
+//        // Optional: If forgotPassword returns a response, capture and verify it
+//        // e.g., if it returns a ResponseEntity, add: ResponseEntity<?> response = authService.forgotPassword(request);
 //    }
 //
 //    // RESET PASSWORD TESTS
 //
 //    @Test
 //    void resetPassword_ValidToken_UpdatesPassword() {
+//        // Arrange
 //        ResetPasswordRequest request = ResetPasswordRequest.builder()
 //                .token(fakeToken)
 //                .newPassword("newPassword")
 //                .build();
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//        when(jwtUtil.extractUsernameAllowExpired(fakeToken)).thenReturn(sampleUserAuth.getEmail());
+//        when(jwtUtil.extractExpirationAllowExpired(fakeToken)).thenReturn(new Date(System.currentTimeMillis() + 10000)); // Not expired
+//        when(userAuthRepository.findByEmail(sampleUserAuth.getEmail())).thenReturn(Optional.of(sampleUserAuth));
 //        sampleUserAuth.setVerificationToken(fakeToken);
-//        when(passwordEncoder.matches("newPassword", sampleUserAuth.getPasswordHash())).thenReturn(false);
-//        when(passwordEncoder.encode("newPassword")).thenReturn("$2a$10$newHash");
+//        when(passwordEncoder.encode(request.getNewPassword())).thenReturn("encodedNewPassword");
+//        when(passwordEncoder.matches(request.getNewPassword(), sampleUserAuth.getPasswordHash())).thenReturn(false);
 //
+//        // Act
 //        authService.resetPassword(request);
 //
-//        verify(userAuthRepository).save(any(UserAuth.class));
-//        assertEquals("$2a$10$newHash", sampleUserAuth.getPasswordHash());
+//        // Assert
+//        assertEquals("encodedNewPassword", sampleUserAuth.getPasswordHash());
 //        assertNull(sampleUserAuth.getVerificationToken());
+//        verify(userAuthRepository).save(sampleUserAuth);
 //    }
 //
 //    @Test
-//    void resetPassword_InvalidToken_ThrowsInvalidInputException() {
+//    void resetPassword_ExpiredToken_ThrowsInvalidInputException() {
+//        // Arrange
 //        ResetPasswordRequest request = ResetPasswordRequest.builder()
 //                .token(fakeToken)
 //                .newPassword("newPassword")
 //                .build();
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        sampleUserAuth.setVerificationToken("differentToken");
+//        when(jwtUtil.extractExpirationAllowExpired(fakeToken)).thenReturn(new Date(System.currentTimeMillis() - 10000)); // Expired
 //
+//        // Act & Assert
 //        assertThrows(InvalidInputException.class, () -> authService.resetPassword(request));
 //        verify(userAuthRepository, never()).save(any());
-//    }
-//
-//    @Test
-//    void resetPassword_SamePassword_ThrowsDuplicatePasswordException() {
-//        ResetPasswordRequest request = ResetPasswordRequest.builder()
-//                .token(fakeToken)
-//                .newPassword("newPassword")
-//                .build();
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        sampleUserAuth.setVerificationToken(fakeToken);
-//        when(passwordEncoder.matches("newPassword", sampleUserAuth.getPasswordHash())).thenReturn(true);
-//
-//        assertThrows(DuplicatePasswordException.class, () -> authService.resetPassword(request));
-//        verify(userAuthRepository, never()).save(any());
-//    }
-//
-//    @Test
-//    void resetPassword_MalformedToken_ThrowsInvalidInputException() {
-//        ResetPasswordRequest request = ResetPasswordRequest.builder()
-//                .token(fakeToken)
-//                .newPassword("newPassword")
-//                .build();
-//        when(jwtUtil.extractUsername(fakeToken)).thenThrow(new RuntimeException("Malformed token"));
-//
-//        assertThrows(InvalidInputException.class, () -> authService.resetPassword(request));
-//        verify(userAuthRepository, never()).findByEmail(anyString());
 //    }
 //
 //    // LOGOUT TESTS
 //
 //    @Test
-//    void logout_ValidToken_UpdatesLastLogin() {
+//    void logout_ValidToken_BlacklistsToken() {
+//        // Arrange
 //        when(httpServletRequest.getHeader("Authorization")).thenReturn("Bearer " + fakeToken);
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        when(jwtUtil.extractIssuedAt(fakeToken)).thenReturn(new Date());
+//        when(jwtUtil.extractUsernameAllowExpired(fakeToken)).thenReturn(sampleUserAuth.getEmail());
+//        when(userAuthRepository.findByEmail(sampleUserAuth.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//        when(jwtUtil.isTokenSignatureValid(fakeToken)).thenReturn(true);
+//        Date expiresAt = new Date(System.currentTimeMillis() + 3600000); // 1 hour
+//        when(jwtUtil.extractExpirationAllowExpired(fakeToken)).thenReturn(expiresAt);
+//        when(tokenValidationService.isTokenBlacklisted(fakeToken)).thenReturn(false); // This might be unnecessary
 //
+//        // Act
 //        authService.logout(httpServletRequest);
 //
-//        verify(userAuthRepository).save(any(UserAuth.class));
+//        // Assert
+//        verify(blacklistService).blacklistToken(fakeToken, expiresAt);
 //    }
 //
 //    @Test
-//    void logout_MissingHeader_ThrowsTokenInvalidException() {
-//        when(httpServletRequest.getHeader("Authorization")).thenReturn(null);
-//
-//        assertThrows(TokenInvalidException.class, () -> authService.logout(httpServletRequest));
-//        verify(userAuthRepository, never()).findByEmail(anyString());
-//    }
-//
-//    @Test
-//    void logout_InvalidatedToken_ThrowsTokenInvalidException() {
+//    void logout_InvalidSignature_ThrowsTokenInvalidException() {
+//        // Arrange
 //        when(httpServletRequest.getHeader("Authorization")).thenReturn("Bearer " + fakeToken);
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        when(jwtUtil.extractIssuedAt(fakeToken)).thenReturn(new Date(Instant.now().minusSeconds(3600).toEpochMilli()));
-//        sampleUserAuth.setLastLogin(Instant.now());
+//        when(jwtUtil.isTokenSignatureValid(fakeToken)).thenReturn(false);
 //
+//        // Act & Assert
 //        assertThrows(TokenInvalidException.class, () -> authService.logout(httpServletRequest));
-//        verify(userAuthRepository, never()).save(any());
-//    }
-//
-//    @Test
-//    void logout_MalformedHeader_ThrowsTokenInvalidException() {
-//        when(httpServletRequest.getHeader("Authorization")).thenReturn("InvalidHeader");
-//        assertThrows(TokenInvalidException.class, () -> authService.logout(httpServletRequest));
+//        verify(blacklistService, never()).blacklistToken(anyString(), any());
 //    }
 //
 //    // REFRESH TOKEN TESTS
 //
 //    @Test
 //    void refreshToken_ValidToken_ReturnsNewToken() {
+//        // Arrange
 //        when(httpServletRequest.getHeader("Authorization")).thenReturn("Bearer " + fakeToken);
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        when(jwtUtil.validateToken(fakeToken)).thenReturn(true);
-//        when(jwtUtil.extractIssuedAt(fakeToken)).thenReturn(new Date());
-//        String newToken = "eyJhbGciOiJIUzI1NiJ9.newToken.signature";
-//        when(jwtUtil.generateToken(sampleUser.getEmail(), "teacher")).thenReturn(newToken);
+//        when(jwtUtil.extractUsernameAllowExpired(fakeToken)).thenReturn(sampleUserAuth.getEmail());
+//        when(userAuthRepository.findByEmail(sampleUserAuth.getEmail())).thenReturn(Optional.of(sampleUserAuth));
+//        Date expiresAt = new Date(System.currentTimeMillis() + 60000); // 1 min
+//        when(jwtUtil.extractExpirationAllowExpired(fakeToken)).thenReturn(expiresAt);
+//        when(blacklistService.markTokenUsedForRefresh(fakeToken, 60000)).thenReturn(true);
+//        when(blacklistService.isTokenBlacklisted(fakeToken)).thenReturn(false);
+//        when(blacklistService.areAllUserTokensBlacklisted(sampleUserAuth.getEmail())).thenReturn(false);
+//        String newToken = "newToken123";
+//        when(jwtUtil.generateToken(sampleUserAuth.getEmail(), sampleUser.getRole())).thenReturn(newToken);
 //
+//        // Act
 //        LoginResponse response = authService.refreshToken(httpServletRequest);
 //
+//        // Assert
 //        assertNotNull(response);
 //        assertEquals(newToken, response.token());
-//        verify(jwtUtil).generateToken(sampleUser.getEmail(), "teacher");
+//        verify(jwtUtil).generateToken(sampleUserAuth.getEmail(), sampleUser.getRole());
 //    }
 //
 //    @Test
-//    void refreshToken_InvalidToken_ThrowsTokenInvalidException() {
+//    void refreshToken_AlreadyUsed_ThrowsTokenInvalidException() {
+//        // Arrange
 //        when(httpServletRequest.getHeader("Authorization")).thenReturn("Bearer " + fakeToken);
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        when(jwtUtil.validateToken(fakeToken)).thenReturn(false);
+//        when(jwtUtil.extractUsernameAllowExpired(fakeToken)).thenReturn(sampleUserAuth.getEmail());
+//        Date expiresAt = new Date(System.currentTimeMillis() + 60000); // 1 minute from now
+//        when(jwtUtil.extractExpirationAllowExpired(fakeToken)).thenReturn(expiresAt);
+//        when(blacklistService.markTokenUsedForRefresh(anyString(), anyLong())).thenReturn(false); // Use matchers for both arguments
 //
+//        // Act & Assert
 //        assertThrows(TokenInvalidException.class, () -> authService.refreshToken(httpServletRequest));
 //        verify(jwtUtil, never()).generateToken(anyString(), anyString());
 //    }
-//
-//    @Test
-//    void refreshToken_UnverifiedUser_ThrowsUserNotVerifiedException() {
-//        when(httpServletRequest.getHeader("Authorization")).thenReturn("Bearer " + fakeToken);
-//        when(jwtUtil.extractUsername(fakeToken)).thenReturn(sampleUser.getEmail());
-//        when(userAuthRepository.findByEmail(sampleUser.getEmail())).thenReturn(Optional.of(sampleUserAuth));
-//        sampleUser.setIsVerified(false);
-//
-//        assertThrows(UserNotVerifiedException.class, () -> authService.refreshToken(httpServletRequest));
-//        verify(jwtUtil, never()).validateToken(anyString());
-//    }
-//
-//    @Test
-//    void refreshToken_MissingHeader_ThrowsTokenInvalidException() {
-//        when(httpServletRequest.getHeader("Authorization")).thenReturn(null);
-//
-//        assertThrows(TokenInvalidException.class, () -> authService.refreshToken(httpServletRequest));
-//        verify(jwtUtil, never()).extractUsername(anyString());
-//    }
-//
-/// /    // GOOGLE LOGIN TESTS
-/// /
-/// /    @Test
-/// /    void googleLogin_NewUser_CreatesUserAndReturnsToken() {
-/// /        GoogleLoginRequeset request = GoogleLoginRequeset.builder()
-/// /                .tokenId(fakeToken)
-/// /                .build();
-/// /        GoogleIdToken.Payload payload = mock(GoogleIdToken.Payload.class);
-/// /        when(payload.getEmail()).thenReturn("google@email.com");
-/// /        when(payload.getSubject()).thenReturn("google123");
-/// /        when(payload.get("given_name")).thenReturn("Jane");
-/// /        when(payload.get("family_name")).thenReturn("Doe");
-/// /        GoogleIdToken idToken = mock(GoogleIdToken.class);
-/// /        when(idToken.getPayload()).thenReturn(payload);
-/// /        when(googleIdTokenVerifier.verify(fakeToken)).thenReturn(idToken);
-/// /        when(userAuthRepository.findByGoogleUserId("google123")).thenReturn(Optional.empty());
-/// /        User savedUserMock = User.builder().id(UUID.randomUUID()).build();
-/// /        when(userRepository.save(any(User.class))).thenReturn(savedUserMock);
-/// /        UserAuth savedUserAuthMock = UserAuth.builder().id(UUID.randomUUID()).build();
-/// /        when(userAuthRepository.save(any(UserAuth.class))).thenReturn(savedUserAuthMock);
-/// /        String newToken = "eyJhbGciOiJIUzI1NiJ9.googleToken.signature";
-/// /        when(jwtUtil.generateToken("google@email.com", "teacher")).thenReturn(newToken);
-/// /
-/// /        LoginResponse response = authService.googleLogin(request);
-/// /
-/// /        assertNotNull(response);
-/// /        assertEquals(newToken, response.token());
-/// /        verify(userRepository).save(any(User.class));
-/// /        verify(userAuthRepository).save(any(UserAuth.class));
-/// /        verify(jwtUtil).generateToken("google@email.com", "teacher");
-/// /    }
-/// /
-/// /    @Test
-/// /    void googleLogin_ExistingUser_ReturnsToken() {
-/// /        GoogleLoginRequeset request = GoogleLoginRequeset.builder()
-/// /                .tokenId(fakeToken)
-/// /                .build();
-/// /        GoogleIdToken.Payload payload = mock(GoogleIdToken.Payload.class);
-/// /        when(payload.getEmail()).thenReturn(sampleUser.getEmail());
-/// /        when(payload.getSubject()).thenReturn("google123");
-/// /        GoogleIdToken idToken = mock(GoogleIdToken.class);
-/// /        when(idToken.getPayload()).thenReturn(payload);
-/// /        when(googleIdTokenVerifier.verify(fakeToken)).thenReturn(idToken);
-/// /        when(userAuthRepository.findByGoogleUserId("google123")).thenReturn(Optional.of(sampleUserAuth));
-/// /        when(jwtUtil.generateToken(sampleUser.getEmail(), "teacher")).thenReturn(fakeToken);
-/// /
-/// /        LoginResponse response = authService.googleLogin(request);
-/// /
-/// /        assertNotNull(response);
-/// /        assertEquals(fakeToken, response.token());
-/// /        verify(userRepository, never()).save(any());
-/// /        verify(userAuthRepository, never()).save(any());
-/// /    }
-/// /
-/// /    @Test
-/// /    void googleLogin_InvalidToken_ThrowsInvalidGoogleTokenException() {
-/// /        GoogleLoginRequeset request = GoogleLoginRequeset.builder()
-/// /                .tokenId(fakeToken)
-/// /                .build();
-/// /        when(googleIdTokenVerifier.verify(fakeToken)).thenReturn(null);
-/// /
-/// /        assertThrows(InvalidGoogleTokenException.class, () -> authService.googleLogin(request));
-/// /        verify(userAuthRepository, never()).findByGoogleUserId(anyString());
-/// /    }
 //}

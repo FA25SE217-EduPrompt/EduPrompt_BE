@@ -30,7 +30,7 @@ public class UserAuth {
     @Column(name = "google_user_id")
     private String googleUserId;
 
-    @Column(name = "email", nullable = false)
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
     @Column(name = "password_hash")

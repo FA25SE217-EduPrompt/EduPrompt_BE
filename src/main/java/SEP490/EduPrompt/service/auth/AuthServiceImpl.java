@@ -79,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     public RegisterResponse register(RegisterRequest registerRequest) {
-        if (userAuthRepository.existsByEmail(registerRequest.getEmail())) {
+        if (userAuthRepository.existsByEmail(registerRequest.getEmail().toLowerCase())) {
             throw new EmailAlreadyExistedException();
         }
 
@@ -89,7 +89,7 @@ public class AuthServiceImpl implements AuthService {
                 .firstName(registerRequest.getFirstName())
                 .lastName(registerRequest.getLastName())
                 .phoneNumber(registerRequest.getPhoneNumber())
-                .email(registerRequest.getEmail())
+                .email(registerRequest.getEmail().toLowerCase())
                 .role(Role.TEACHER.name())
                 .isActive(false)
                 .isVerified(false)
@@ -104,7 +104,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserAuth userAuth = UserAuth.builder()
                 .user(savedUser)
-                .email(registerRequest.getEmail())
+                .email(registerRequest.getEmail().toLowerCase())
                 .passwordHash(passwordEncoder.encode(registerRequest.getPassword()))
                 .verificationToken(token)
                 .createdAt(now)
@@ -126,7 +126,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return RegisterResponse.builder()
-                .message("Check your email to verify your account")
+                .message("Check your email to verify your account, if not found, please check your spam folder!")
                 .build();
     }
 
@@ -240,7 +240,7 @@ public class AuthServiceImpl implements AuthService {
         userAuthRepository.save(userAuth);
 
         try {
-            emailService.sendResetPasswordEmail(
+            emailService.sendPasswordResetEmail(
                     userAuth.getEmail(),
                     userAuth.getUser().getLastName(),
                     token,

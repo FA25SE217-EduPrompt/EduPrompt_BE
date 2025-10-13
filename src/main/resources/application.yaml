@@ -46,6 +46,10 @@ spring:
           ssl:
             trust: smtp.gmail.com
 
+  sendgrid:
+    api-key: ${SENDGRID_API_KEY}
+    from:
+      email: ${SENDGRID_FROM_EMAIL}
   data:
     redis:
       host: ${REDIS_HOST}
@@ -75,5 +79,12 @@ open:
     scan-package: "SEP490.EduPrompt.controller"
 
 
-
+## Postmark Configuration
+#postmark:
+#  api-token: ${POSTMARK_API_KEY}
+#  from-email: ${POSTMARK_EMAIL}
+#  template:
+#    verification: ${POSTMARK_VERIFICATION_TEMPLATE_ID}
+#    password-reset: ${POSTMARK_PASSWORD_RESET_TEMPLATE_ID}
+#    welcome: ${POSTMARK_WELCOME_TEMPLATE_ID}
 

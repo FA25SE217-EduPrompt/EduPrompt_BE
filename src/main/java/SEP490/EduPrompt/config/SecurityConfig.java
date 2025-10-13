@@ -49,7 +49,7 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html")
                         .permitAll()
-                        .requestMatchers("/api/hello").authenticated()
+                        .requestMatchers("/test/preview/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
