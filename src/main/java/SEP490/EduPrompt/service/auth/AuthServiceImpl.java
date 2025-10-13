@@ -126,7 +126,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return RegisterResponse.builder()
-                .message("Check your email to verify your account")
+                .message("Check your email to verify your account, if not found, please check your spam folder!")
                 .build();
     }
 
@@ -240,7 +240,7 @@ public class AuthServiceImpl implements AuthService {
         userAuthRepository.save(userAuth);
 
         try {
-            emailService.sendResetPasswordEmail(
+            emailService.sendPasswordResetEmail(
                     userAuth.getEmail(),
                     userAuth.getUser().getLastName(),
                     token,
