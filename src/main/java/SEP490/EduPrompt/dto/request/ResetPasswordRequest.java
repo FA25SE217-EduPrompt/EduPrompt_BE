@@ -14,6 +14,6 @@ public class ResetPasswordRequest {
     @NotBlank(message = "Token is required")
     private String token;
     @NotBlank(message = "New password is required")
-    @Size(min = 3, max = 32, message = "New password must be between 3 and 32 characters")
+    @Size(min = 3, max = 32, message = "Password must be between 3 and 32 characters")
     private String newPassword;
 }

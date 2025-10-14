@@ -19,6 +19,6 @@ public class LoginRequest {
     private String email;
 
     @NotBlank(message = "Password is required")
-    @Size(min = 3, max = 32, message = "New password must be between 3 and 32 characters")
+    @Size(min = 3, max = 32, message = "Password must be between 3 and 32 characters")
     private String password;
 }

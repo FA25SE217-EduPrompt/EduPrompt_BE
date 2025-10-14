@@ -45,7 +45,7 @@ public class AuthenticationController {
             String email  //TODO: we should wrap this into a request dto to use @valid
     ) {
         authService.resendVerificationEmail(email);
-        return ResponseDto.success("Verification email resent successfully to " + email);
+        return ResponseDto.success("Verification email resent successfully to " + email + " , if not found, please check your spam folder!");
     }
 
     @PostMapping("/change-password")
@@ -57,7 +57,7 @@ public class AuthenticationController {
     @PostMapping("/forgot-password")
     public ResponseDto<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
-        return ResponseDto.success("Password reset email sent successfully.");
+        return ResponseDto.success("Password reset email sent successfully! If not found, please check your spam folder!");
     }
 
     @PostMapping("/reset-password")
