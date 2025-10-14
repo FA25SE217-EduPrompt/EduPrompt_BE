@@ -35,6 +35,12 @@ public class Prompt {
     @JoinColumn(name = "collection_id")
     private Collection collection;
 
+    @Column(name = "title", length = Integer.MAX_VALUE)
+    private String title;
+
+    @Column(name = "description", length = Integer.MAX_VALUE)
+    private String description;
+
     @Column(name = "instruction", length = Integer.MAX_VALUE)
     private String instruction;
 
