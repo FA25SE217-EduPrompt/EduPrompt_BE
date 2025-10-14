@@ -10,8 +10,12 @@ import java.util.UUID;
 public record UpdateCollectionRequest(
         @Size(max = 255) String name,
         String description,
-        @Pattern(regexp = "(private|public|school|group)", message = "Invalid visibility") String visibility,
+
+        @Pattern(regexp = "(private|public|school|group)", message = "Invalid visibility")
+        String visibility,
+
         List<Tag> tags,
+
         UUID groupId  // Required if visibility='group'
 ) {
 }

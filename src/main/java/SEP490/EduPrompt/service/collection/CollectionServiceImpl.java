@@ -68,20 +68,33 @@ public class CollectionServiceImpl implements CollectionService {
     private final UserRepository userRepository;
 
 
+    private boolean isAdmin(UserPrincipal user) {
+        String role = user.getRole();
+        return isSystemAdmin(role) || isSchoolAdmin(role);
+    }
+
+    private boolean isSystemAdmin(String userRole) {
+        return Role.SYSTEM_ADMIN.name().equalsIgnoreCase(userRole);
+    }
+
+    private boolean isSchoolAdmin(String userRole) {
+        return Role.SCHOOL_ADMIN.name().equalsIgnoreCase(userRole);
+    }
+
     private void validateAccess(Collection collection, UserPrincipal currentUser) {
         String currentRole = currentUser.getRole();
         UUID currentUserId = currentUser.getUserId();
 
         // deleted means only system admin can access
         if (collection.getIsDeleted()) {
-            if (!Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentRole)) {
+            if (!isSystemAdmin(currentRole)) {
                 throw new AccessDeniedException("You do not have permission to access this collection");
             }
             return;
         }
 
         // admin bypass
-        if (Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentRole) || Role.SCHOOL_ADMIN.name().equalsIgnoreCase(currentRole)) {
+        if (isSystemAdmin(currentRole) || isSystemAdmin(currentRole)) {
             return;
         }
 
@@ -114,11 +127,6 @@ public class CollectionServiceImpl implements CollectionService {
             }
             default -> throw new AccessDeniedException("Unsupported visibility");
         }
-    }
-
-    private boolean isAdmin(UserPrincipal user) {
-        String role = user.getRole();
-        return Role.SYSTEM_ADMIN.name().equalsIgnoreCase(role) || Role.SCHOOL_ADMIN.name().equalsIgnoreCase(role);
     }
 
     @Override

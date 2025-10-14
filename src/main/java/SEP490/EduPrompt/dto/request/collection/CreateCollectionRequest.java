@@ -13,7 +13,9 @@ public record CreateCollectionRequest(
         @NotBlank(message = "Name is required") @Size(max = 255) String name,
         String description,
 
-        @NotNull @Pattern(regexp = "(private|public|school|group)", message = "Invalid visibility") String visibility,
+        @NotNull @Pattern(regexp = "(private|public|school|group)", message = "Invalid visibility")
+        String visibility,
+
         List<Tag> tags,
 
         UUID groupId
