@@ -1,0 +1,25 @@
+package SEP490.EduPrompt.dto.request.groupMember;
+
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Builder;
+
+import java.util.Set;
+import java.util.UUID;
+
+@Builder
+public record AddGroupMembersRequest(
+        @NotEmpty
+        Set<MemberRequest> members
+) {
+    public record MemberRequest(
+            @NotNull
+            UUID userId,
+            @Size(max = 50)
+            String role,
+            @Size(max = 50)
+            String status
+    ) {
+    }
+}

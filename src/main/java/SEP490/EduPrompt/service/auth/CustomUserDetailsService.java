@@ -29,9 +29,12 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("User details not found for email: " + email);
         }
 
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(userAuth.getEmail())
-                .password(userAuth.getPasswordHash())
+        return UserPrincipal.builder()
+                .userName(userAuth.getEmail())
+                .email(userAuth.getEmail())
+                .userId(user.getId())
+                .schoolId(user.getSchoolId())
+                .role(user.getRole())
                 .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole())))
                 .accountExpired(!user.getIsActive())
                 .accountLocked(!user.getIsActive())
@@ -39,4 +42,6 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .disabled(!user.getIsActive())
                 .build();
     }
+
+
 }
