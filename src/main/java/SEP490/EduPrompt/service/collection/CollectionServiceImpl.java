@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.service.collection;
 
+import SEP490.EduPrompt.dto.request.AddTagRequest;
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
 import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
@@ -11,13 +12,8 @@ import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
-import SEP490.EduPrompt.model.Collection;
-import SEP490.EduPrompt.model.Group;
-import SEP490.EduPrompt.model.User;
-import SEP490.EduPrompt.repo.CollectionRepository;
-import SEP490.EduPrompt.repo.GroupMemberRepository;
-import SEP490.EduPrompt.repo.GroupRepository;
-import SEP490.EduPrompt.repo.UserRepository;
+import SEP490.EduPrompt.model.*;
+import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +62,8 @@ public class CollectionServiceImpl implements CollectionService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
+    private final TagRepository tagRepository;
+    private final CollectionTagRepository collectionTagRepository;
 
 
     private boolean isAdmin(UserPrincipal user) {
@@ -94,9 +92,8 @@ public class CollectionServiceImpl implements CollectionService {
         }
 
         // admin bypass
-        if (isSystemAdmin(currentRole) || isSystemAdmin(currentRole)) {
-            return;
-        }
+        if (isAdmin(currentUser)) return;
+
 
         Visibility vis = parseVisibility(collection.getVisibility());
 
@@ -120,9 +117,10 @@ public class CollectionServiceImpl implements CollectionService {
             case GROUP -> {
                 if (collection.getGroup() == null)
                     throw new AccessDeniedException("Group not found for this collection");
-                boolean member = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                        collection.getGroup().getId(), currentUserId, "active", List.of("admin", "member")
-                );
+                boolean member = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
+                        collection.getGroup().getId(),
+                        currentUserId,
+                        "active");
                 if (!member) throw new AccessDeniedException("You are not a member of this group");
             }
             default -> throw new AccessDeniedException("Unsupported visibility");
@@ -131,44 +129,60 @@ public class CollectionServiceImpl implements CollectionService {
 
     @Override
     @Transactional
-    public CreateCollectionResponse createCollection(CreateCollectionRequest req, UserPrincipal currentUser) {
+    public CreateCollectionResponse createCollection(CreateCollectionRequest request, UserPrincipal currentUser) {
         UUID currentUserId = currentUser.getUserId();
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        //check user's subscription to control total own collections
+        Visibility vis = parseVisibility(request.visibility());
 
-        Visibility vis = parseVisibility(req.visibility());
         Group group = null;
         if (vis == Visibility.GROUP) {
-            if (req.groupId() == null) {
-                throw new InvalidInputException("groupId is required for group visibility");
+            if (request.groupId() == null) {
+                throw new InvalidInputException("Group ID required for group visibility");
             }
-            group = groupRepository.findById(req.groupId())
+            group = groupRepository.findById(request.groupId())
                     .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
-
-            // creator must be a member of the group
-            boolean isAllowed = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
+            // Verify membership for creation
+            boolean isMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
                     group.getId(), currentUserId, "active");
-            if (!isAllowed && !isAdmin(currentUser)) {
-                throw new AccessDeniedException("You must be a member of the group to create a group collection");
+            if (!isMember) {
+                throw new AccessDeniedException("You must be a group member to create a group-visible collection");
             }
         }
 
         Collection collection = Collection.builder()
-                .name(req.name())
-                .description(req.description())
-                .visibility(req.visibility())
-                .tags(req.tags() != null ? req.tags() : List.of())
-                .group(group)
+                .user(user)
+                .name(request.name())
+                .description(request.description())
+                .visibility(request.visibility())
                 .createdBy(currentUserId)
                 .updatedBy(currentUserId)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
-                .isDeleted(false)
+                .group(group)
                 .build();
 
-        //TODO: we might need to check collection tags here (not allow illegal tags pass throw)
-
+        // Handle tags (find and create new tag if tag not existed)
+        if (request.tags() != null && !request.tags().isEmpty()) {
+            for (AddTagRequest tagReq : request.tags()) {
+                Optional<Tag> optTag = tagRepository.findByTypeAndValue(tagReq.type(), tagReq.value());
+                Tag tag = optTag.orElseGet(() -> tagRepository.save(
+                        Tag.builder()
+                                .type(tagReq.type())
+                                .value(tagReq.value())
+                                .build()
+                ));
+                CollectionTag collectionTag = CollectionTag.builder()
+                        .collection(collection)
+                        .tag(tag)
+                        .createdAt(Instant.now())
+                        .build();
+                collection.getCollectionTags().add(collectionTag);
+            }
+        }
         Collection saved = collectionRepository.save(collection);
+
         log.info("Collection created: {} by user: {}", saved.getId(), currentUserId);
 
         return CreateCollectionResponse.builder()
@@ -195,35 +209,53 @@ public class CollectionServiceImpl implements CollectionService {
         }
 
         //TODO: we might need to check collection tags here (not allow illegal tags pass throw)
-        //partial update
+        // partial update
         if (req.name() != null) collection.setName(req.name());
         if (req.description() != null) collection.setDescription(req.description());
-        if (req.tags() != null) collection.setTags(req.tags());
 
-        Visibility vis = parseVisibility(req.visibility());
-        Group group = null;
-        if (vis == Visibility.GROUP) {
-            if (req.groupId() == null) {
-                throw new InvalidInputException("groupId is required for group visibility");
-            }
-            group = groupRepository.findById(req.groupId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
-
-            // creator must be a member of the group
-            boolean isAllowed = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
-                    group.getId(), currentUserId, "active");
-            if (!isAllowed && !isAdmin(currentUser)) {
-                throw new AccessDeniedException("You must be a member of the group to create a group collection");
+        if (req.tags() != null) {
+            collection.getCollectionTags().clear();
+            for (AddTagRequest tagReq : req.tags()) {
+                Tag tag = tagRepository.findByTypeAndValue(tagReq.type(), tagReq.value())
+                        .orElseGet(() -> tagRepository.save(
+                                Tag.builder()
+                                        .type(tagReq.type())
+                                        .value(tagReq.value())
+                                        .build()));
+                CollectionTag ct = CollectionTag.builder()
+                        .collection(collection)
+                        .tag(tag)
+                        .createdAt(Instant.now())
+                        .build();
+                collection.getCollectionTags().add(ct);
             }
         }
 
-        collection.setVisibility(req.visibility());
-        collection.setGroup(group);
+        if (req.visibility() != null) {
+            Visibility vis = parseVisibility(req.visibility());
+            Group group = null;
+            if (vis == Visibility.GROUP) {
+                if (req.groupId() == null)
+                    throw new InvalidInputException("groupId is required for group visibility");
+                group = groupRepository.findById(req.groupId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
+                boolean isAllowed = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
+                        group.getId(),
+                        currentUserId,
+                        "active"
+                );
+                if (!isAllowed && !isAdmin(currentUser)) {
+                    throw new AccessDeniedException("You must be a member of the group to create a group collection");
+                }
+            }
+            collection.setVisibility(req.visibility());
+            collection.setGroup(group);
+        }
 
         collection.setUpdatedBy(currentUserId);
         collection.setUpdatedAt(Instant.now());
-
         Collection updatedCol = collectionRepository.save(collection);
+
         log.info("Collection updated: {} by user: {}", id, currentUserId);
 
         return UpdateCollectionResponse.builder()
