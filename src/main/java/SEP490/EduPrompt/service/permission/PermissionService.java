@@ -9,9 +9,13 @@ import java.util.UUID;
 public interface PermissionService {
     //generic use
     boolean isAdmin(UserPrincipal user);
+
     boolean isSchoolAdmin(UserPrincipal user);
+
     boolean isSystemAdmin(UserPrincipal user);
+
     boolean isGroupMember(UserPrincipal user, UUID groupId);
+
     boolean isSchoolMember(UserPrincipal user, UUID schoolId);
 
     //for collection
@@ -20,8 +24,11 @@ public interface PermissionService {
 
     //for prompt
     boolean canViewPrompt(UserPrincipal user, Prompt prompt);
+
     boolean canEditPrompt(UserPrincipal user, Prompt prompt);
+
     boolean canDeletePrompt(UserPrincipal user, Prompt prompt);
+
     boolean canViewDeleted(UserPrincipal user);
 
     boolean canDoAll(UserPrincipal user);

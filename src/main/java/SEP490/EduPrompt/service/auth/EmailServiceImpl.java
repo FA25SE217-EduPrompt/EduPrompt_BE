@@ -26,15 +26,11 @@ public class EmailServiceImpl implements EmailService {
     private static final String HOME_PAGE = "http://localhost:3000/home"; //frontend url here :v
     private static final String VERIFY_PATH = "/api/auth/verify-email";
     private static final String RESET_PATH = "/api/auth/reset-password";
-
+    private static final String fromName = "Trí Nguyễn"; // dont ever change this
     private final SendGrid sendGrid;
     private final SpringTemplateEngine templateEngine;
-
     @Value("${spring.sendgrid.from.email}")
     private String fromEmail;
-
-    private static final String fromName = "Trí Nguyễn"; // dont ever change this
-
     @Value("${app.base-url}")
     private String baseUrl;
 

@@ -1,6 +1,5 @@
 package SEP490.EduPrompt.service.auth;
 
-import SEP490.EduPrompt.exception.auth.TokenInvalidException;
 import SEP490.EduPrompt.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;

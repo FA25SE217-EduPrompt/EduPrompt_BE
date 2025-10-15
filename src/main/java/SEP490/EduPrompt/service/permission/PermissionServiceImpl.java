@@ -1,20 +1,16 @@
 package SEP490.EduPrompt.service.permission;
 
-import SEP490.EduPrompt.enums.GroupRole;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.model.Collection;
-import SEP490.EduPrompt.model.Group;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.repo.CollectionRepository;
 import SEP490.EduPrompt.repo.GroupMemberRepository;
 import SEP490.EduPrompt.repo.GroupRepository;
 import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
-import SEP490.EduPrompt.service.group.GroupService;
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
 import java.util.UUID;
 
 @RequiredArgsConstructor
@@ -105,5 +101,6 @@ public class PermissionServiceImpl implements PermissionService {
         //TODO: finish this function
         return false;
     }
+
 
 }
