@@ -3,14 +3,10 @@ package SEP490.EduPrompt.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Builder
@@ -60,11 +56,6 @@ public class Prompt {
     @ColumnDefault("'private'")
     @Column(name = "visibility", nullable = false, length = 50)
     private String visibility;
-
-    @ColumnDefault("'[]'::jsonb")
-    @Column(name = "tags", nullable = false)
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<Tag> tags = new ArrayList<>();
 
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
