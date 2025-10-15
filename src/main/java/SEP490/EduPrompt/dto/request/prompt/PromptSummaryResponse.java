@@ -16,4 +16,5 @@ public record PromptSummaryResponse(
         List<Tag> tags,
         UUID collectionId,
         String ownerName
-) {}
+) {
+}

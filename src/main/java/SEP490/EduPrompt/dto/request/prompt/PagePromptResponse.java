@@ -8,4 +8,5 @@ public record PagePromptResponse(
         int totalPages,
         int pageNumber,
         int pageSize
-) {}
+) {
+}

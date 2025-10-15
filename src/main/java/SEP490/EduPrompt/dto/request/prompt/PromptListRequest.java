@@ -8,4 +8,5 @@ public record PromptListRequest(
         String q,
         List<Tag> tags,    // list of tag.type and tag.value
         String visibility  //  "public" | "private"
-) {}
+) {
+}
