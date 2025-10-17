@@ -23,6 +23,8 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
 
     boolean existsByGroupIdAndUserIdAndStatus(UUID groupId, UUID currentUserId, String status);
 
+    boolean existsByGroupIdAndUserId(UUID groupId, UUID userId);
+
     boolean existsByGroupIdAndUserIdAndStatusAndRoleIn(UUID groupId, UUID currentUserId, String status, List<String> roles);
 
 }
