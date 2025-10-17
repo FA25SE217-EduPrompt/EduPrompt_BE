@@ -76,7 +76,7 @@ Create a new user account and send verification email.
 ```
 
 **Response:**
-- Status: `200`
+- Status: `201`
 - Data:
 ```json
 {
