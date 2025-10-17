@@ -10,7 +10,7 @@ import lombok.Getter;
 import java.util.List;
 import java.util.UUID;
 
-@Getter
+//@Getter
 public record CreateCollectionRequest(
 
         @NotBlank(message = "Name is required") @Size(max = 255)
