@@ -32,4 +32,8 @@ public interface PermissionService {
     boolean canViewDeleted(UserPrincipal user);
 
     boolean canDoAll(UserPrincipal user);
+
+    boolean canCreatePrompt(UserPrincipal user);
+
+    void validateCollectionVisibility(Collection collection, String promptVisibility);
 }

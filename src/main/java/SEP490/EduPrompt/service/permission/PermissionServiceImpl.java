@@ -10,9 +10,11 @@ import SEP490.EduPrompt.repo.GroupRepository;
 import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Service
 @RequiredArgsConstructor
 public class PermissionServiceImpl implements PermissionService {
 
@@ -102,5 +104,40 @@ public class PermissionServiceImpl implements PermissionService {
         return false;
     }
 
+    @Override
+    public boolean canCreatePrompt(UserPrincipal user) {
+        if (user == null) return false;
+        String role = user.getRole();
+        return Role.TEACHER.name().equalsIgnoreCase(role)
+                || Role.SCHOOL_ADMIN.name().equalsIgnoreCase(role)
+                || Role.SYSTEM_ADMIN.name().equalsIgnoreCase(role);
+    }
 
+    @Override
+    public void validateCollectionVisibility(Collection collection, String promptVisibility) {
+        if (collection == null || promptVisibility == null) {
+            throw new IllegalArgumentException("Collection and visibility must not be null");
+        }
+
+        String collectionVisibility = collection.getVisibility();
+
+        if (collectionVisibility.equals(Visibility.PRIVATE.name()) &&
+                !promptVisibility.equals(Visibility.PRIVATE.name())) {
+            throw new IllegalArgumentException("Prompt visibility must be PRIVATE for a PRIVATE collection");
+        }
+        if (collectionVisibility.equals(Visibility.GROUP.name()) &&
+                !promptVisibility.equals(Visibility.PUBLIC.name()) &&
+                !promptVisibility.equals(Visibility.GROUP.name())) {
+            throw new IllegalArgumentException("Prompt visibility must be PUBLIC or GROUP for a GROUP collection");
+        }
+        if (collectionVisibility.equals(Visibility.SCHOOL.name()) &&
+                !promptVisibility.equals(Visibility.PUBLIC.name()) &&
+                !promptVisibility.equals(Visibility.SCHOOL.name())) {
+            throw new IllegalArgumentException("Prompt visibility must be PUBLIC or SCHOOL for a SCHOOL collection");
+        }
+        if (collectionVisibility.equals(Visibility.PUBLIC.name()) &&
+                !promptVisibility.equals(Visibility.PUBLIC.name())) {
+            throw new IllegalArgumentException("Prompt visibility must be PUBLIC for a PUBLIC collection");
+        }
+    }
 }
