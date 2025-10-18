@@ -52,10 +52,10 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public LoginResponse login(LoginRequest loginRequest) {
         UserAuth userAuth = userAuthRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(InvalidCredentialsException::new);
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), userAuth.getPasswordHash())) {
-            throw new AuthFailedException("Invalid email or password");
+            throw new AuthFailedException("Invalid password");
         }
 
         User user = userAuth.getUser();

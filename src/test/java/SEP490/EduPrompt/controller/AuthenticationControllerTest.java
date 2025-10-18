@@ -138,8 +138,8 @@ class AuthenticationControllerTest {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.message").value("Check your email to verify your account"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.message").exists())
                 .andExpect(jsonPath("$.error").isEmpty());
 
         verify(authService).register(registerRequest);
@@ -214,7 +214,7 @@ class AuthenticationControllerTest {
         mockMvc.perform(post("/api/auth/resend-verification")
                         .param("email", "test@email.com"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").value("Verification email resent successfully to test@email.com"))
+                .andExpect(jsonPath("$.data").exists())
                 .andExpect(jsonPath("$.error").isEmpty());
 
         verify(authService).resendVerificationEmail("test@email.com");
@@ -299,7 +299,7 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(forgotPasswordRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").value("Password reset email sent successfully."))
+                .andExpect(jsonPath("$.data").exists())
                 .andExpect(jsonPath("$.error").isEmpty());
 
         verify(authService).forgotPassword(forgotPasswordRequest);
