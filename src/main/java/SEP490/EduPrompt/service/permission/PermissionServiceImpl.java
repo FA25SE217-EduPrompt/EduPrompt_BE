@@ -4,11 +4,10 @@ import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.model.Prompt;
-import SEP490.EduPrompt.repo.CollectionRepository;
-import SEP490.EduPrompt.repo.GroupMemberRepository;
-import SEP490.EduPrompt.repo.GroupRepository;
-import SEP490.EduPrompt.repo.PromptRepository;
+import SEP490.EduPrompt.model.User;
+import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +21,39 @@ public class PermissionServiceImpl implements PermissionService {
     private GroupRepository groupRepository;
     private PromptRepository promptRepository;
     private CollectionRepository collectionRepository;
+    private UserRepository userRepository;
+
+    @Override
+    public boolean canAccessPrompt(Prompt prompt, UserPrincipal currentUser) {
+        // Check PermissionService
+        if (canViewPrompt(currentUser, prompt)) {
+            return false;
+        }
+
+        // Additional checks based on visibility
+        switch (Visibility.valueOf(prompt.getVisibility())) {
+            case PRIVATE:
+                // Only owner can access
+                return currentUser.getUserId().equals(prompt.getCreatedBy());
+            case SCHOOL:
+                // Check if user's schoolId matches prompt owner's schoolId
+                User promptOwner = userRepository.findById(prompt.getCreatedBy())
+                        .orElseThrow(() -> new EntityNotFoundException("Prompt owner not found"));
+                return currentUser.getSchoolId() != null &&
+                        currentUser.getSchoolId().equals(promptOwner.getSchoolId());
+            case GROUP:
+                // Check if user is a member of the group associated with the collection
+                if (prompt.getCollection() == null || prompt.getCollection().getGroup() == null) {
+                    return false;
+                }
+                UUID groupId = prompt.getCollection().getGroup().getId();
+                return isGroupMember(currentUser, groupId);
+            case PUBLIC:
+                return true;
+            default:
+                return false;
+        }
+    }
 
     @Override
     public boolean canViewPrompt(UserPrincipal user, Prompt prompt) {
@@ -139,5 +171,14 @@ public class PermissionServiceImpl implements PermissionService {
                 !promptVisibility.equals(Visibility.PUBLIC.name())) {
             throw new IllegalArgumentException("Prompt visibility must be PUBLIC for a PUBLIC collection");
         }
+    }
+
+    @Override
+    public boolean canAccessCollection(UserPrincipal currentUser, UUID collectionId) {
+        Collection collection = collectionRepository.findById(collectionId)
+                .orElseThrow(() -> new EntityNotFoundException("Collection not found"));
+        return canViewCollection(currentUser, collection) ||
+                collection.getUser().getId().equals(currentUser.getUserId()) ||
+                isAdmin(currentUser);
     }
 }
