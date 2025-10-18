@@ -9,6 +9,16 @@ app:
     secret: ${JWT_SECRET}
     expiration: 900000 # 15min in milliseconds
 
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
 google:
   client-id: ${GOOGLE_CLIENT_ID}
 
@@ -50,10 +60,12 @@ spring:
     api-key: ${SENDGRID_API_KEY}
     from:
       email: ${SENDGRID_FROM_EMAIL}
+
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      host: ${REDISHOST}
+      port: ${REDISPORT}
+      password: ${REDISPASSWORD:}
       timeout: 60000
       jedis:
         pool:
