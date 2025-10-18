@@ -439,6 +439,7 @@ public class AuthServiceImpl implements AuthService {
                     .googleUserId(googleId)
                     .email(email)
                     .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
                     .lastLogin(Instant.now())
                     .build();
 
