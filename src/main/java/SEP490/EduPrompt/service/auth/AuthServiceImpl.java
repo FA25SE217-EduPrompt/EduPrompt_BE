@@ -24,6 +24,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
@@ -387,50 +389,67 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public LoginResponse googleLogin(GoogleLoginRequeset request) {
+    public LoginResponse googleLogin(GoogleLoginRequeset request) throws GeneralSecurityException, IOException {
         log.info("Attempting Google login");
 
-        try {
-            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
-                    GoogleNetHttpTransport.newTrustedTransport(),
-                    GsonFactory.getDefaultInstance()
-            )
-                    .setAudience(List.of(googleClientId))
-                    .build();
+        GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                GoogleNetHttpTransport.newTrustedTransport(),
+                GsonFactory.getDefaultInstance()
+        )
+                .setAudience(List.of(googleClientId))
+                .build();
 
-            GoogleIdToken idToken = verifier.verify(request.getTokenId());
-            if (idToken == null) {
-                throw new InvalidGoogleTokenException();
-            }
-
-            GoogleIdToken.Payload payload = idToken.getPayload();
-            String email = payload.getEmail();
-            String googleId = payload.getSubject();
-
-            log.info("Google login - email: {}, googleId: {}", email, googleId);
-
-            Optional<UserAuth> existingAuth = userAuthRepository.findByGoogleUserId(googleId);
-
-            User user = null;
-            if (existingAuth.isPresent()) {
-                user = existingAuth.get().getUser();
-
-                // Update last login
-                UserAuth auth = existingAuth.get();
-                auth.setLastLogin(Instant.now());
-                userAuthRepository.save(auth);
-            }
-            assert user != null;
-            String token = jwtUtil.generateToken(email, user.getRole());
-
-            return LoginResponse.builder()
-                    .token(token)
-                    .build();
-
-        } catch (Exception ex) {
-            log.error("Google login failed", ex);
+        GoogleIdToken idToken = verifier.verify(request.getTokenId());
+        if (idToken == null) {
             throw new InvalidGoogleTokenException();
         }
+
+        GoogleIdToken.Payload payload = idToken.getPayload();
+        String email = payload.getEmail();
+        String googleId = payload.getSubject();
+
+        log.info("Google login - email: {}, googleId: {}", email, googleId);
+
+        Optional<UserAuth> existingAuth = userAuthRepository.findByGoogleUserId(googleId);
+
+        User user;
+        if (existingAuth.isPresent()) {
+            user = existingAuth.get().getUser();
+
+            // Update last login
+            UserAuth auth = existingAuth.get();
+            auth.setLastLogin(Instant.now());
+            userAuthRepository.save(auth);
+        }else {
+            user = User.builder()
+                    .email(email)
+                    .firstName((String) payload.get("given_name"))
+                    .lastName((String) payload.get("family_name"))
+                    .isActive(true)
+                    .isVerified(true)
+                    .role(Role.TEACHER.name())
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+
+            userRepository.save(user);
+
+            UserAuth auth = UserAuth.builder()
+                    .user(user)
+                    .googleUserId(googleId)
+                    .email(email)
+                    .createdAt(Instant.now())
+                    .lastLogin(Instant.now())
+                    .build();
+
+            userAuthRepository.save(auth);
+        }
+        assert user != null;
+        String token = jwtUtil.generateToken(email, user.getRole());
+
+        return LoginResponse.builder()
+                .token(token)
+                .build();
     }
 
     private String extractTokenFromRequest(HttpServletRequest request) {

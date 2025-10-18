@@ -13,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -80,7 +83,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/google")
-    public ResponseDto<LoginResponse> loginWithGoogle(@RequestBody GoogleLoginRequeset request) {
+    public ResponseDto<LoginResponse> loginWithGoogle(@RequestBody GoogleLoginRequeset request) throws GeneralSecurityException, IOException {
         return ResponseDto.success(authService.googleLogin(request));
     }
 }
