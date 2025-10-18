@@ -12,6 +12,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ChangePasswordRequest {
+    //TODO: why we still need email here? it's already in the token in header
     @NotBlank(message = "Email is required")
     @Email(message = "Email must be valid")
     private String email;
