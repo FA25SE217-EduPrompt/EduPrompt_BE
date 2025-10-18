@@ -23,7 +23,9 @@ public class EmailServiceImpl implements EmailService {
 
     private static final String APP_NAME = "EduPrompt";
     private static final String CONTEXT_PATH = "/BE";
-    private static final String HOME_PAGE = "http://localhost:3000/home"; //frontend url here :v
+    //TODO: update frontend url
+    private static final String FRONTEND_RESET_PASSWORD_URL = "http://localhost:3000/reset-password";
+    private static final String HOME_PAGE = "http://localhost:3000"; //frontend url here :v
     private static final String VERIFY_PATH = "/api/auth/verify-email";
     private static final String RESET_PATH = "/api/auth/reset-password";
 
@@ -57,7 +59,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendPasswordResetEmail(String toEmail, String name, String token, int expirationMinutes) {
         log.info("Sending password reset email to: {}", toEmail);
 
-        String link = baseUrl + CONTEXT_PATH + RESET_PATH + "?token=" + token;
+        String link = FRONTEND_RESET_PASSWORD_URL + "?token=" + token;
         Context context = new Context();
         context.setVariable("appName", APP_NAME);
         context.setVariable("name", name);
