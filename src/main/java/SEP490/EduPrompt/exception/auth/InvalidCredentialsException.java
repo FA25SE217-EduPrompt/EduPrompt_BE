@@ -9,4 +9,8 @@ public class InvalidCredentialsException extends BaseException{
     public InvalidCredentialsException() {
         super(AuthExceptionCode.INVALID_CREDENTIALS.name(), "Invalid email", HttpStatus.UNAUTHORIZED);
     }
+
+    public InvalidCredentialsException(String message) {
+        super(AuthExceptionCode.INVALID_CREDENTIALS.name(), message, HttpStatus.UNAUTHORIZED);
+    }
 }
