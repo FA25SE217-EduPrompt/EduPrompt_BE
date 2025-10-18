@@ -5,6 +5,9 @@ import SEP490.EduPrompt.dto.response.LoginResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+
 public interface AuthService {
 
 //    boolean authenticateUser(String email, String password);
@@ -29,5 +32,5 @@ public interface AuthService {
 
     LoginResponse refreshToken(HttpServletRequest request);
 
-    LoginResponse googleLogin(GoogleLoginRequeset requeset);
+    LoginResponse googleLogin(GoogleLoginRequeset requeset) throws GeneralSecurityException, IOException;
 }
