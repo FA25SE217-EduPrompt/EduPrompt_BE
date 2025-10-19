@@ -145,17 +145,17 @@ public class PromptController {
     }
 
     //Get all prompt of a specific collection - no condition on prompt
-//    @GetMapping("/collection/{collectionId}")
-//    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-//    public ResponseDto<PaginatedPromptResponse> getPromptsByCollectionId(
-//            @AuthenticationPrincipal UserPrincipal currentUser,
-//            @PathVariable UUID collectionId,
-//            @RequestParam(defaultValue = "0") int page,
-//            @RequestParam(defaultValue = "20") int size) {
-//        log.info("Retrieving prompts by collectionId {} for user: {}", collectionId, currentUser.getUserId());
-//        Pageable pageable = PageRequest.of(page, size);
-//        return ResponseDto.success(promptService.getPromptsByCollectionId(currentUser, pageable, collectionId));
-//    }
+    @GetMapping("/collection/{collectionId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<PaginatedPromptResponse> getPromptsByCollectionId(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @PathVariable UUID collectionId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Retrieving prompts by collectionId {} for user: {}", collectionId, currentUser.getUserId());
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(promptService.getPromptsByCollectionId(currentUser, pageable, collectionId));
+    }
 
     @PutMapping("/{promptId}/metadata")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")

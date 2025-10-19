@@ -10,6 +10,7 @@ import SEP490.EduPrompt.dto.response.prompt.TagDTO;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
+import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
@@ -76,7 +77,7 @@ public class PromptServiceImpl implements PromptService {
         if (dto.getTagIds() != null && !dto.getTagIds().isEmpty()) {
             tags = tagRepository.findAllById(dto.getTagIds());
             if (tags.size() != dto.getTagIds().size()) {
-                throw new EntityNotFoundException("One or more tags not found");
+                throw new ResourceNotFoundException("One or more tags not found");
             }
         }
 
@@ -125,7 +126,7 @@ public class PromptServiceImpl implements PromptService {
     public PromptResponse createPromptInCollection(CreatePromptCollectionRequest dto, UserPrincipal currentUser) {
         // Fetch User entity
         User user = userRepository.findById(currentUser.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Permission check
         if (!permissionService.canCreatePrompt(currentUser)) {
@@ -137,7 +138,7 @@ public class PromptServiceImpl implements PromptService {
 
         // Fetch Collection
         Collection collection = collectionRepository.findByIdAndUserId(dto.getCollectionId(), currentUser.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("Collection not found or not owned by user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found or not owned by user"));
 
         if (collection.getIsDeleted()) {
             throw new IllegalStateException("Cannot add prompt to deleted collection");
@@ -150,7 +151,7 @@ public class PromptServiceImpl implements PromptService {
         // GROUP visibility → check group membership
         if (promptVisibility.equals(Visibility.GROUP.name()) && collection.getGroup() != null) {
             Group group = groupRepository.findById(collection.getGroup().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Group not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
 
             if (!groupMemberRepository.existsByGroupIdAndUserId(group.getId(), user.getId())) {
                 throw new AccessDeniedException("User is not a member of the collection's group");
@@ -173,7 +174,7 @@ public class PromptServiceImpl implements PromptService {
         if (dto.getTagIds() != null && !dto.getTagIds().isEmpty()) {
             tags = tagRepository.findAllById(dto.getTagIds());
             if (tags.size() != dto.getTagIds().size()) {
-                throw new EntityNotFoundException("One or more tags not found");
+                throw new ResourceNotFoundException("One or more tags not found");
             }
         }
 
@@ -346,7 +347,7 @@ public class PromptServiceImpl implements PromptService {
     public PromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request, UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
-                .orElseThrow(() -> new EntityNotFoundException("Prompt not found!!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found!!"));
 
         // Permission check
         if (!permissionService.canEditPrompt(currentUser, prompt)) {
@@ -369,7 +370,7 @@ public class PromptServiceImpl implements PromptService {
             // Validate all tag IDs exist
             List<Tag> tags = tagRepository.findAllById(request.getTagIds());
             if (tags.size() != request.getTagIds().size()) {
-                throw new EntityNotFoundException("One or more tags not found!!");
+                throw new ResourceNotFoundException("One or more tags not found!!");
             }
 
             // Remove existing PromptTag entries
@@ -405,7 +406,7 @@ public class PromptServiceImpl implements PromptService {
     public PromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request, UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
-                .orElseThrow(() -> new EntityNotFoundException("Prompt not found with ID: " + promptId));
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
 
         // Permission check
         if (!permissionService.canEditPrompt(currentUser, prompt)) {
@@ -430,7 +431,7 @@ public class PromptServiceImpl implements PromptService {
             if (request.getCollectionId() != null) {
                 // Move standalone prompt to a collection
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new EntityNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
                 if (collection.getGroup() == null) {
                     throw new InvalidInputException("Collection must be associated with a group for GROUP visibility");
                 }
@@ -460,7 +461,7 @@ public class PromptServiceImpl implements PromptService {
             if (request.getCollectionId() != null) {
                 // Move to a new collection
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new EntityNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
                 }
@@ -476,7 +477,7 @@ public class PromptServiceImpl implements PromptService {
             if (request.getCollectionId() != null) {
                 // Move to a new collection
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new EntityNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
                 }
