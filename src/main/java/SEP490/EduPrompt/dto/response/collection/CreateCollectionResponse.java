@@ -1,6 +1,6 @@
 package SEP490.EduPrompt.dto.response.collection;
 
-import SEP490.EduPrompt.model.Tag;
+import SEP490.EduPrompt.dto.response.prompt.TagDTO;
 import lombok.Builder;
 import lombok.Data;
 
@@ -15,6 +15,6 @@ public class CreateCollectionResponse {
     private String name;
     private String description;
     private String visibility;
-    private List<Tag> tags;
+    private List<TagDTO> tags;
     private Instant createdAt;
 }

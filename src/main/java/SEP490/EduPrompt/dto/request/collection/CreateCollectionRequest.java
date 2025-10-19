@@ -1,11 +1,9 @@
 package SEP490.EduPrompt.dto.request.collection;
 
-import SEP490.EduPrompt.dto.request.AddTagRequest;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,7 +19,7 @@ public record CreateCollectionRequest(
         @NotNull @Pattern(regexp = "(private|public|school|group)", message = "Invalid visibility")
         String visibility,
 
-        List<AddTagRequest> tags,
+        List<UUID> tags,
 
         UUID groupId
 ) {
