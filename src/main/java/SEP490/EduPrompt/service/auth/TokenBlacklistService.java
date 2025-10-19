@@ -66,7 +66,7 @@ public class TokenBlacklistService {
         try {
             String key = keyForToken(token);
             Boolean exists = redisTemplate.hasKey(key);
-            return Boolean.TRUE.equals(exists);
+            return exists;
         } catch (Exception e) {
             log.error("Error checking token blacklist: {}", e.getMessage());
             // Fail secure: if we can't check, assume blacklisted
@@ -121,6 +121,6 @@ public class TokenBlacklistService {
     public boolean areAllUserTokensBlacklisted(String email) {
         String key = USER_BLACKLIST_PREFIX + email;
         Boolean exists = redisTemplate.hasKey(key);
-        return Boolean.TRUE.equals(exists);
+        return exists;
     }
 }

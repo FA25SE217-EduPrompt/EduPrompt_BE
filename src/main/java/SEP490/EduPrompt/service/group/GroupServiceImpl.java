@@ -13,6 +13,7 @@ import SEP490.EduPrompt.dto.response.groupMember.PageGroupMemberResponse;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
+import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.Group;
 import SEP490.EduPrompt.model.GroupMember;
 import SEP490.EduPrompt.model.User;
@@ -242,7 +243,7 @@ public class GroupServiceImpl implements GroupService {
         for (AddGroupMembersRequest.MemberRequest memberRequest : req.members()) {
             // Validate user exists
             User user = userRepository.findById(memberRequest.userId())
-                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + memberRequest.userId()));
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + memberRequest.userId()));
 
             // Check if user is already a member
             GroupMember existingMember = groupMemberRepository.findByGroupIdAndUserId(group.getId(), memberRequest.userId())
@@ -320,14 +321,14 @@ public class GroupServiceImpl implements GroupService {
         GroupMember member = groupMemberRepository.findByGroupIdAndUserId(group.getId(), req.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("Member not found in group: " + req.userId()));
         if (group.getCreatedBy().getId().equals(req.userId())) {
-            throw new IllegalArgumentException("Cannot remove the group creator");
+            throw new InvalidActionException("Cannot remove the group creator");
         }
         if ("admin".equalsIgnoreCase(member.getRole())) {
             long adminCount = group.getGroupMembers().stream()
                     .filter(m -> "admin".equalsIgnoreCase(m.getRole()) && "active".equalsIgnoreCase(m.getStatus()))
                     .count();
             if (adminCount <= 1) {
-                throw new IllegalArgumentException("Cannot remove the last active admin of the group");
+                throw new InvalidActionException("Cannot remove the last active admin of the group");
             }
         }
 
@@ -376,7 +377,7 @@ public class GroupServiceImpl implements GroupService {
             UUID currentSchoolId = currentUser.getSchoolId();
             UUID groupSchoolId = group.getSchool() != null ? group.getSchool().getId() : null;
             if (groupSchoolId == null || !groupSchoolId.equals(currentSchoolId)) {
-                throw new AccessDeniedException("You can only delete groups in your school");
+                throw new InvalidActionException("You can only delete groups in your school");
             }
         }
 
