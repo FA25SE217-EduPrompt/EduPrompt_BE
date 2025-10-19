@@ -2,12 +2,12 @@ package SEP490.EduPrompt.service.permission;
 
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
+import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,11 +17,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PermissionServiceImpl implements PermissionService {
 
-    private GroupMemberRepository groupMemberRepository;
-    private GroupRepository groupRepository;
-    private PromptRepository promptRepository;
-    private CollectionRepository collectionRepository;
-    private UserRepository userRepository;
+    private final GroupMemberRepository groupMemberRepository;
+    private final GroupRepository groupRepository;
+    private final PromptRepository promptRepository;
+    private final CollectionRepository collectionRepository;
+    private final UserRepository userRepository;
 
     @Override
     public boolean canAccessPrompt(Prompt prompt, UserPrincipal currentUser) {
@@ -38,7 +38,7 @@ public class PermissionServiceImpl implements PermissionService {
             case SCHOOL:
                 // Check if user's schoolId matches prompt owner's schoolId
                 User promptOwner = userRepository.findById(prompt.getCreatedBy())
-                        .orElseThrow(() -> new EntityNotFoundException("Prompt owner not found"));
+                        .orElseThrow(() -> new ResourceNotFoundException("Prompt owner not found"));
                 return currentUser.getSchoolId() != null &&
                         currentUser.getSchoolId().equals(promptOwner.getSchoolId());
             case GROUP:
@@ -175,7 +175,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     public boolean canAccessCollection(UserPrincipal currentUser, UUID collectionId) {
         Collection collection = collectionRepository.findById(collectionId)
-                .orElseThrow(() -> new EntityNotFoundException("Collection not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         return canViewCollection(currentUser, collection) ||
                 collection.getUser().getId().equals(currentUser.getUserId()) ||
                 isAdmin(currentUser);
@@ -207,10 +207,10 @@ public class PermissionServiceImpl implements PermissionService {
             return isSchoolMember(userPrincipal, collection.getUser().getSchoolId());
         }
 
-        // For PUBLIC collections, anyone with appropriate role can edit
-        if (Visibility.PUBLIC.name().equals(collection.getVisibility())) {
-            return hasEditCollectionRole(userPrincipal);
-        }
+//        // For PUBLIC collections, anyone with appropriate role can edit
+//        if (Visibility.PUBLIC.name().equals(collection.getVisibility())) {
+//            return hasEditCollectionRole(userPrincipal);
+//        }
 
         // For PRIVATE collections, only owner can edit (already checked above)
         return false;
