@@ -1,6 +1,9 @@
 package SEP490.EduPrompt.service.prompt;
 
+import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.TagDTO;
@@ -114,32 +117,12 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Build response
-        return PromptResponse.builder()
-                .title(savedPrompt.getTitle())
-                .description(savedPrompt.getDescription())
-                .instruction(savedPrompt.getInstruction())
-                .context(savedPrompt.getContext())
-                .inputExample(savedPrompt.getInputExample())
-                .outputFormat(savedPrompt.getOutputFormat())
-                .constraints(savedPrompt.getConstraints())
-                .visibility(savedPrompt.getVisibility())
-                .userName(savedPrompt.getUser().getLastName())
-                .collectionName(null)
-                .tags(tags.stream()
-                        .map(tag -> TagDTO.builder()
-                                .id(tag.getId())
-                                .type(tag.getType())
-                                .value(tag.getValue())
-                                .build())
-                        .collect(Collectors.toList()))
-                .createdAt(savedPrompt.getCreatedAt())
-                .updatedAt(savedPrompt.getUpdatedAt())
-                .build();
+        return buildPromptResponse(savedPrompt);
     }
 
     @Override
     @Transactional
-    public PromptResponse createPromptInCollection(CreatePromptRequest dto, UserPrincipal currentUser) {
+    public PromptResponse createPromptInCollection(CreatePromptCollectionRequest dto, UserPrincipal currentUser) {
         // Fetch User entity
         User user = userRepository.findById(currentUser.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -231,27 +214,7 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Build response
-        return PromptResponse.builder()
-                .title(savedPrompt.getTitle())
-                .description(savedPrompt.getDescription())
-                .instruction(savedPrompt.getInstruction())
-                .context(savedPrompt.getContext())
-                .inputExample(savedPrompt.getInputExample())
-                .outputFormat(savedPrompt.getOutputFormat())
-                .constraints(savedPrompt.getConstraints())
-                .visibility(savedPrompt.getVisibility())
-                .userName(savedPrompt.getUser().getLastName())
-                .collectionName(collection.getName())
-                .tags(tags.stream()
-                        .map(tag -> TagDTO.builder()
-                                .id(tag.getId())
-                                .type(tag.getType())
-                                .value(tag.getValue())
-                                .build())
-                        .collect(Collectors.toList()))
-                .createdAt(savedPrompt.getCreatedAt())
-                .updatedAt(savedPrompt.getUpdatedAt())
-                .build();
+        return buildPromptResponse(savedPrompt);
     }
 
     @Override
@@ -306,12 +269,19 @@ public class PromptServiceImpl implements PromptService {
         }
 
         Page<Prompt> promptPage;
+        //Checks if both userId and collectionId parameters are provided
         if (userId != null && collectionId != null) {
             promptPage = promptRepository.findByUserIdAndCollectionIdAndIsDeletedFalse(userId, collectionId, pageable);
+
+            //If only userId is provided (and collectionId is null),
         } else if (userId != null) {
             promptPage = promptRepository.findByUserIdAndIsDeletedFalse(userId, pageable);
+
+            //If only collectionId is provided (and userId is null)
         } else if (collectionId != null) {
             promptPage = promptRepository.findByCollectionIdAndIsDeletedFalse(collectionId, pageable);
+
+            //If none are provided
         } else {
             promptPage = promptRepository.findByIsDeletedFalseOrderByCreatedAtAsc(pageable);
         }
@@ -371,6 +341,164 @@ public class PromptServiceImpl implements PromptService {
         return mapToPaginatedResponse(promptPage, currentUser);
     }
 
+    @Override
+    @Transactional
+    public PromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request, UserPrincipal currentUser) {
+        // Fetch prompt
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new EntityNotFoundException("Prompt not found!!"));
+
+        // Permission check
+        if (!permissionService.canEditPrompt(currentUser, prompt)) {
+            throw new AccessDeniedException("You do not have permission to edit this prompt!!");
+        }
+
+        // Update metadata fields
+        prompt.setTitle(request.getTitle());
+        prompt.setDescription(request.getDescription());
+        prompt.setInstruction(request.getInstruction());
+        prompt.setContext(request.getContext());
+        prompt.setInputExample(request.getInputExample());
+        prompt.setOutputFormat(request.getOutputFormat());
+        prompt.setConstraints(request.getConstraints());
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+
+        // Handle tags
+        if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
+            // Validate all tag IDs exist
+            List<Tag> tags = tagRepository.findAllById(request.getTagIds());
+            if (tags.size() != request.getTagIds().size()) {
+                throw new EntityNotFoundException("One or more tags not found!!");
+            }
+
+            // Remove existing PromptTag entries
+            promptTagRepository.deleteByPromptId(promptId);
+
+            // Create new PromptTag entries
+            List<PromptTag> newPromptTags = tags.stream()
+                    .map(tag -> PromptTag.builder()
+                            .id(PromptTagId.builder()
+                                    .promptId(promptId)
+                                    .tagId(tag.getId())
+                                    .build())
+                            .prompt(prompt)
+                            .tag(tag)
+                            .createdAt(Instant.now())
+                            .build())
+                    .collect(Collectors.toList());
+            promptTagRepository.saveAll(newPromptTags);
+        } else {
+            // If no tags provided, remove all existing tags
+            promptTagRepository.deleteByPromptId(promptId);
+        }
+
+        // Save updated prompt
+        Prompt updatedPrompt = promptRepository.save(prompt);
+
+        // Build response
+        return buildPromptResponse(updatedPrompt);
+    }
+
+    @Override
+    @Transactional
+    public PromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request, UserPrincipal currentUser) {
+        // Fetch prompt
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new EntityNotFoundException("Prompt not found with ID: " + promptId));
+
+        // Permission check
+        if (!permissionService.canEditPrompt(currentUser, prompt)) {
+            throw new AccessDeniedException("You do not have permission to edit this prompt");
+        }
+
+        // Validate visibility
+        String newVisibility;
+        try {
+            newVisibility = Visibility.parseVisibility(request.getVisibility()).name();
+        } catch (InvalidInputException e) {
+            throw new InvalidInputException("Invalid visibility value: " + request.getVisibility());
+        }
+
+        // Handle visibility transitions
+        Collection collection = prompt.getCollection();
+        if (newVisibility.equals(Visibility.GROUP.name())) {
+            // GROUP visibility requires a collection with a group
+            if (collection == null && request.getCollectionId() == null) {
+                throw new InvalidInputException("GROUP visibility requires a collection");
+            }
+            if (request.getCollectionId() != null) {
+                // Move standalone prompt to a collection
+                collection = collectionRepository.findById(request.getCollectionId())
+                        .orElseThrow(() -> new EntityNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                if (collection.getGroup() == null) {
+                    throw new InvalidInputException("Collection must be associated with a group for GROUP visibility");
+                }
+                if (!permissionService.canEditCollection(currentUser, collection)) {
+                    throw new AccessDeniedException("You do not have permission to add prompts to this collection");
+                }
+                if (!permissionService.isGroupMember(currentUser, collection.getGroup().getId())) {
+                    throw new AccessDeniedException("You must be a member of the group to set GROUP visibility");
+                }
+                prompt.setCollection(collection);
+            } else if (collection.getGroup() == null) {
+                throw new IllegalArgumentException("Current collection must be associated with a group for GROUP visibility");
+            } else if (!permissionService.isGroupMember(currentUser, collection.getGroup().getId())) {
+                throw new AccessDeniedException("You must be a member of the group to set GROUP visibility");
+            }
+            // Validate collection visibility
+            permissionService.validateCollectionVisibility(collection, newVisibility);
+        } else if (newVisibility.equals(Visibility.SCHOOL.name())) {
+            // SCHOOL visibility requires user to have a school affiliation
+            if (currentUser.getSchoolId() == null) {
+                throw new InvalidInputException("User must have a school affiliation for SCHOOL visibility");
+            }
+            if (collection != null) {
+                // Validate collection visibility
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+            }
+            if (request.getCollectionId() != null) {
+                // Move to a new collection
+                collection = collectionRepository.findById(request.getCollectionId())
+                        .orElseThrow(() -> new EntityNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                if (!permissionService.canEditCollection(currentUser, collection)) {
+                    throw new AccessDeniedException("You do not have permission to add prompts to this collection");
+                }
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+                prompt.setCollection(collection);
+            }
+        } else {
+            // PUBLIC or PRIVATE visibility
+            if (collection != null) {
+                // Validate collection visibility
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+            }
+            if (request.getCollectionId() != null) {
+                // Move to a new collection
+                collection = collectionRepository.findById(request.getCollectionId())
+                        .orElseThrow(() -> new EntityNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                if (!permissionService.canEditCollection(currentUser, collection)) {
+                    throw new AccessDeniedException("You do not have permission to add prompts to this collection");
+                }
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+                prompt.setCollection(collection);
+            }
+        }
+
+        // Update visibility
+        prompt.setVisibility(newVisibility);
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+
+        // Save updated prompt
+        Prompt updatedPrompt = promptRepository.save(prompt);
+
+        // Build and return response
+        return buildPromptResponse(updatedPrompt);
+    }
+
+
+    //Helper method function
     private PaginatedPromptResponse getPromptsByVisibility(String visibility, UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId) {
         // Validate filters
         if (userId != null && !currentUser.getUserId().equals(userId) && !permissionService.isAdmin(currentUser)) {
@@ -402,7 +530,7 @@ public class PromptServiceImpl implements PromptService {
                 .map(prompt -> {
                     List<Tag> tags = promptTagRepository.findByPromptId(prompt.getId()).stream()
                             .map(PromptTag::getTag)
-                            .collect(Collectors.toList());
+                            .toList();
 
                     String userName = prompt.getUser() != null
                             ? prompt.getUser().getFirstName() + " " + prompt.getUser().getLastName()
@@ -424,7 +552,6 @@ public class PromptServiceImpl implements PromptService {
                             .collectionName(collectionName)
                             .tags(tags.stream()
                                     .map(tag -> TagDTO.builder()
-                                            .id(tag.getId())
                                             .type(tag.getType())
                                             .value(tag.getValue())
                                             .build())
@@ -441,6 +568,40 @@ public class PromptServiceImpl implements PromptService {
                 .size(promptPage.getSize())
                 .totalElements(promptPage.getTotalElements())
                 .totalPages(promptPage.getTotalPages())
+                .build();
+    }
+
+    private PromptResponse buildPromptResponse(Prompt prompt) {
+        List<Tag> tags = promptTagRepository.findByPromptId(prompt.getId()).stream()
+                .map(PromptTag::getTag)
+                .toList();
+
+        String userName = prompt.getUser() != null
+                ? prompt.getUser().getFirstName() + " " + prompt.getUser().getLastName()
+                : "Unknown";
+        String collectionName = prompt.getCollection() != null
+                ? prompt.getCollection().getName()
+                : null;
+
+        return PromptResponse.builder()
+                .title(prompt.getTitle())
+                .description(prompt.getDescription())
+                .instruction(prompt.getInstruction())
+                .context(prompt.getContext())
+                .inputExample(prompt.getInputExample())
+                .outputFormat(prompt.getOutputFormat())
+                .constraints(prompt.getConstraints())
+                .visibility(prompt.getVisibility())
+                .userName(userName)
+                .collectionName(collectionName)
+                .tags(tags.stream()
+                        .map(tag -> TagDTO.builder()
+                                .type(tag.getType())
+                                .value(tag.getValue())
+                                .build())
+                        .collect(Collectors.toList()))
+                .createdAt(prompt.getCreatedAt())
+                .updatedAt(prompt.getUpdatedAt())
                 .build();
     }
 }

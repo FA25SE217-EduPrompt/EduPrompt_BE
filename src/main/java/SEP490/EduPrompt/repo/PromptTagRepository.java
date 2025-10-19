@@ -9,4 +9,6 @@ import java.util.UUID;
 
 public interface PromptTagRepository extends JpaRepository<PromptTag, PromptTagId> {
     List<PromptTag> findByPromptId(UUID promptId);
+
+    void deleteByPromptId(UUID promptId);
 }

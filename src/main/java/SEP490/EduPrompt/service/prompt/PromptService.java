@@ -1,6 +1,9 @@
 package SEP490.EduPrompt.service.prompt;
 
+import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
@@ -12,7 +15,7 @@ public interface PromptService {
 
     PromptResponse createStandalonePrompt(CreatePromptRequest dto, UserPrincipal currentUser);
 
-    PromptResponse createPromptInCollection(CreatePromptRequest dto, UserPrincipal currentUser);
+    PromptResponse createPromptInCollection(CreatePromptCollectionRequest dto, UserPrincipal currentUser);
 
     PaginatedPromptResponse getPrivatePrompts(UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId);
 
@@ -29,5 +32,9 @@ public interface PromptService {
     PaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId);
 
     PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId);
+
+    PromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request, UserPrincipal currentUser);
+
+    PromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request, UserPrincipal currentUser);
 
 }
