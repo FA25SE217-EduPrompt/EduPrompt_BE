@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @Getter
 @Builder
-public class CreatePromptRequest {
+public class CreatePromptCollectionRequest {
     @NotBlank
     @Size(min = 1, max = 255, message = "Title must be between 1 and 255 characters")
     private String title;
@@ -36,6 +36,9 @@ public class CreatePromptRequest {
 
     @NotNull(message = "Visibility is required")
     private String visibility;
+
+    @NotNull(message = "Collection required")
+    private UUID collectionId;
 
     @Size(max = 10, message = "Maximum 10 tags allowed")
     private List<UUID> tagIds;
