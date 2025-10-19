@@ -1,6 +1,9 @@
 package SEP490.EduPrompt.controller;
 
+import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
@@ -34,15 +37,15 @@ public class PromptController {
         return ResponseDto.success(response);
     }
 
-//    @PostMapping("/collection")
-//    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-//    public ResponseDto<PromptResponse> createPromptInCollection(
-//            @Valid @RequestBody CreatePromptRequest request,
-//            @AuthenticationPrincipal UserPrincipal currentUser) {
-//        log.info("Creating prompt in collection by user: {}", currentUser.getUserId());
-//        PromptResponse response = promptService.createPromptInCollection(request, currentUser);
-//        return ResponseDto.success(response);
-//    }
+    @PostMapping("/collection")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<PromptResponse> createPromptInCollection(
+            @Valid @RequestBody CreatePromptCollectionRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Creating prompt in collection by user: {}", currentUser.getUserId());
+        PromptResponse response = promptService.createPromptInCollection(request, currentUser);
+        return ResponseDto.success(response);
+    }
 
     //This function only get all private prompt of a specific user
     @GetMapping("/private")
@@ -142,15 +145,37 @@ public class PromptController {
     }
 
     //Get all prompt of a specific collection - no condition on prompt
-    @GetMapping("/collection/{collectionId}")
+//    @GetMapping("/collection/{collectionId}")
+//    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+//    public ResponseDto<PaginatedPromptResponse> getPromptsByCollectionId(
+//            @AuthenticationPrincipal UserPrincipal currentUser,
+//            @PathVariable UUID collectionId,
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "20") int size) {
+//        log.info("Retrieving prompts by collectionId {} for user: {}", collectionId, currentUser.getUserId());
+//        Pageable pageable = PageRequest.of(page, size);
+//        return ResponseDto.success(promptService.getPromptsByCollectionId(currentUser, pageable, collectionId));
+//    }
+
+    @PutMapping("/{promptId}/metadata")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getPromptsByCollectionId(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            @PathVariable UUID collectionId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("Retrieving prompts by collectionId {} for user: {}", collectionId, currentUser.getUserId());
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getPromptsByCollectionId(currentUser, pageable, collectionId));
+    public ResponseDto<PromptResponse> updatePromptMetadata(
+            @PathVariable UUID promptId,
+            @Valid @RequestBody UpdatePromptMetadataRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Updating metadata for prompt {} by user: {}", promptId, currentUser.getUserId());
+        PromptResponse response = promptService.updatePromptMetadata(promptId, request, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @PutMapping("/{promptId}/visibility")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<PromptResponse> updatePromptVisibility(
+            @PathVariable UUID promptId,
+            @Valid @RequestBody UpdatePromptVisibilityRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Updating visibility for prompt {} by user: {}", promptId, currentUser.getUserId());
+        PromptResponse response = promptService.updatePromptVisibility(promptId, request, currentUser);
+        return ResponseDto.success(response);
     }
 }
