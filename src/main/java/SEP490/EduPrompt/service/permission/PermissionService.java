@@ -23,6 +23,9 @@ public interface PermissionService {
 
     boolean canAccessCollection(UserPrincipal currentUser, UUID collectionId);
 
+    boolean canEditCollection(UserPrincipal userPrincipal, Collection collection);
+
+    void validateCollectionVisibility(Collection collection, String promptVisibility);
 
     //for prompt
     boolean canViewPrompt(UserPrincipal user, Prompt prompt);
@@ -39,6 +42,4 @@ public interface PermissionService {
 
     boolean canAccessPrompt(Prompt prompt, UserPrincipal currentUser);
 
-
-    void validateCollectionVisibility(Collection collection, String promptVisibility);
 }

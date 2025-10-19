@@ -126,8 +126,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public boolean isSchoolMember(UserPrincipal user, UUID schoolId) {
-        //TODO: finish this function
-        return false;
+        return user.getSchoolId() != null && user.getSchoolId().equals(schoolId);
     }
 
     @Override
@@ -153,22 +152,22 @@ public class PermissionServiceImpl implements PermissionService {
 
         String collectionVisibility = collection.getVisibility();
 
-        if (collectionVisibility.equals(Visibility.PRIVATE.name()) &&
-                !promptVisibility.equals(Visibility.PRIVATE.name())) {
+        if (collectionVisibility.equalsIgnoreCase(Visibility.PRIVATE.name()) &&
+                !promptVisibility.equalsIgnoreCase(Visibility.PRIVATE.name())) {
             throw new IllegalArgumentException("Prompt visibility must be PRIVATE for a PRIVATE collection");
         }
-        if (collectionVisibility.equals(Visibility.GROUP.name()) &&
-                !promptVisibility.equals(Visibility.PUBLIC.name()) &&
-                !promptVisibility.equals(Visibility.GROUP.name())) {
+        if (collectionVisibility.equalsIgnoreCase(Visibility.GROUP.name()) &&
+                !promptVisibility.equalsIgnoreCase(Visibility.PUBLIC.name()) &&
+                !promptVisibility.equalsIgnoreCase(Visibility.GROUP.name())) {
             throw new IllegalArgumentException("Prompt visibility must be PUBLIC or GROUP for a GROUP collection");
         }
-        if (collectionVisibility.equals(Visibility.SCHOOL.name()) &&
-                !promptVisibility.equals(Visibility.PUBLIC.name()) &&
-                !promptVisibility.equals(Visibility.SCHOOL.name())) {
+        if (collectionVisibility.equalsIgnoreCase(Visibility.SCHOOL.name()) &&
+                !promptVisibility.equalsIgnoreCase(Visibility.PUBLIC.name()) &&
+                !promptVisibility.equalsIgnoreCase(Visibility.SCHOOL.name())) {
             throw new IllegalArgumentException("Prompt visibility must be PUBLIC or SCHOOL for a SCHOOL collection");
         }
-        if (collectionVisibility.equals(Visibility.PUBLIC.name()) &&
-                !promptVisibility.equals(Visibility.PUBLIC.name())) {
+        if (collectionVisibility.equalsIgnoreCase(Visibility.PUBLIC.name()) &&
+                !promptVisibility.equalsIgnoreCase(Visibility.PUBLIC.name())) {
             throw new IllegalArgumentException("Prompt visibility must be PUBLIC for a PUBLIC collection");
         }
     }
@@ -180,5 +179,48 @@ public class PermissionServiceImpl implements PermissionService {
         return canViewCollection(currentUser, collection) ||
                 collection.getUser().getId().equals(currentUser.getUserId()) ||
                 isAdmin(currentUser);
+    }
+
+    @Override
+    public boolean canEditCollection(UserPrincipal userPrincipal, Collection collection) {
+        if (userPrincipal == null || collection == null) {
+            return false;
+        }
+
+        // Admin users can edit any collection
+        if (isAdmin(userPrincipal)) {
+            return true;
+        }
+
+        // Collection owner can edit their own collection
+        if (userPrincipal.getUserId().equals(collection.getUser().getId())) {
+            return true;
+        }
+
+        // Check group membership for GROUP visibility collections
+        if (Visibility.GROUP.name().equals(collection.getVisibility()) && collection.getGroup() != null) {
+            return isGroupMember(userPrincipal, collection.getGroup().getId());
+        }
+
+        // For SCHOOL visibility, check if user is from the same school
+        if (Visibility.SCHOOL.name().equals(collection.getVisibility())) {
+            return isSchoolMember(userPrincipal, collection.getUser().getSchoolId());
+        }
+
+        // For PUBLIC collections, anyone with appropriate role can edit
+        if (Visibility.PUBLIC.name().equals(collection.getVisibility())) {
+            return hasEditCollectionRole(userPrincipal);
+        }
+
+        // For PRIVATE collections, only owner can edit (already checked above)
+        return false;
+    }
+
+    // Helper method to check if user has roles that allow editing collections
+    private boolean hasEditCollectionRole(UserPrincipal userPrincipal) {
+        String role = userPrincipal.getRole();
+        return Role.TEACHER.name().equalsIgnoreCase(role) ||
+                Role.SCHOOL_ADMIN.name().equalsIgnoreCase(role) ||
+                Role.SYSTEM_ADMIN.name().equalsIgnoreCase(role);
     }
 }
