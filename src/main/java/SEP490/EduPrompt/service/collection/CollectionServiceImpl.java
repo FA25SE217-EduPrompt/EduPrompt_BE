@@ -7,6 +7,7 @@ import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
+import SEP490.EduPrompt.dto.response.prompt.TagDTO;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
@@ -15,6 +16,7 @@ import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -150,47 +153,56 @@ public class CollectionServiceImpl implements CollectionService {
                 throw new AccessDeniedException("You must be a group member to create a group-visible collection");
             }
         }
+        List<Tag> tags = new ArrayList<>();
+        if (request.tags() != null && !request.tags().isEmpty()) {
+            tags = tagRepository.findAllById(request.tags());
+            if (tags.size() != request.tags().size()) {
+                throw new EntityNotFoundException("One or more tags not found");
+            }
+        }
 
         Collection collection = Collection.builder()
                 .user(user)
                 .name(request.name())
                 .description(request.description())
-                .visibility(request.visibility())
+                .visibility(request.visibility().toUpperCase())
                 .createdBy(currentUserId)
                 .updatedBy(currentUserId)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
+                .isDeleted(false)
                 .group(group)
                 .build();
-
-        // Handle tags (find and create new tag if tag not existed)
-        if (request.tags() != null && !request.tags().isEmpty()) {
-            for (AddTagRequest tagReq : request.tags()) {
-                Optional<Tag> optTag = tagRepository.findByTypeAndValue(tagReq.type(), tagReq.value());
-                Tag tag = optTag.orElseGet(() -> tagRepository.save(
-                        Tag.builder()
-                                .type(tagReq.type())
-                                .value(tagReq.value())
-                                .build()
-                ));
-                CollectionTag collectionTag = CollectionTag.builder()
-                        .collection(collection)
-                        .tag(tag)
-                        .createdAt(Instant.now())
-                        .build();
-                collection.getCollectionTags().add(collectionTag);
-            }
-        }
         Collection saved = collectionRepository.save(collection);
 
+        // Create PromptTag entries
+        if (!tags.isEmpty()) {
+            List<CollectionTag> collectionTags = tags.stream()
+                    .map(tag -> CollectionTag.builder()
+                            .id(CollectionTagId.builder()
+                                    .collectionId(saved.getId())
+                                    .tagId(tag.getId())
+                                    .build())
+                            .collection(saved)
+                            .tag(tag)
+                            .createdAt(Instant.now())
+                            .build())
+                    .collect(Collectors.toList());
+            collectionTagRepository.saveAll(collectionTags);
+        }
         log.info("Collection created: {} by user: {}", saved.getId(), currentUserId);
 
         return CreateCollectionResponse.builder()
                 .id(collection.getId())
                 .name(collection.getName())
                 .description(collection.getDescription())
-                .visibility(collection.getVisibility())
-                .tags(collection.getTags())
+                .visibility(collection.getVisibility().toUpperCase())
+                .tags(tags.stream()
+                        .map(tag -> TagDTO.builder()
+                                .type(tag.getType())
+                                .value(tag.getValue())
+                                .build())
+                        .collect(Collectors.toList()))
                 .createdAt(collection.getCreatedAt())
                 .build();
     }
@@ -269,6 +281,7 @@ public class CollectionServiceImpl implements CollectionService {
     }
 
     @Override
+    @Transactional
     public CollectionResponse getCollectionById(UUID id, UserPrincipal currentUser) {
         Optional<Collection> opt = collectionRepository.findByIdAndIsDeletedFalse(id);
         if (opt.isEmpty()) {
@@ -315,6 +328,7 @@ public class CollectionServiceImpl implements CollectionService {
     }
 
     @Override
+    @Transactional
     public PageCollectionResponse listMyCollections(UserPrincipal currentUser, Pageable pageable) {
         UUID currentUserId = currentUser.getUserId();
         Page<Collection> page = collectionRepository.findByCreatedByAndIsDeletedFalseOrderByCreatedAtDesc(currentUserId, pageable);
@@ -340,6 +354,7 @@ public class CollectionServiceImpl implements CollectionService {
     }
 
     @Override
+    @Transactional
     public PageCollectionResponse listPublicCollections(Pageable pageable) {
         Page<Collection> page = collectionRepository.findPublicCollections(pageable);
 
@@ -364,6 +379,7 @@ public class CollectionServiceImpl implements CollectionService {
     }
 
     @Override
+    @Transactional
     public long countMyCollections(UserPrincipal currentUser) {
         UUID currentUserId = currentUser.getUserId();
         return collectionRepository.countByCreatedByAndIsDeletedFalse(currentUserId);
