@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.exception.auth;
 
 public enum AuthExceptionCode {
+    INVALID_CREDENTIALS,
     USER_NOT_VERIFIED,
     AUTH_FAILED,
     ACCESS_DENIED,

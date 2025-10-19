@@ -54,10 +54,10 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public LoginResponse login(LoginRequest loginRequest) {
         UserAuth userAuth = userAuthRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(InvalidCredentialsException::new);
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), userAuth.getPasswordHash())) {
-            throw new AuthFailedException("Invalid email or password");
+            throw new AuthFailedException("Invalid password");
         }
 
         User user = userAuth.getUser();
@@ -150,7 +150,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         UserAuth userAuth = userAuthRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
+                .orElseThrow(() -> new InvalidCredentialsException("User not found for email: " + email));
 
         if (!token.equals(userAuth.getVerificationToken())) {
             throw new InvalidInputException("Invalid verification token");
@@ -187,7 +187,7 @@ public class AuthServiceImpl implements AuthService {
         log.info("Resending verification email to: {}", email);
 
         UserAuth userAuth = userAuthRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+                .orElseThrow(() -> new InvalidCredentialsException("User not found with email: " + email));
 
         if (userAuth.getUser().getIsVerified()) {
             throw new UserVerifiedException("User is already verified");
@@ -212,7 +212,7 @@ public class AuthServiceImpl implements AuthService {
         log.info("Changing password for user: {}", request.getEmail());
 
         UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+                .orElseThrow(() -> new InvalidCredentialsException("User not found with email: " + request.getEmail()));
 
         if (!passwordEncoder.matches(request.getOldPassword(), userAuth.getPasswordHash())) {
             throw new InvalidInputException("Old password is incorrect");
@@ -234,7 +234,7 @@ public class AuthServiceImpl implements AuthService {
         int expirationMin = 5; // 5 minutes for password reset
 
         UserAuth userAuth = userAuthRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+                .orElseThrow(() -> new InvalidCredentialsException("User not found with email: " + request.getEmail()));
 
         String token = jwtUtil.generateTokenWithExpiration(userAuth.getEmail(), expirationMin);
 
@@ -280,7 +280,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         UserAuth userAuth = userAuthRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found for token"));
+                .orElseThrow(() -> new InvalidCredentialsException("User not found for token"));
 
         if (userAuth.getVerificationToken() == null ||
                 !userAuth.getVerificationToken().equals(request.getToken())) {
