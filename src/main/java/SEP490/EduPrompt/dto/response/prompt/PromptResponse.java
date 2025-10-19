@@ -18,7 +18,7 @@ public class PromptResponse {
     private String outputFormat;
     private String constraints;
     private String visibility;
-    private String userName;
+    private String fullName;
     private String collectionName;
     private List<TagDTO> tags;
     private Instant createdAt;

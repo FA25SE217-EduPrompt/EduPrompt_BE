@@ -26,7 +26,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     public boolean canAccessPrompt(Prompt prompt, UserPrincipal currentUser) {
         // Check PermissionService
-        if (canViewPrompt(currentUser, prompt)) {
+        if (!canViewPrompt(currentUser, prompt)) {
             return false;
         }
 
