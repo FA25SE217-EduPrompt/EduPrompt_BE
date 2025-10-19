@@ -9,10 +9,8 @@ import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Builder
 @AllArgsConstructor
@@ -75,9 +73,5 @@ public class Collection {
 
     @OneToMany(mappedBy = "collection", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<CollectionTag> collectionTags = new LinkedHashSet<>();
-
-    public List<Tag> getTags() {
-        return collectionTags.stream().map(CollectionTag::getTag).collect(Collectors.toList());
-    }
 
 }
