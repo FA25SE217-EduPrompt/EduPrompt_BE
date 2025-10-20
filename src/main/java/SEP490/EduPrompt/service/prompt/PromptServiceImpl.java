@@ -406,7 +406,7 @@ public class PromptServiceImpl implements PromptService {
     public PromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request, UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
-                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+                .orElseThrow(() -> new EntityNotFoundException("Prompt not found with ID: " + promptId));
 
         // Permission check
         if (!permissionService.canEditPrompt(currentUser, prompt)) {
@@ -417,23 +417,40 @@ public class PromptServiceImpl implements PromptService {
         String newVisibility;
         try {
             newVisibility = Visibility.parseVisibility(request.getVisibility()).name();
-        } catch (InvalidInputException e) {
+        } catch (IllegalArgumentException e) {
             throw new InvalidInputException("Invalid visibility value: " + request.getVisibility());
         }
 
         // Handle visibility transitions
         Collection collection = prompt.getCollection();
-        if (newVisibility.equals(Visibility.GROUP.name())) {
+        boolean removeFromCollection = false;
+
+        if (newVisibility.equals(Visibility.PRIVATE.name()) || newVisibility.equals(Visibility.PUBLIC.name())) {
+            // For PRIVATE or PUBLIC, check if current collection allows it
+            if (collection != null) {
+                try {
+                    permissionService.validateCollectionVisibility(collection, newVisibility);
+                } catch (IllegalArgumentException e) {
+                    // If validation fails, automatically remove from collection to make it standalone
+                    removeFromCollection = true;
+                }
+            }
+        }
+
+        if (removeFromCollection) {
+            prompt.setCollection(null);
+            collection = null;
+        } else if (newVisibility.equals(Visibility.GROUP.name())) {
             // GROUP visibility requires a collection with a group
             if (collection == null && request.getCollectionId() == null) {
-                throw new InvalidInputException("GROUP visibility requires a collection");
+                throw new IllegalArgumentException("GROUP visibility requires a collection");
             }
             if (request.getCollectionId() != null) {
                 // Move standalone prompt to a collection
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new EntityNotFoundException("Collection not found with ID: " + request.getCollectionId()));
                 if (collection.getGroup() == null) {
-                    throw new InvalidInputException("Collection must be associated with a group for GROUP visibility");
+                    throw new IllegalArgumentException("Collection must be associated with a group for GROUP visibility");
                 }
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
@@ -447,21 +464,20 @@ public class PromptServiceImpl implements PromptService {
             } else if (!permissionService.isGroupMember(currentUser, collection.getGroup().getId())) {
                 throw new AccessDeniedException("You must be a member of the group to set GROUP visibility");
             }
-            // Validate collection visibility
-            permissionService.validateCollectionVisibility(collection, newVisibility);
+            // Validate collection visibility only if not removing
+            if (collection != null) {
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+            }
         } else if (newVisibility.equals(Visibility.SCHOOL.name())) {
-            // SCHOOL visibility requires user to have a school affiliation
             if (currentUser.getSchoolId() == null) {
-                throw new InvalidInputException("User must have a school affiliation for SCHOOL visibility");
+                throw new IllegalArgumentException("User must have a school affiliation for SCHOOL visibility");
             }
             if (collection != null) {
-                // Validate collection visibility
                 permissionService.validateCollectionVisibility(collection, newVisibility);
             }
             if (request.getCollectionId() != null) {
-                // Move to a new collection
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new EntityNotFoundException("Collection not found with ID: " + request.getCollectionId()));
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
                 }
@@ -469,15 +485,12 @@ public class PromptServiceImpl implements PromptService {
                 prompt.setCollection(collection);
             }
         } else {
-            // PUBLIC or PRIVATE visibility
             if (collection != null) {
-                // Validate collection visibility
                 permissionService.validateCollectionVisibility(collection, newVisibility);
             }
             if (request.getCollectionId() != null) {
-                // Move to a new collection
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new EntityNotFoundException("Collection not found with ID: " + request.getCollectionId()));
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
                 }

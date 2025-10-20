@@ -159,7 +159,7 @@ public class PermissionServiceImpl implements PermissionService {
         if (collectionVisibility.equalsIgnoreCase(Visibility.GROUP.name()) &&
                 !promptVisibility.equalsIgnoreCase(Visibility.PUBLIC.name()) &&
                 !promptVisibility.equalsIgnoreCase(Visibility.GROUP.name())) {
-            throw new IllegalArgumentException("Prompt visibility must be PUBLIC or GROUP for a GROUP collection");
+            throw new IllegalArgumentException("Prompt visibility must be PUBLIC or GROUP for a GROUP collection! ");
         }
         if (collectionVisibility.equalsIgnoreCase(Visibility.SCHOOL.name()) &&
                 !promptVisibility.equalsIgnoreCase(Visibility.PUBLIC.name()) &&
