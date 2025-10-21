@@ -2,6 +2,7 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.ResponseDto;
+import SEP490.EduPrompt.dto.response.prompt.GetPaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
@@ -49,65 +50,57 @@ public class PromptController {
     }
 
     //This function only get all private prompt of a specific user
-    @GetMapping("/private")
+    @GetMapping("/my-prompt")
     @PreAuthorize("hasAnyRole('TEACHER', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getPrivatePrompts(
+    public ResponseDto<PaginatedPromptResponse> getMyPrompts(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID userId,
-            @RequestParam(required = false) UUID collectionId) {
+            @RequestParam(defaultValue = "20") int size) {
         log.info("Retrieving private prompts for user: {}", currentUser.getUserId());
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getPrivatePrompts(currentUser, pageable, userId, collectionId));
+        return ResponseDto.success(promptService.getMyPrompts(currentUser, pageable));
     }
 
     //Get all prompt that belong to any school (School id was input when create)
     @GetMapping("/school")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getSchoolPrompts(
+    public ResponseDto<GetPaginatedPromptResponse> getSchoolPrompts(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID userId,
-            @RequestParam(required = false) UUID collectionId) {
+            @RequestParam(defaultValue = "20") int size) {
         log.info("Retrieving school prompts for user: {}", currentUser.getUserId());
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getSchoolPrompts(currentUser, pageable, userId, collectionId));
+        return ResponseDto.success(promptService.getSchoolPrompts(currentUser, pageable));
     }
 
     // Get all prompt that exist in any specific group (Group id was input when create)
     @GetMapping("/group")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getGroupPrompts(
+    public ResponseDto<GetPaginatedPromptResponse> getGroupPrompts(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID userId,
-            @RequestParam(required = false) UUID collectionId) {
+            @RequestParam(defaultValue = "20") int size) {
         log.info("Retrieving group prompts for user: {}", currentUser.getUserId());
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getGroupPrompts(currentUser, pageable, userId, collectionId));
+        return ResponseDto.success(promptService.getGroupPrompts(currentUser, pageable));
     }
 
     //This function only get all public prompt of a specific user
     @GetMapping("/public")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getPublicPrompts(
+    public ResponseDto<GetPaginatedPromptResponse> getPublicPrompts(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID userId,
-            @RequestParam(required = false) UUID collectionId) {
+            @RequestParam(defaultValue = "20") int size) {
         log.info("Retrieving public prompts for user: {}", currentUser.getUserId());
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getPublicPrompts(currentUser, pageable, userId, collectionId));
+        return ResponseDto.success(promptService.getPublicPrompts(currentUser, pageable));
     }
 
     //Get all prompt of a user - no condition on prompt
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getPromptsByUserId(
+    public ResponseDto<GetPaginatedPromptResponse> getPromptsByUserId(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") int page,
@@ -120,7 +113,7 @@ public class PromptController {
     //Get all prompt of a specific collection - no condition on prompt
     @GetMapping("/collection/{collectionId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getPromptsByCollectionId(
+    public ResponseDto<GetPaginatedPromptResponse> getPromptsByCollectionId(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID collectionId,
             @RequestParam(defaultValue = "0") int page,

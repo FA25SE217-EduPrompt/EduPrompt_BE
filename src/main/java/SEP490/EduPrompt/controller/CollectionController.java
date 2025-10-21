@@ -36,7 +36,7 @@ public class CollectionController {
     }
 
     // Get collections by current user ID
-    @GetMapping("/my")
+    @GetMapping("/my-collection")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     public ResponseDto<PageCollectionResponse> listMyCollections(
             @AuthenticationPrincipal UserPrincipal currentUser,
