@@ -4,13 +4,12 @@ import java.util.List;
 import java.util.UUID;
 
 public record PromptFilterRequest(
-        String visibility,
         UUID createdBy,
         String collectionName,
         List<String> tagTypes,
         String schoolName,
         String groupName,
-        String searchText,
+        String title,
         Boolean includeDeleted
 ) {
 }
