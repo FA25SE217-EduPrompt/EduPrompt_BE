@@ -13,7 +13,6 @@ import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Subquery;
@@ -228,7 +227,7 @@ public class PromptServiceImpl implements PromptService {
     public PaginatedPromptResponse getPrivatePrompts(UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId) {
         // For PRIVATE, only the current user can access their own prompts
         UUID targetUserId = userId != null ? userId : currentUser.getUserId();
-        if (!currentUser.getUserId().equals(targetUserId) && !permissionService.isAdmin(currentUser)) {
+        if (!currentUser.getUserId().equals(targetUserId) && !permissionService.isSystemAdmin(currentUser)) {
             throw new AccessDeniedException("Cannot access private prompts of another user");
         }
         return getPromptsByVisibility(Visibility.PRIVATE.name(), currentUser, pageable, targetUserId, collectionId);
@@ -508,22 +507,22 @@ public class PromptServiceImpl implements PromptService {
             throw new AccessDeniedException("Only SYSTEM_ADMIN can include deleted prompts");
         }
         if (request.collectionName() != null && !collectionRepository.existsByNameIgnoreCase(request.collectionName())) {
-            throw new EntityNotFoundException("Collection not found with name: " + request.collectionName());
+            throw new ResourceNotFoundException("Collection not found with name: " + request.collectionName());
         }
         if (request.tagTypes() != null && !request.tagTypes().isEmpty()) {
             List<String> foundTagTypes = tagRepository.findAllByTypeIn(request.tagTypes()).stream()
                     .map(Tag::getType)
                     .distinct()
-                    .collect(Collectors.toList());
+                    .toList();
             if (foundTagTypes.size() != request.tagTypes().size()) {
                 throw new ResourceNotFoundException("One or more tag types not found");
             }
         }
         if (request.schoolName() != null && !schoolRepository.existsByNameIgnoreCase(request.schoolName())) {
-            throw new EntityNotFoundException("School not found with name: " + request.schoolName());
+            throw new ResourceNotFoundException("School not found with name: " + request.schoolName());
         }
         if (request.groupName() != null && !groupRepository.existsByNameIgnoreCase(request.groupName())) {
-            throw new EntityNotFoundException("Group not found with name: " + request.groupName());
+            throw new ResourceNotFoundException("Group not found with name: " + request.groupName());
         }
 
         // Build Specification

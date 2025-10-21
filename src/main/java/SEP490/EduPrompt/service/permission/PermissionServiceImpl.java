@@ -2,6 +2,7 @@ package SEP490.EduPrompt.service.permission;
 
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
+import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.model.Prompt;
@@ -131,8 +132,31 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public boolean canViewCollection(UserPrincipal userPrincipal, Collection collection) {
-        //TODO: finish this function
-        return false;
+        if (collection.getIsDeleted() != null && collection.getIsDeleted()) {
+            return isAdmin(userPrincipal);
+        }
+        switch (Visibility.valueOf(collection.getVisibility())) {
+            case PRIVATE:
+                // Only owner can access
+                return userPrincipal.getUserId().equals(collection.getCreatedBy());
+            case SCHOOL:
+                // Check if user's schoolId matches prompt owner's schoolId
+                User promptOwner = userRepository.findById(collection.getCreatedBy())
+                        .orElseThrow(() -> new ResourceNotFoundException("Prompt owner not found"));
+                return userPrincipal.getSchoolId() != null &&
+                        userPrincipal.getSchoolId().equals(promptOwner.getSchoolId());
+            case GROUP:
+                // Check if user is a member of the group associated with the collection
+                if (collection.getGroup() == null) {
+                    return false;
+                }
+                UUID groupId = collection.getGroup().getId();
+                return isGroupMember(userPrincipal, groupId);
+            case PUBLIC:
+                return true;
+            default:
+                return false;
+        }
     }
 
     @Override
@@ -147,28 +171,28 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     public void validateCollectionVisibility(Collection collection, String promptVisibility) {
         if (collection == null || promptVisibility == null) {
-            throw new IllegalArgumentException("Collection and visibility must not be null");
+            throw new InvalidInputException("Collection and visibility must not be null");
         }
 
         String collectionVisibility = collection.getVisibility();
 
         if (collectionVisibility.equalsIgnoreCase(Visibility.PRIVATE.name()) &&
                 !promptVisibility.equalsIgnoreCase(Visibility.PRIVATE.name())) {
-            throw new IllegalArgumentException("Prompt visibility must be PRIVATE for a PRIVATE collection");
+            throw new InvalidInputException("Prompt visibility must be PRIVATE for a PRIVATE collection");
         }
         if (collectionVisibility.equalsIgnoreCase(Visibility.GROUP.name()) &&
                 !promptVisibility.equalsIgnoreCase(Visibility.PUBLIC.name()) &&
                 !promptVisibility.equalsIgnoreCase(Visibility.GROUP.name())) {
-            throw new IllegalArgumentException("Prompt visibility must be PUBLIC or GROUP for a GROUP collection! ");
+            throw new InvalidInputException("Prompt visibility must be PUBLIC or GROUP for a GROUP collection! ");
         }
         if (collectionVisibility.equalsIgnoreCase(Visibility.SCHOOL.name()) &&
                 !promptVisibility.equalsIgnoreCase(Visibility.PUBLIC.name()) &&
                 !promptVisibility.equalsIgnoreCase(Visibility.SCHOOL.name())) {
-            throw new IllegalArgumentException("Prompt visibility must be PUBLIC or SCHOOL for a SCHOOL collection");
+            throw new InvalidInputException("Prompt visibility must be PUBLIC or SCHOOL for a SCHOOL collection");
         }
         if (collectionVisibility.equalsIgnoreCase(Visibility.PUBLIC.name()) &&
                 !promptVisibility.equalsIgnoreCase(Visibility.PUBLIC.name())) {
-            throw new IllegalArgumentException("Prompt visibility must be PUBLIC for a PUBLIC collection");
+            throw new InvalidInputException("Prompt visibility must be PUBLIC for a PUBLIC collection");
         }
     }
 

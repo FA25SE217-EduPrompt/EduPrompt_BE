@@ -10,6 +10,7 @@ import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
 import SEP490.EduPrompt.dto.response.group.UpdateGroupResponse;
 import SEP490.EduPrompt.dto.response.groupMember.GroupMemberResponse;
 import SEP490.EduPrompt.dto.response.groupMember.PageGroupMemberResponse;
+import SEP490.EduPrompt.enums.GroupRole;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
@@ -224,7 +225,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Only group admins or system/school admins can add members
         boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                id, currentUserId, "active", List.of("admin")
+                id, currentUserId, "active", List.of(GroupRole.ADMIN.name())
         );
         if (!isGroupAdmin && !isAdmin(currentUser)) {
             throw new AccessDeniedException("Only group admins or system/school admins can add members to this group");
@@ -254,7 +255,7 @@ public class GroupServiceImpl implements GroupService {
                 GroupMember newMember = GroupMember.builder()
                         .group(group)
                         .user(user)
-                        .role(memberRequest.role() != null && !memberRequest.role().isBlank() ? memberRequest.role().toLowerCase() : "member")
+                        .role(memberRequest.role() != null && !memberRequest.role().isBlank() ? memberRequest.role().toLowerCase() : GroupRole.MEMBER.name())
                         .status(memberRequest.status() != null && !memberRequest.status().isBlank() ? memberRequest.status().toLowerCase() : "active")
                         .joinedAt(Instant.now())
                         .build();
@@ -302,7 +303,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Only group admins or system/school admins can remove members
         boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                id, currentUserId, "active", List.of("admin")
+                id, currentUserId, "active", List.of(GroupRole.ADMIN.name())
         );
         if (!isGroupAdmin && !isAdmin(currentUser)) {
             throw new AccessDeniedException("Only group admins or system/school admins can remove members from this group");
@@ -323,9 +324,9 @@ public class GroupServiceImpl implements GroupService {
         if (group.getCreatedBy().getId().equals(req.userId())) {
             throw new InvalidActionException("Cannot remove the group creator");
         }
-        if ("admin".equalsIgnoreCase(member.getRole())) {
+        if (GroupRole.ADMIN.name().equalsIgnoreCase(member.getRole())) {
             long adminCount = group.getGroupMembers().stream()
-                    .filter(m -> "admin".equalsIgnoreCase(m.getRole()) && "active".equalsIgnoreCase(m.getStatus()))
+                    .filter(m -> GroupRole.ADMIN.name().equalsIgnoreCase(m.getRole()) && "active".equalsIgnoreCase(m.getStatus()))
                     .count();
             if (adminCount <= 1) {
                 throw new InvalidActionException("Cannot remove the last active admin of the group");
