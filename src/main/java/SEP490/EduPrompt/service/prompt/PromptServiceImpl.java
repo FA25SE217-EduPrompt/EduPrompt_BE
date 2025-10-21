@@ -817,6 +817,7 @@ public class PromptServiceImpl implements PromptService {
                 .title(prompt.getTitle())
                 .description(prompt.getDescription())
                 .context(prompt.getContext())
+                .instruction(prompt.getInstruction())
                 .inputExample(prompt.getInputExample())
                 .outputFormat(prompt.getOutputFormat())
                 .constraints(prompt.getConstraints())
