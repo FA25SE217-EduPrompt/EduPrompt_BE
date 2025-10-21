@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.service.prompt;
 
 import SEP490.EduPrompt.dto.request.prompt.*;
+import SEP490.EduPrompt.dto.response.prompt.GetPaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
@@ -14,17 +15,17 @@ public interface PromptService {
 
     PromptResponse createPromptInCollection(CreatePromptCollectionRequest dto, UserPrincipal currentUser);
 
-    PaginatedPromptResponse getPrivatePrompts(UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId);
+    PaginatedPromptResponse getMyPrompts(UserPrincipal currentUser, Pageable pageable);
 
-    PaginatedPromptResponse getSchoolPrompts(UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId);
+    GetPaginatedPromptResponse getSchoolPrompts(UserPrincipal currentUser, Pageable pageable);
 
-    PaginatedPromptResponse getGroupPrompts(UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId);
+    GetPaginatedPromptResponse getGroupPrompts(UserPrincipal currentUser, Pageable pageable);
 
-    PaginatedPromptResponse getPublicPrompts(UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId);
+    GetPaginatedPromptResponse getPublicPrompts(UserPrincipal currentUser, Pageable pageable);
 
-    PaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId);
+    GetPaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId);
 
-    PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId);
+    GetPaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId);
 
     PromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request, UserPrincipal currentUser);
 
