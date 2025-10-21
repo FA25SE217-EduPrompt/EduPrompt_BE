@@ -9,7 +9,6 @@ import java.util.UUID;
 
 @Builder
 public record CollectionResponse(
-        UUID id,
         String name,
         String description,
         String visibility,

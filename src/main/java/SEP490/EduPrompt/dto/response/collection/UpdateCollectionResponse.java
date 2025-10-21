@@ -11,7 +11,6 @@ import java.util.UUID;
 @Builder
 @Data
 public class UpdateCollectionResponse {
-    private UUID id;
     private String name;
     private String description;
     private String visibility;
