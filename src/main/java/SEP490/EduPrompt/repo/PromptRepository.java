@@ -4,15 +4,17 @@ import SEP490.EduPrompt.model.Prompt;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface PromptRepository extends JpaRepository<Prompt, UUID> {
+public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecificationExecutor<Prompt> {
     Page<Prompt> findByCreatedByAndIsDeletedFalseOrderByCreatedAtDesc(UUID createdBy, Pageable pageable);
 
     Optional<Prompt> findByIdAndCreatedByAndIsDeletedFalse(UUID id, UUID createdBy);
@@ -59,4 +61,7 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID> {
     // Temporary method to handle combined userId and collectionId query
     @Query("SELECT p FROM Prompt p WHERE p.user.id = :userId AND p.collection.id = :collectionId AND p.isDeleted = false")
     Page<Prompt> findByUserIdAndCollectionIdAndIsDeletedFalse(@Param("userId") UUID userId, @Param("collectionId") UUID collectionId, Pageable pageable);
+
+    @Query("SELECT p FROM Prompt p JOIN FETCH p.user JOIN FETCH p.collection c LEFT JOIN FETCH c.group WHERE p.collection.id = :collectionId AND p.isDeleted = false")
+    List<Prompt> findByCollectionIdAndIsDeletedFalse(UUID collectionId);
 }

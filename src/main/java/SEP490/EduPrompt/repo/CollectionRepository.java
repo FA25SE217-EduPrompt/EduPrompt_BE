@@ -27,4 +27,6 @@ public interface CollectionRepository extends JpaRepository<Collection, UUID> {
 
     @Query("SELECT c FROM Collection c WHERE c.id = :id AND c.user.id = :userId")
     Optional<Collection> findByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
+
+    boolean existsByNameIgnoreCase(String name);
 }

@@ -34,4 +34,8 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             @Param("userId") UUID userId,
             @Param("status") String status
     );
+
+    boolean existsByNameIgnoreCase(String name);
+
+    Optional<Group> findByNameIgnoreCase(String name);
 }
