@@ -22,10 +22,6 @@ public interface PromptService {
 
     PaginatedPromptResponse getPublicPrompts(UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId);
 
-    PaginatedPromptResponse getPromptsByCreatedAtAsc(UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId);
-
-    PaginatedPromptResponse getPromptsByUpdatedAtAsc(UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId);
-
     PaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId);
 
     PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId);
@@ -37,6 +33,8 @@ public interface PromptService {
     void softDeletePrompt(UUID promptId, UserPrincipal currentUser);
 
     PaginatedPromptResponse filterPrompts(PromptFilterRequest request, UserPrincipal currentUser, Pageable pageable);
+
+    PromptResponse getPromptById(UUID promptId, UserPrincipal currentUser);
 
 
 }
