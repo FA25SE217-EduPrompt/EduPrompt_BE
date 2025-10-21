@@ -745,16 +745,7 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Build and return response with only requested fields
-        return PromptResponse.builder()
-                .title(prompt.getTitle())
-                .description(prompt.getDescription())
-                .instruction(prompt.getInstruction())
-                .context(prompt.getContext())
-                .inputExample(prompt.getInputExample())
-                .outputFormat(prompt.getOutputFormat())
-                .constraints(prompt.getConstraints())
-                .visibility(prompt.getVisibility())
-                .build();
+        return buildPromptResponse(prompt);
     }
 
     //Helper method function
