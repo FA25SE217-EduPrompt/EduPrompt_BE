@@ -1,9 +1,6 @@
 package SEP490.EduPrompt.controller;
 
-import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
-import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
-import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
-import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
+import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
@@ -14,10 +11,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -178,4 +177,38 @@ public class PromptController {
         PromptResponse response = promptService.updatePromptVisibility(promptId, request, currentUser);
         return ResponseDto.success(response);
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<Void> softDeletePrompt(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Soft-deleting prompt: {} by user: {}", id, currentUser.getUserId());
+        promptService.softDeletePrompt(id, currentUser);
+        return ResponseDto.success(null);
+    }
+
+    @GetMapping("/filter")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<PaginatedPromptResponse> filterPrompts(
+            @RequestParam(required = false) String visibility,
+            @RequestParam(required = false) UUID createdBy,
+            @RequestParam(required = false) String collectionName,
+            @RequestParam(required = false) List<String> tagTypes,
+            @RequestParam(required = false) String schoolName,
+            @RequestParam(required = false) String groupName,
+            @RequestParam(required = false) String searchText,
+            @RequestParam(required = false) Boolean includeDeleted,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Filtering prompts for user: {} with params: visibility={}, createdBy={}, collectionName={}, tagTypes={}, schoolName={}, groupName={}, searchText={}, includeDeleted={}",
+                currentUser.getUserId(), visibility, createdBy, collectionName, tagTypes, schoolName, groupName, searchText, includeDeleted);
+
+        PromptFilterRequest request = new PromptFilterRequest(visibility, createdBy, collectionName, tagTypes, schoolName, groupName, searchText, includeDeleted);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        PaginatedPromptResponse response = promptService.filterPrompts(request, currentUser, pageable);
+        return ResponseDto.success(response);
+    }
+
 }
