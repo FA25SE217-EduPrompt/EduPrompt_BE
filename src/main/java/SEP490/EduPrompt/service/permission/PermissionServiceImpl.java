@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.service.permission;
 
+import SEP490.EduPrompt.enums.GroupRole;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
@@ -12,6 +13,7 @@ import SEP490.EduPrompt.service.auth.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -23,12 +25,13 @@ public class PermissionServiceImpl implements PermissionService {
     private final PromptRepository promptRepository;
     private final CollectionRepository collectionRepository;
     private final UserRepository userRepository;
+    private final SchoolRepository schoolRepository;
 
     @Override
     public boolean canAccessPrompt(Prompt prompt, UserPrincipal currentUser) {
         // Check PermissionService
-        if (!canViewPrompt(currentUser, prompt)) {
-            return false;
+        if (prompt.getIsDeleted() != null && prompt.getIsDeleted()) {
+            return isAdmin(currentUser);
         }
 
         // Additional checks based on visibility
@@ -57,29 +60,6 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    public boolean canViewPrompt(UserPrincipal user, Prompt prompt) {
-        if (prompt.getIsDeleted() != null && prompt.getIsDeleted()) {
-            return isAdmin(user);
-        }
-
-        switch (Visibility.valueOf(prompt.getVisibility())) {
-            case PUBLIC:
-                return true;
-            case PRIVATE:
-                if (user == null) return false;
-                return user.getUserId().equals(prompt.getCreatedBy()) || isAdmin(user);
-            case SCHOOL:
-                if (user == null) return false;
-                //TODO: complete the check
-            case GROUP:
-                if (user == null) return false;
-                //TODO: complete the check
-            default:
-                return false;
-        }
-    }
-
-    @Override
     public boolean canEditPrompt(UserPrincipal user, Prompt prompt) {
         if (user == null) return false;
         if (user.getUserId().equals(prompt.getCreatedBy())) return true;
@@ -101,6 +81,21 @@ public class PermissionServiceImpl implements PermissionService {
         return isAdmin(user) && user.getUsername().equalsIgnoreCase("lord tri nguyen"); //dont ask why
     }
 
+    @Override
+    public boolean canFilterPrompt(Prompt prompt, UserPrincipal currentUser) {
+        // Check PermissionService
+        if (prompt.getIsDeleted() != null && prompt.getIsDeleted()) {
+            return isAdmin(currentUser);
+        }
+        return switch (Visibility.valueOf(prompt.getVisibility())) {
+            case PRIVATE ->
+                // Only owner can access
+                    currentUser.getUserId().equals(prompt.getCreatedBy());
+            case GROUP, SCHOOL, PUBLIC -> true;
+            default -> false;
+        };
+    }
+
     public boolean isAdmin(UserPrincipal user) {
         if (user == null) return false;
         String r = user.getRole();
@@ -108,7 +103,7 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    public boolean isSchoolAdmin(UserPrincipal user) {
+    public boolean isSchoolAdmin(UserPrincipal user)  {
         if (user == null) return false;
         return Role.SCHOOL_ADMIN.name().equalsIgnoreCase(user.getRole());
     }
@@ -128,6 +123,12 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     public boolean isSchoolMember(UserPrincipal user, UUID schoolId) {
         return user.getSchoolId() != null && user.getSchoolId().equals(schoolId);
+    }
+
+    @Override
+    public boolean isGroupAdmin(UserPrincipal user, UUID groupId) {
+        if (user == null || groupId == null) return false;
+        return groupMemberRepository.existsByGroupIdAndUserIdAndRoleIn(groupId, user.getUserId(), List.of(GroupRole.ADMIN.name()));
     }
 
     @Override
@@ -223,12 +224,12 @@ public class PermissionServiceImpl implements PermissionService {
 
         // Check group membership for GROUP visibility collections
         if (Visibility.GROUP.name().equals(collection.getVisibility()) && collection.getGroup() != null) {
-            return isGroupMember(userPrincipal, collection.getGroup().getId());
+            return isGroupAdmin(userPrincipal, collection.getGroup().getId());
         }
 
         // For SCHOOL visibility, check if user is from the same school
         if (Visibility.SCHOOL.name().equals(collection.getVisibility())) {
-            return isSchoolMember(userPrincipal, collection.getUser().getSchoolId());
+            return isSchoolAdmin(userPrincipal);
         }
 
 //        // For PUBLIC collections, anyone with appropriate role can edit

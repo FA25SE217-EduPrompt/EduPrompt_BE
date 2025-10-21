@@ -18,6 +18,8 @@ public interface PermissionService {
 
     boolean isSchoolMember(UserPrincipal user, UUID schoolId);
 
+    boolean isGroupAdmin(UserPrincipal user, UUID groupId);
+
     //for collection
     boolean canViewCollection(UserPrincipal userPrincipal, Collection collection);
 
@@ -28,7 +30,6 @@ public interface PermissionService {
     void validateCollectionVisibility(Collection collection, String promptVisibility);
 
     //for prompt
-    boolean canViewPrompt(UserPrincipal user, Prompt prompt);
 
     boolean canEditPrompt(UserPrincipal user, Prompt prompt);
 
@@ -37,6 +38,8 @@ public interface PermissionService {
     boolean canViewDeleted(UserPrincipal user);
 
     boolean canDoAll(UserPrincipal user);
+
+    boolean canFilterPrompt(Prompt prompt, UserPrincipal currentUser);
 
     boolean canCreatePrompt(UserPrincipal user);
 

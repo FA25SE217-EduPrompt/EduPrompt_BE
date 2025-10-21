@@ -250,7 +250,7 @@ public class CollectionServiceImpl implements CollectionService {
 
         // Handle SCHOOL visibility
         if (Visibility.SCHOOL.name().equals(newVisibility) && currentUser.getSchoolId() == null) {
-            throw new IllegalArgumentException("User must have a school affiliation for SCHOOL visibility");
+            throw new InvalidActionException("User must have a school affiliation for SCHOOL visibility");
         }
 
         // Update collection fields
