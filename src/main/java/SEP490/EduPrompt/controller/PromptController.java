@@ -2,9 +2,9 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.ResponseDto;
-import SEP490.EduPrompt.dto.response.prompt.GetPaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
-import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.prompt.PromptService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,29 +30,29 @@ public class PromptController {
 
     @PostMapping("/standalone")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PromptResponse> createStandalonePrompt(
+    public ResponseDto<DetailPromptResponse> createStandalonePrompt(
             @Valid @RequestBody CreatePromptRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Creating standalone prompt by user: {}", currentUser.getUserId());
-        PromptResponse response = promptService.createStandalonePrompt(request, currentUser);
+        DetailPromptResponse response = promptService.createStandalonePrompt(request, currentUser);
         return ResponseDto.success(response);
     }
 
     @PostMapping("/collection")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     @Operation(summary = "collection must NOT NULL")
-    public ResponseDto<PromptResponse> createPromptInCollection(
+    public ResponseDto<DetailPromptResponse> createPromptInCollection(
             @Valid @RequestBody CreatePromptCollectionRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Creating prompt in collection by user: {}", currentUser.getUserId());
-        PromptResponse response = promptService.createPromptInCollection(request, currentUser);
+        DetailPromptResponse response = promptService.createPromptInCollection(request, currentUser);
         return ResponseDto.success(response);
     }
 
     //This function only get all private prompt of a specific user
     @GetMapping("/my-prompt")
     @PreAuthorize("hasAnyRole('TEACHER', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getMyPrompts(
+    public ResponseDto<PaginatedDetailPromptResponse> getMyPrompts(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -64,7 +64,7 @@ public class PromptController {
     //Get all prompt of a user - no condition on prompt
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<GetPaginatedPromptResponse> getPromptsByUserId(
+    public ResponseDto<PaginatedPromptResponse> getPromptsByUserId(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") int page,
@@ -77,7 +77,7 @@ public class PromptController {
     //Get all prompt of a user - no condition on prompt
     @GetMapping("/get-non-private")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<GetPaginatedPromptResponse> getNonPrivatePromtp(
+    public ResponseDto<PaginatedPromptResponse> getNonPrivatePrompt(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -89,7 +89,7 @@ public class PromptController {
     //Get all prompt of a specific collection - no condition on prompt
     @GetMapping("/collection/{collectionId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<GetPaginatedPromptResponse> getPromptsByCollectionId(
+    public ResponseDto<PaginatedPromptResponse> getPromptsByCollectionId(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID collectionId,
             @RequestParam(defaultValue = "0") int page,
@@ -101,24 +101,24 @@ public class PromptController {
 
     @PutMapping("/{promptId}/metadata")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PromptResponse> updatePromptMetadata(
+    public ResponseDto<DetailPromptResponse> updatePromptMetadata(
             @PathVariable UUID promptId,
             @Valid @RequestBody UpdatePromptMetadataRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Updating metadata for prompt {} by user: {}", promptId, currentUser.getUserId());
-        PromptResponse response = promptService.updatePromptMetadata(promptId, request, currentUser);
+        DetailPromptResponse response = promptService.updatePromptMetadata(promptId, request, currentUser);
         return ResponseDto.success(response);
     }
 
     @PutMapping("/{promptId}/visibility")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     @Operation(summary = "collection id(NULLABLE) is for when the user want to change prompts that is PRIVATE/PUBLIC to GROUP/SCHOOL")
-    public ResponseDto<PromptResponse> updatePromptVisibility(
+    public ResponseDto<DetailPromptResponse> updatePromptVisibility(
             @PathVariable UUID promptId,
             @Valid @RequestBody UpdatePromptVisibilityRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Updating visibility for prompt {} by user: {}", promptId, currentUser.getUserId());
-        PromptResponse response = promptService.updatePromptVisibility(promptId, request, currentUser);
+        DetailPromptResponse response = promptService.updatePromptVisibility(promptId, request, currentUser);
         return ResponseDto.success(response);
     }
 
@@ -158,11 +158,11 @@ public class PromptController {
     @GetMapping("/{promptId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     @Operation(summary = "Get a prompt by its ID")
-    public ResponseDto<PromptResponse> getPromptById(
+    public ResponseDto<DetailPromptResponse> getPromptById(
             @PathVariable UUID promptId,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Retrieving prompt with ID: {} for user: {}", promptId, currentUser.getUserId());
-        PromptResponse response = promptService.getPromptById(promptId, currentUser);
+        DetailPromptResponse response = promptService.getPromptById(promptId, currentUser);
         return ResponseDto.success(response);
     }
 

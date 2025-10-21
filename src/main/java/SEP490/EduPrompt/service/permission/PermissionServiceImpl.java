@@ -213,24 +213,12 @@ public class PermissionServiceImpl implements PermissionService {
         }
 
         // Admin users can edit any collection
-        if (isAdmin(userPrincipal)) {
+        if (isSystemAdmin(userPrincipal)) {
             return true;
         }
 
         // Collection owner can edit their own collection
-        if (userPrincipal.getUserId().equals(collection.getUser().getId())) {
-            return true;
-        }
-
-        // Check group membership for GROUP visibility collections
-        if (Visibility.GROUP.name().equals(collection.getVisibility()) && collection.getGroup() != null) {
-            return isGroupAdmin(userPrincipal, collection.getGroup().getId());
-        }
-
-        // For SCHOOL visibility, check if user is from the same school
-        if (Visibility.SCHOOL.name().equals(collection.getVisibility())) {
-            return isSchoolAdmin(userPrincipal);
-        }
+        return userPrincipal.getUserId().equals(collection.getUser().getId());
 
 //        // For PUBLIC collections, anyone with appropriate role can edit
 //        if (Visibility.PUBLIC.name().equals(collection.getVisibility())) {
@@ -238,7 +226,6 @@ public class PermissionServiceImpl implements PermissionService {
 //        }
 
         // For PRIVATE collections, only owner can edit (already checked above)
-        return false;
     }
 
     // Helper method to check if user has roles that allow editing collections

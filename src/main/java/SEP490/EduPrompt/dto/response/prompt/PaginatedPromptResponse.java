@@ -7,7 +7,8 @@ import java.util.List;
 
 @Getter
 @Builder
-public class PaginatedPromptResponse {
+public class PaginatedPromptResponse
+{
     private List<PromptResponse> content;
     private int page;
     private int size;
