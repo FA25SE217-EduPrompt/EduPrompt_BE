@@ -6,6 +6,7 @@ import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.prompt.PromptService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ public class PromptController {
 
     @PostMapping("/collection")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "collection must NOT NULL")
     public ResponseDto<PromptResponse> createPromptInCollection(
             @Valid @RequestBody CreatePromptCollectionRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
@@ -102,34 +104,6 @@ public class PromptController {
         return ResponseDto.success(promptService.getPublicPrompts(currentUser, pageable, userId, collectionId));
     }
 
-    //This function currently use Paginated to get all prompt with create at ascending (will be changed to filter later)
-    @GetMapping("/created-at")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getPromptsByCreatedAtAsc(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID userId,
-            @RequestParam(required = false) UUID collectionId) {
-        log.info("Retrieving prompts by createdAt for user: {}", currentUser.getUserId());
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getPromptsByCreatedAtAsc(currentUser, pageable, userId, collectionId));
-    }
-
-    //This function currently use Paginated to get all prompt with update at ascending (will be changed to filter later)
-    @GetMapping("/updated-at")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<PaginatedPromptResponse> getPromptsByUpdatedAtAsc(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID userId,
-            @RequestParam(required = false) UUID collectionId) {
-        log.info("Retrieving prompts by updatedAt for user: {}", currentUser.getUserId());
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getPromptsByUpdatedAtAsc(currentUser, pageable, userId, collectionId));
-    }
-
     //Get all prompt of a user - no condition on prompt
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
@@ -169,6 +143,7 @@ public class PromptController {
 
     @PutMapping("/{promptId}/visibility")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "collection id(NULLABLE) is for when the user want to change prompts that is PRIVATE/PUBLIC to GROUP/SCHOOL")
     public ResponseDto<PromptResponse> updatePromptVisibility(
             @PathVariable UUID promptId,
             @Valid @RequestBody UpdatePromptVisibilityRequest request,
@@ -191,23 +166,33 @@ public class PromptController {
     @GetMapping("/filter")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     public ResponseDto<PaginatedPromptResponse> filterPrompts(
-            @RequestParam(required = false) String visibility,
             @RequestParam(required = false) UUID createdBy,
             @RequestParam(required = false) String collectionName,
             @RequestParam(required = false) List<String> tagTypes,
             @RequestParam(required = false) String schoolName,
             @RequestParam(required = false) String groupName,
-            @RequestParam(required = false) String searchText,
+            @RequestParam(required = false) String title,
             @RequestParam(required = false) Boolean includeDeleted,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        log.info("Filtering prompts for user: {} with params: visibility={}, createdBy={}, collectionName={}, tagTypes={}, schoolName={}, groupName={}, searchText={}, includeDeleted={}",
-                currentUser.getUserId(), visibility, createdBy, collectionName, tagTypes, schoolName, groupName, searchText, includeDeleted);
+        log.info("Filtering prompts for user: {} with params: createdBy={}, collectionName={}, tagTypes={}, schoolName={}, groupName={}, title={}, includeDeleted={}",
+                currentUser.getUserId(), createdBy, collectionName, tagTypes, schoolName, groupName, title, includeDeleted);
 
-        PromptFilterRequest request = new PromptFilterRequest(visibility, createdBy, collectionName, tagTypes, schoolName, groupName, searchText, includeDeleted);
+        PromptFilterRequest request = new PromptFilterRequest(createdBy, collectionName, tagTypes, schoolName, groupName, title, includeDeleted);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         PaginatedPromptResponse response = promptService.filterPrompts(request, currentUser, pageable);
+        return ResponseDto.success(response);
+    }
+
+    @GetMapping("/{promptId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "Get a prompt by its ID")
+    public ResponseDto<PromptResponse> getPromptById(
+            @PathVariable UUID promptId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Retrieving prompt with ID: {} for user: {}", promptId, currentUser.getUserId());
+        PromptResponse response = promptService.getPromptById(promptId, currentUser);
         return ResponseDto.success(response);
     }
 
