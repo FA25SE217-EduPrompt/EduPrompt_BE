@@ -272,34 +272,19 @@ public class PromptServiceImpl implements PromptService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
     @Override
-    public GetPaginatedPromptResponse getSchoolPrompts(UserPrincipal currentUser, Pageable pageable) {
-        // Fetch prompts
-        Page<Prompt> promptPage = promptRepository.findByVisibilityAndIsDeletedFalse(Visibility.SCHOOL.name(), pageable);
-
-        // Build response
+    @Transactional(readOnly = true)
+    public GetPaginatedPromptResponse getNonPrivatePrompts(UserPrincipal currentUser, Pageable pageable) {
+        Specification<Prompt> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(root.get("visibility").in(Visibility.PUBLIC.name(), Visibility.SCHOOL.name(), Visibility.GROUP.name()));
+            predicates.add(cb.equal(root.get("isDeleted"), false));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        Page<Prompt> promptPage = promptRepository.findAll(spec, pageable);
         List<GetPromptResponse> promptResponses = promptPage.getContent().stream()
-                .map(prompt -> {
-                    String userName = prompt.getUser() != null
-                            ? prompt.getUser().getFirstName() + " " + prompt.getUser().getLastName()
-                            : "Unknown";
-
-                    String collectionName = prompt.getCollection() != null
-                            ? prompt.getCollection().getName()
-                            : null;
-
-                    return GetPromptResponse.builder()
-                            .title(prompt.getTitle())
-                            .description(prompt.getDescription())
-                            .outputFormat(prompt.getOutputFormat())
-                            .visibility(prompt.getVisibility())
-                            .fullName(userName)
-                            .collectionName(collectionName)
-                            .createdAt(prompt.getCreatedAt())
-                            .updatedAt(prompt.getUpdatedAt())
-                            .build();
-                })
+                .filter(prompt -> permissionService.canFilterPrompt(prompt, currentUser))
+                .map(this::buildGetPromptResponse)
                 .collect(Collectors.toList());
 
         return GetPaginatedPromptResponse.builder()
@@ -309,51 +294,6 @@ public class PromptServiceImpl implements PromptService {
                 .totalElements(promptPage.getTotalElements())
                 .totalPages(promptPage.getTotalPages())
                 .build();
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public GetPaginatedPromptResponse getGroupPrompts(UserPrincipal currentUser, Pageable pageable) {
-        // Fetch prompts
-        Page<Prompt> promptPage = promptRepository.findByVisibilityAndIsDeletedFalse(Visibility.GROUP.name(), pageable);
-
-        // Build response
-        List<GetPromptResponse> promptResponses = promptPage.getContent().stream()
-                .map(prompt -> {
-                    String userName = prompt.getUser() != null
-                            ? prompt.getUser().getFirstName() + " " + prompt.getUser().getLastName()
-                            : "Unknown";
-
-                    String collectionName = prompt.getCollection() != null
-                            ? prompt.getCollection().getName()
-                            : null;
-
-                    return GetPromptResponse.builder()
-                            .title(prompt.getTitle())
-                            .description(prompt.getDescription())
-                            .outputFormat(prompt.getOutputFormat())
-                            .visibility(prompt.getVisibility())
-                            .fullName(userName)
-                            .collectionName(collectionName)
-                            .createdAt(prompt.getCreatedAt())
-                            .updatedAt(prompt.getUpdatedAt())
-                            .build();
-                })
-                .collect(Collectors.toList());
-
-        return GetPaginatedPromptResponse.builder()
-                .content(promptResponses)
-                .page(promptPage.getNumber())
-                .size(promptPage.getSize())
-                .totalElements(promptPage.getTotalElements())
-                .totalPages(promptPage.getTotalPages())
-                .build();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public GetPaginatedPromptResponse getPublicPrompts(UserPrincipal currentUser, Pageable pageable) {
-        return getPromptsByVisibility(Visibility.PUBLIC.name(), currentUser, pageable);
     }
 
     @Override
@@ -597,30 +537,44 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public PaginatedPromptResponse filterPrompts(PromptFilterRequest request, UserPrincipal currentUser, Pageable pageable) {
-        // Validate inputs
+// Validate inputs
         if (request.includeDeleted() != null && request.includeDeleted() && !permissionService.isSystemAdmin(currentUser)) {
             throw new AccessDeniedException("Only SYSTEM_ADMIN can include deleted prompts");
         }
-        if (request.collectionName() != null && !collectionRepository.existsByNameIgnoreCase(request.collectionName())) {
+        if (request.collectionName() != null && request.collectionName().length() > 1 && !collectionRepository.existsByNameIgnoreCase(request.collectionName())) {
             throw new ResourceNotFoundException("Collection not found with name: " + request.collectionName());
         }
         if (request.tagTypes() != null && !request.tagTypes().isEmpty()) {
-            List<String> foundTagTypes = tagRepository.findAllByTypeIn(request.tagTypes()).stream()
-                    .map(Tag::getType)
-                    .distinct()
-                    .toList();
-            if (foundTagTypes.size() != request.tagTypes().size()) {
-                throw new ResourceNotFoundException("One or more tag types not found");
+            boolean allSingleLetter = request.tagTypes().stream().allMatch(s -> s.length() == 1);
+            if (!allSingleLetter) {
+                List<String> foundTagTypes = tagRepository.findAllByTypeIn(request.tagTypes()).stream()
+                        .map(Tag::getType)
+                        .distinct()
+                        .toList();
+                if (foundTagTypes.size() != request.tagTypes().size()) {
+                    throw new ResourceNotFoundException("One or more tag types not found");
+                }
             }
         }
-        if (request.schoolName() != null && !schoolRepository.existsByNameIgnoreCase(request.schoolName())) {
+        if (request.tagValues() != null && !request.tagValues().isEmpty()) {
+            boolean allSingleLetter = request.tagValues().stream().allMatch(s -> s.length() == 1);
+            if (!allSingleLetter) {
+                List<String> foundTagValues = tagRepository.findAllByValueIn(request.tagValues()).stream()
+                        .map(Tag::getValue)
+                        .distinct()
+                        .toList();
+                if (foundTagValues.size() != request.tagValues().size()) {
+                    throw new ResourceNotFoundException("One or more tag values not found");
+                }
+            }
+        }
+        if (request.schoolName() != null && request.schoolName().length() > 1 && !schoolRepository.existsByNameIgnoreCase(request.schoolName())) {
             throw new ResourceNotFoundException("School not found with name: " + request.schoolName());
         }
-        if (request.groupName() != null && !groupRepository.existsByNameIgnoreCase(request.groupName())) {
+        if (request.groupName() != null && request.groupName().length() > 1 && !groupRepository.existsByNameIgnoreCase(request.groupName())) {
             throw new ResourceNotFoundException("Group not found with name: " + request.groupName());
         }
-
-        // Build Specification
+// Build Specification
         Specification<Prompt> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -628,14 +582,18 @@ public class PromptServiceImpl implements PromptService {
             root.fetch("user");
             root.fetch("collection", jakarta.persistence.criteria.JoinType.LEFT);
 
+            // OR group for all filter fields
+            List<Predicate> orPredicates = new ArrayList<>();
+
             // Filter by createdBy
             if (request.createdBy() != null) {
-                predicates.add(cb.equal(root.get("createdBy"), request.createdBy()));
+                orPredicates.add(cb.equal(root.get("createdBy"), request.createdBy()));
             }
 
             // Filter by collectionName
             if (request.collectionName() != null) {
-                predicates.add(cb.equal(cb.lower(root.get("collection").get("name")), request.collectionName().toLowerCase()));
+                String searchPattern = "%" + request.collectionName().toLowerCase() + "%";
+                orPredicates.add(cb.like(cb.lower(root.get("collection").get("name")), searchPattern));
             }
 
             // Filter by tagTypes
@@ -643,32 +601,61 @@ public class PromptServiceImpl implements PromptService {
                 assert query != null;
                 Subquery<UUID> subquery = query.subquery(UUID.class);
                 jakarta.persistence.criteria.Root<PromptTag> promptTagRoot = subquery.from(PromptTag.class);
-                subquery.select(promptTagRoot.get("prompt").get("id"))
-                        .where(promptTagRoot.get("tag").get("type").in(request.tagTypes()));
-                predicates.add(root.get("id").in(subquery));
+                if (request.tagTypes().stream().allMatch(s -> s.length() == 1)) {
+                    String searchPattern = "%" + request.tagTypes().getFirst().toLowerCase() + "%";
+                    subquery.select(promptTagRoot.get("prompt").get("id"))
+                            .where(cb.like(cb.lower(promptTagRoot.get("tag").get("type")), searchPattern));
+                } else {
+                    subquery.select(promptTagRoot.get("prompt").get("id"))
+                            .where(promptTagRoot.get("tag").get("type").in(request.tagTypes()));
+                }
+                orPredicates.add(root.get("id").in(subquery));
             }
 
-            // Filter by schoolName (prompt owner's school)
+            // Filter by tagValues
+            if (request.tagValues() != null && !request.tagValues().isEmpty()) {
+                assert query != null;
+                Subquery<UUID> subquery = query.subquery(UUID.class);
+                jakarta.persistence.criteria.Root<PromptTag> promptTagRoot = subquery.from(PromptTag.class);
+                if (request.tagValues().stream().allMatch(s -> s.length() == 1)) {
+                    String searchPattern = "%" + request.tagValues().getFirst().toLowerCase() + "%";
+                    subquery.select(promptTagRoot.get("prompt").get("id"))
+                            .where(cb.like(cb.lower(promptTagRoot.get("tag").get("value")), searchPattern));
+                } else {
+                    subquery.select(promptTagRoot.get("prompt").get("id"))
+                            .where(promptTagRoot.get("tag").get("value").in(request.tagValues()));
+                }
+                orPredicates.add(root.get("id").in(subquery));
+            }
+
+            // Filter by schoolName
             if (request.schoolName() != null) {
                 Join<Prompt, User> userJoin = root.join("user");
                 Join<User, School> schoolJoin = userJoin.join("school");
-                predicates.add(cb.equal(cb.lower(schoolJoin.get("name")), request.schoolName().toLowerCase()));
+                String searchPattern = "%" + request.schoolName().toLowerCase() + "%";
+                orPredicates.add(cb.like(cb.lower(schoolJoin.get("name")), searchPattern));
             }
 
-            // Filter by groupName (prompt collection's group)
+            // Filter by groupName
             if (request.groupName() != null) {
                 Join<Prompt, Collection> collectionJoin = root.join("collection", jakarta.persistence.criteria.JoinType.LEFT);
                 Join<Collection, Group> groupJoin = collectionJoin.join("group", jakarta.persistence.criteria.JoinType.LEFT);
-                predicates.add(cb.equal(cb.lower(groupJoin.get("name")), request.groupName().toLowerCase()));
+                String searchPattern = "%" + request.groupName().toLowerCase() + "%";
+                orPredicates.add(cb.like(cb.lower(groupJoin.get("name")), searchPattern));
             }
 
             // Filter by title
             if (request.title() != null && !request.title().isBlank()) {
                 String searchPattern = "%" + request.title().toLowerCase() + "%";
-                predicates.add(cb.or(
+                orPredicates.add(cb.or(
                         cb.like(cb.lower(root.get("title")), searchPattern),
                         cb.like(cb.lower(root.get("description")), searchPattern)
                 ));
+            }
+
+            // Add OR condition if any filter is provided
+            if (!orPredicates.isEmpty()) {
+                predicates.add(cb.or(orPredicates.toArray(new Predicate[0])));
             }
 
             // Filter by isDeleted
@@ -681,16 +668,13 @@ public class PromptServiceImpl implements PromptService {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        // Fetch prompts
         Page<Prompt> promptPage = promptRepository.findAll(spec, pageable);
 
-        // Filter accessible prompts
         List<PromptResponse> promptResponses = promptPage.getContent().stream()
-                .filter(prompt -> permissionService.canAccessPrompt(prompt, currentUser))
+                .filter(prompt -> permissionService.canFilterPrompt(prompt, currentUser))
                 .map(this::buildPromptResponse)
                 .collect(Collectors.toList());
 
-        // Build response
         return PaginatedPromptResponse.builder()
                 .content(promptResponses)
                 .page(promptPage.getNumber())
@@ -749,16 +733,6 @@ public class PromptServiceImpl implements PromptService {
     }
 
     //Helper method function
-    private GetPaginatedPromptResponse getPromptsByVisibility(String visibility, UserPrincipal currentUser, Pageable pageable) {
-        Page<Prompt> promptPage;
-        if (visibility.equals(Visibility.PRIVATE.name())) {
-            // For PRIVATE, only fetch current user's prompts
-            promptPage = promptRepository.findByVisibilityAndIsDeletedFalseAndUserId(visibility, currentUser.getUserId(), pageable);
-        } else {
-            promptPage = promptRepository.findByVisibilityAndIsDeletedFalse(visibility, pageable);
-        }
-        return mapToPaginatedResponse(promptPage, currentUser);
-    }
 
     private GetPaginatedPromptResponse mapToPaginatedResponse(Page<Prompt> promptPage, UserPrincipal currentUser) {
         List<GetPromptResponse> promptResponses = promptPage.getContent().stream()
@@ -821,6 +795,24 @@ public class PromptServiceImpl implements PromptService {
                                 .value(tag.getValue())
                                 .build())
                         .collect(Collectors.toList()))
+                .createdAt(prompt.getCreatedAt())
+                .updatedAt(prompt.getUpdatedAt())
+                .build();
+    }
+
+    private GetPromptResponse buildGetPromptResponse(Prompt prompt) {
+        String userName = prompt.getUser() != null
+                ? prompt.getUser().getFirstName() + " " + prompt.getUser().getLastName()
+                : "Unknown";
+        String collectionName = prompt.getCollection() != null
+                ? prompt.getCollection().getName()
+                : null;
+        return GetPromptResponse.builder()
+                .title(prompt.getTitle())
+                .description(prompt.getDescription())
+                .visibility(prompt.getVisibility())
+                .fullName(userName)
+                .collectionName(collectionName)
                 .createdAt(prompt.getCreatedAt())
                 .updatedAt(prompt.getUpdatedAt())
                 .build();

@@ -17,11 +17,7 @@ public interface PromptService {
 
     PaginatedPromptResponse getMyPrompts(UserPrincipal currentUser, Pageable pageable);
 
-    GetPaginatedPromptResponse getSchoolPrompts(UserPrincipal currentUser, Pageable pageable);
-
-    GetPaginatedPromptResponse getGroupPrompts(UserPrincipal currentUser, Pageable pageable);
-
-    GetPaginatedPromptResponse getPublicPrompts(UserPrincipal currentUser, Pageable pageable);
+    GetPaginatedPromptResponse getNonPrivatePrompts(UserPrincipal currentUser, Pageable pageable);
 
     GetPaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId);
 

@@ -7,6 +7,7 @@ public record PromptFilterRequest(
         UUID createdBy,
         String collectionName,
         List<String> tagTypes,
+        List<String> tagValues,
         String schoolName,
         String groupName,
         String title,

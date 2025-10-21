@@ -61,42 +61,6 @@ public class PromptController {
         return ResponseDto.success(promptService.getMyPrompts(currentUser, pageable));
     }
 
-    //Get all prompt that belong to any school (School id was input when create)
-    @GetMapping("/school")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<GetPaginatedPromptResponse> getSchoolPrompts(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("Retrieving school prompts for user: {}", currentUser.getUserId());
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getSchoolPrompts(currentUser, pageable));
-    }
-
-    // Get all prompt that exist in any specific group (Group id was input when create)
-    @GetMapping("/group")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<GetPaginatedPromptResponse> getGroupPrompts(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("Retrieving group prompts for user: {}", currentUser.getUserId());
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getGroupPrompts(currentUser, pageable));
-    }
-
-    //This function only get all public prompt of a specific user
-    @GetMapping("/public")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    public ResponseDto<GetPaginatedPromptResponse> getPublicPrompts(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("Retrieving public prompts for user: {}", currentUser.getUserId());
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseDto.success(promptService.getPublicPrompts(currentUser, pageable));
-    }
-
     //Get all prompt of a user - no condition on prompt
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
@@ -108,6 +72,18 @@ public class PromptController {
         log.info("Retrieving prompts by userId {} for user: {}", userId, currentUser.getUserId());
         Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(promptService.getPromptsByUserId(currentUser, pageable, userId));
+    }
+
+    //Get all prompt of a user - no condition on prompt
+    @GetMapping("/get-non-private")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<GetPaginatedPromptResponse> getNonPrivatePromtp(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Retrieving all non-private prompts ");
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(promptService.getNonPrivatePrompts(currentUser, pageable));
     }
 
     //Get all prompt of a specific collection - no condition on prompt
@@ -162,6 +138,7 @@ public class PromptController {
             @RequestParam(required = false) UUID createdBy,
             @RequestParam(required = false) String collectionName,
             @RequestParam(required = false) List<String> tagTypes,
+            @RequestParam(required = false) List<String> tagValues,
             @RequestParam(required = false) String schoolName,
             @RequestParam(required = false) String groupName,
             @RequestParam(required = false) String title,
@@ -169,10 +146,10 @@ public class PromptController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        log.info("Filtering prompts for user: {} with params: createdBy={}, collectionName={}, tagTypes={}, schoolName={}, groupName={}, title={}, includeDeleted={}",
-                currentUser.getUserId(), createdBy, collectionName, tagTypes, schoolName, groupName, title, includeDeleted);
+        log.info("Filtering prompts for user: {} with params: createdBy={}, collectionName={}, tagTypes={}, tagValues={}, schoolName={}, groupName={}, title={}, includeDeleted={}",
+                currentUser.getUserId(), createdBy, collectionName, tagTypes,tagValues, schoolName, groupName, title, includeDeleted);
 
-        PromptFilterRequest request = new PromptFilterRequest(createdBy, collectionName, tagTypes, schoolName, groupName, title, includeDeleted);
+        PromptFilterRequest request = new PromptFilterRequest(createdBy, collectionName, tagTypes,tagValues, schoolName, groupName, title, includeDeleted);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         PaginatedPromptResponse response = promptService.filterPrompts(request, currentUser, pageable);
         return ResponseDto.success(response);
