@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -91,7 +92,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Non-admins must be active group members
         boolean isMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                group.getId(), currentUserId, "active", List.of("admin", "member")
+                group.getId(), currentUserId, "active", List.of(GroupRole.ADMIN.name(), GroupRole.MEMBER.name())
         );
         if (!isMember) {
             throw new AccessDeniedException("You are not an active member of this group");
@@ -101,7 +102,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public boolean isGroupAdmin(UUID groupId, UserPrincipal currentUser) {
         return groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                groupId, currentUser.getUserId(), "active", List.of("admin")
+                groupId, currentUser.getUserId(), "active", List.of(GroupRole.ADMIN.name())
         );
     }
 
@@ -167,7 +168,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Only group admins or system/school admins can update
         boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                id, currentUserId, "active", List.of("admin")
+                id, currentUserId, "active", List.of(GroupRole.ADMIN.name())
         );
         if (!isGroupAdmin && !isAdmin(currentUser)) {
             throw new AccessDeniedException("Only group admins or system/school admins can update this group");
@@ -400,7 +401,7 @@ public class GroupServiceImpl implements GroupService {
             if (Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
                 page = groupRepository.findAllByOrderByCreatedAtDesc(pageable);
             } else {
-                page = groupRepository.findBySchoolIdAndIsActiveTrue(currentUser.getSchoolId(), pageable);
+                page = groupRepository.findBySchoolIdAndIsActiveTrue(currentUserId, pageable);
             }
         } else {
             // Non-admins see groups they are active members of
@@ -409,7 +410,6 @@ public class GroupServiceImpl implements GroupService {
 
         List<GroupResponse> content = page.getContent().stream()
                 .map(group -> GroupResponse.builder()
-                        .id(group.getId())
                         .name(group.getName())
                         .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
                         .isActive(group.getIsActive())

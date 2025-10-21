@@ -12,6 +12,7 @@ import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
+import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
@@ -193,7 +194,6 @@ public class CollectionServiceImpl implements CollectionService {
         log.info("Collection created: {} by user: {}", saved.getId(), currentUserId);
 
         return CreateCollectionResponse.builder()
-                .id(collection.getId())
                 .name(collection.getName())
                 .description(collection.getDescription())
                 .visibility(collection.getVisibility().toUpperCase())
@@ -239,16 +239,13 @@ public class CollectionServiceImpl implements CollectionService {
         if (Visibility.GROUP.name().equals(newVisibility)) {
             UUID groupId = request.groupId();
             if (groupId == null) {
-                throw new IllegalArgumentException("GROUP visibility requires a groupId");
+                throw new InvalidActionException("GROUP visibility requires a groupId");
             }
             group = groupRepository.findById(groupId)
                     .orElseThrow(() -> new ResourceNotFoundException("Group not found with ID: " + groupId));
             if (!groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, currentUser.getUserId(), "active")) {
                 throw new AccessDeniedException("You must be an active member of the group to set GROUP visibility");
             }
-        } else if (!Visibility.GROUP.name().equals(newVisibility) && request.groupId() != null) {
-            // If visibility is not GROUP but groupId is provided, ignore groupId
-            group = null;
         }
 
         // Handle SCHOOL visibility
@@ -344,7 +341,6 @@ public class CollectionServiceImpl implements CollectionService {
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
-                        .id(collection.getId())
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
@@ -374,7 +370,6 @@ public class CollectionServiceImpl implements CollectionService {
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
-                        .id(collection.getId())
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
@@ -409,7 +404,6 @@ public class CollectionServiceImpl implements CollectionService {
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
-                        .id(collection.getId())
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
@@ -444,7 +438,6 @@ public class CollectionServiceImpl implements CollectionService {
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
-                        .id(collection.getId())
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
