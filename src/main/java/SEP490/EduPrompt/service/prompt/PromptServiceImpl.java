@@ -1,9 +1,6 @@
 package SEP490.EduPrompt.service.prompt;
 
-import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
-import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
-import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
-import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
+import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.TagDTO;
@@ -16,9 +13,13 @@ import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class PromptServiceImpl implements PromptService {
     private final PromptRepository promptRepository;
     private final CollectionRepository collectionRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final SchoolRepository schoolRepository;
     private final TagRepository tagRepository;
     private final PromptTagRepository promptTagRepository;
     private final GroupRepository groupRepository;
@@ -511,6 +513,148 @@ public class PromptServiceImpl implements PromptService {
         return buildPromptResponse(updatedPrompt);
     }
 
+    @Override
+    @Transactional
+    public void softDeletePrompt(UUID promptId, UserPrincipal currentUser) {
+        // Fetch prompt
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        // Prevent deletion of already deleted prompts unless SYSTEM_ADMIN
+        if (prompt.getIsDeleted() && !permissionService.isSystemAdmin(currentUser)) {
+            throw new ResourceNotFoundException("Prompt not found or already deleted");
+        }
+
+        // Check permission
+        if (!permissionService.canEditPrompt(currentUser, prompt)) {
+            throw new AccessDeniedException("You do not have permission to delete this prompt");
+        }
+
+        // Mark as deleted
+        prompt.setIsDeleted(true);
+        prompt.setDeletedAt(Instant.now());
+
+        // Save changes
+        promptRepository.save(prompt);
+    }
+
+    @Override
+    @Transactional
+    public PaginatedPromptResponse filterPrompts(PromptFilterRequest request, UserPrincipal currentUser, Pageable pageable) {
+        // Validate inputs
+        if (request.includeDeleted() != null && request.includeDeleted() && !permissionService.isSystemAdmin(currentUser)) {
+            throw new AccessDeniedException("Only SYSTEM_ADMIN can include deleted prompts");
+        }
+        String visibility = null;
+        if (request.visibility() != null) {
+            try {
+                visibility = Visibility.parseVisibility(request.visibility()).name();
+            } catch (IllegalArgumentException e) {
+                throw new InvalidInputException("Invalid visibility value: " + request.visibility());
+            }
+        }
+        if (request.collectionName() != null && !collectionRepository.existsByNameIgnoreCase(request.collectionName())) {
+            throw new EntityNotFoundException("Collection not found with name: " + request.collectionName());
+        }
+        if (request.tagTypes() != null && !request.tagTypes().isEmpty()) {
+            List<String> foundTagTypes = tagRepository.findAllByTypeIn(request.tagTypes()).stream()
+                    .map(Tag::getType)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (foundTagTypes.size() != request.tagTypes().size()) {
+                throw new EntityNotFoundException("One or more tag types not found");
+            }
+        }
+        if (request.schoolName() != null && !schoolRepository.existsByNameIgnoreCase(request.schoolName())) {
+            throw new EntityNotFoundException("School not found with name: " + request.schoolName());
+        }
+        if (request.groupName() != null && !groupRepository.existsByNameIgnoreCase(request.groupName())) {
+            throw new EntityNotFoundException("Group not found with name: " + request.groupName());
+        }
+
+        // Build Specification
+        Specification<Prompt> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Ensure related entities are fetched to avoid lazy loading
+            root.fetch("user");
+            root.fetch("collection", jakarta.persistence.criteria.JoinType.LEFT);
+
+            // Filter by visibility
+            if (request.visibility() != null) {
+                predicates.add(cb.equal(root.get("visibility"), request.visibility()));
+            }
+
+            // Filter by createdBy
+            if (request.createdBy() != null) {
+                predicates.add(cb.equal(root.get("createdBy"), request.createdBy()));
+            }
+
+            // Filter by collectionName
+            if (request.collectionName() != null) {
+                predicates.add(cb.equal(cb.lower(root.get("collection").get("name")), request.collectionName().toLowerCase()));
+            }
+
+            // Filter by tagTypes
+            if (request.tagTypes() != null && !request.tagTypes().isEmpty()) {
+                Subquery<UUID> subquery = query.subquery(UUID.class);
+                jakarta.persistence.criteria.Root<PromptTag> promptTagRoot = subquery.from(PromptTag.class);
+                subquery.select(promptTagRoot.get("prompt").get("id"))
+                        .where(promptTagRoot.get("tag").get("type").in(request.tagTypes()));
+                predicates.add(root.get("id").in(subquery));
+            }
+
+            // Filter by schoolName (prompt owner's school)
+            if (request.schoolName() != null) {
+                Join<Prompt, User> userJoin = root.join("user");
+                Join<User, School> schoolJoin = userJoin.join("school");
+                predicates.add(cb.equal(cb.lower(schoolJoin.get("name")), request.schoolName().toLowerCase()));
+            }
+
+            // Filter by groupName (prompt collection's group)
+            if (request.groupName() != null) {
+                Join<Prompt, Collection> collectionJoin = root.join("collection", jakarta.persistence.criteria.JoinType.LEFT);
+                Join<Collection, Group> groupJoin = collectionJoin.join("group", jakarta.persistence.criteria.JoinType.LEFT);
+                predicates.add(cb.equal(cb.lower(groupJoin.get("name")), request.groupName().toLowerCase()));
+            }
+
+            // Filter by searchText
+            if (request.searchText() != null && !request.searchText().isBlank()) {
+                String searchPattern = "%" + request.searchText().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("title")), searchPattern),
+                        cb.like(cb.lower(root.get("description")), searchPattern)
+                ));
+            }
+
+            // Filter by isDeleted
+            if (request.includeDeleted() != null && request.includeDeleted()) {
+                predicates.add(cb.equal(root.get("isDeleted"), true));
+            } else {
+                predicates.add(cb.equal(root.get("isDeleted"), false));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        // Fetch prompts
+        Page<Prompt> promptPage = promptRepository.findAll(spec, pageable);
+
+        // Filter accessible prompts
+        List<PromptResponse> promptResponses = promptPage.getContent().stream()
+                .filter(prompt -> permissionService.canAccessPrompt(prompt, currentUser))
+                .map(this::buildPromptResponse)
+                .collect(Collectors.toList());
+
+        // Build response
+        return PaginatedPromptResponse.builder()
+                .content(promptResponses)
+                .page(promptPage.getNumber())
+                .size(promptPage.getSize())
+                .totalElements(promptPage.getTotalElements())
+                .totalPages(promptPage.getTotalPages())
+                .build();
+    }
 
     //Helper method function
     private PaginatedPromptResponse getPromptsByVisibility(String visibility, UserPrincipal currentUser, Pageable pageable, UUID userId, UUID collectionId) {

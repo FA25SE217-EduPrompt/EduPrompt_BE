@@ -1,9 +1,6 @@
 package SEP490.EduPrompt.service.prompt;
 
-import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
-import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
-import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
-import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
+import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
@@ -36,5 +33,10 @@ public interface PromptService {
     PromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request, UserPrincipal currentUser);
 
     PromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request, UserPrincipal currentUser);
+
+    void softDeletePrompt(UUID promptId, UserPrincipal currentUser);
+
+    PaginatedPromptResponse filterPrompts(PromptFilterRequest request, UserPrincipal currentUser, Pageable pageable);
+
 
 }
