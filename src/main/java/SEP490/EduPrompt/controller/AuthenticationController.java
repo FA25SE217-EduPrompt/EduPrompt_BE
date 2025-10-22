@@ -2,6 +2,7 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
+import SEP490.EduPrompt.dto.response.PersonalInfoResponse;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.service.auth.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +12,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -85,5 +87,11 @@ public class AuthenticationController {
     @PostMapping("/google")
     public ResponseDto<LoginResponse> loginWithGoogle(@RequestBody GoogleLoginRequeset request) throws GeneralSecurityException, IOException {
         return ResponseDto.success(authService.googleLogin(request));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/me")
+    public ResponseDto<PersonalInfoResponse> me(HttpServletRequest request) {
+        return ResponseDto.success(authService.getPersonalInfo(request));
     }
 }

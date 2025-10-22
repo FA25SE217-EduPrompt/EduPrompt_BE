@@ -110,13 +110,18 @@ public class JwtUtil {
         Map<String, Object> claims = new HashMap<>();
         return createToken(claims, userDetails.getUsername());
     }
-
+    /**
+     * this method is used to generate accessToken
+     */
     public String generateToken(String username, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role.toUpperCase());
         return createToken(claims, username);
     }
 
+    /**
+     * this method is used to generate verification token only, do NOT use to generate accessToken
+     */
     public String generateTokenWithExpiration(String email, int expirationMinutes) {
         String jti = UUID.randomUUID().toString();
         return Jwts.builder()

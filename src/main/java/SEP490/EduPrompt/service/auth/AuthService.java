@@ -2,6 +2,7 @@ package SEP490.EduPrompt.service.auth;
 
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
+import SEP490.EduPrompt.dto.response.PersonalInfoResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -33,4 +34,6 @@ public interface AuthService {
     LoginResponse refreshToken(HttpServletRequest request);
 
     LoginResponse googleLogin(GoogleLoginRequeset requeset) throws GeneralSecurityException, IOException;
+
+    PersonalInfoResponse getPersonalInfo(HttpServletRequest request);
 }
