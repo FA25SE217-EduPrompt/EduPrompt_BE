@@ -2,6 +2,7 @@ package SEP490.EduPrompt.service.auth;
 
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
+import SEP490.EduPrompt.dto.response.PersonalInfoResponse;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.exception.BaseException;
@@ -450,6 +451,35 @@ public class AuthServiceImpl implements AuthService {
 
         return LoginResponse.builder()
                 .token(token)
+                .build();
+    }
+
+    @Override
+    public PersonalInfoResponse getPersonalInfo(HttpServletRequest request) {
+        log.info("Attempting to get personal info");
+
+        String token = extractTokenFromRequest(request);
+
+        String email = jwtUtil.extractUsername(token);
+
+        // Verify user exists
+        UserAuth userAuth= userAuthRepository.findByEmail(email)
+                .orElseThrow(() -> new TokenInvalidException("User not found"));
+
+        User user = userAuth.getUser();
+        Role userRole = Role.parseRole(user.getRole());
+
+        log.info("Return personal info for user : {}", user.getEmail());
+        return PersonalInfoResponse.builder()
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .isActive(user.getIsActive())
+                .isVerified(user.getIsVerified())
+                .isTeacher(userRole.equals(Role.TEACHER))
+                .isSchoolAdmin(userRole.equals(Role.SCHOOL_ADMIN))
+                .isSystemAdmin(userRole.equals(Role.SYSTEM_ADMIN))
                 .build();
     }
 

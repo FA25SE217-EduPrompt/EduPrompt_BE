@@ -2,6 +2,7 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.*;
 import SEP490.EduPrompt.dto.response.LoginResponse;
+import SEP490.EduPrompt.dto.response.PersonalInfoResponse;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.service.auth.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -85,5 +86,10 @@ public class AuthenticationController {
     @PostMapping("/google")
     public ResponseDto<LoginResponse> loginWithGoogle(@RequestBody GoogleLoginRequeset request) throws GeneralSecurityException, IOException {
         return ResponseDto.success(authService.googleLogin(request));
+    }
+
+    @GetMapping("/me")
+    public ResponseDto<PersonalInfoResponse> me(HttpServletRequest request) {
+        return ResponseDto.success(authService.getPersonalInfo(request));
     }
 }
