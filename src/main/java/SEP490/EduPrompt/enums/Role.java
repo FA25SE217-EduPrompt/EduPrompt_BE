@@ -8,11 +8,14 @@ public enum Role {
     SYSTEM_ADMIN;
 
     public static Role parseRole(String r) {
-        if (r == null) throw new InvalidInputException("Invalid role: " + r);
+        if (r == null || r.isBlank()) {
+            throw new InvalidInputException("Role is required. Allowed: TEACHER, SCHOOL_ADMIN, SYSTEM_ADMIN");
+        }
+        String normalized = r.trim().toUpperCase().replace(' ', '_').replace('-', '_');
         try {
-            return Role.valueOf(r.toUpperCase());
+            return Role.valueOf(normalized);
         } catch (IllegalArgumentException e) {
-            throw new InvalidInputException("Invalid role: " + r);
+            throw new InvalidInputException("Invalid role: " + r + ". Allowed: TEACHER, SCHOOL_ADMIN, SYSTEM_ADMIN");
         }
     }
 }
