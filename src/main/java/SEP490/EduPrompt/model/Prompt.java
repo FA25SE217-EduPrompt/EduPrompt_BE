@@ -3,13 +3,10 @@ package SEP490.EduPrompt.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 
 @Builder
@@ -35,6 +32,12 @@ public class Prompt {
     @JoinColumn(name = "collection_id")
     private Collection collection;
 
+    @Column(name = "title", length = Integer.MAX_VALUE)
+    private String title;
+
+    @Column(name = "description", length = Integer.MAX_VALUE)
+    private String description;
+
     @Column(name = "instruction", length = Integer.MAX_VALUE)
     private String instruction;
 
@@ -53,11 +56,6 @@ public class Prompt {
     @ColumnDefault("'private'")
     @Column(name = "visibility", nullable = false, length = 50)
     private String visibility;
-
-    @ColumnDefault("'[]'::jsonb")
-    @Column(name = "tags", nullable = false)
-    @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, Object> tags;
 
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;

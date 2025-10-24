@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,4 +27,15 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             @Param("status") String status,
             Pageable pageable
     );
+
+    @Query("SELECT g FROM Group g JOIN GroupMember gm ON g.id = gm.group.id " +
+            "WHERE gm.user.id = :userId AND gm.status = :status AND g.isActive = true")
+    List<Group> findByUserIdAndStatusAndIsActiveTrue(
+            @Param("userId") UUID userId,
+            @Param("status") String status
+    );
+
+    boolean existsByNameIgnoreCase(String name);
+
+    Optional<Group> findByNameIgnoreCase(String name);
 }

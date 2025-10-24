@@ -27,8 +27,8 @@
 
                 <!-- Button -->
                 <div style="margin: 18px 0; text-align: center;">
-                    <a th:href="${verificationLink}"
-                       style="display: inline-block; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 700; background: #0ea5b7; color: #fff; box-shadow: 0 6px 18px rgba(14, 165, 183, 0.12);">
+                    <a style="display: inline-block; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 700; background: #0ea5b7; color: #fff; box-shadow: 0 6px 18px rgba(14, 165, 183, 0.12);"
+                       th:href="${verificationLink}">
                         Verify email
                     </a>
                 </div>
@@ -37,7 +37,8 @@
                     If the button doesn't work, copy and paste this link into your browser:
                 </p>
                 <div style="margin: 0 0 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    <a th:href="${verificationLink}" style="color: #0ea5b7; text-decoration: underline; font-size: 14px;">Verification Link</a>
+                    <a style="color: #0ea5b7; text-decoration: underline; font-size: 14px;"
+                       th:href="${verificationLink}">Verification Link</a>
                 </div>
             </div>
 

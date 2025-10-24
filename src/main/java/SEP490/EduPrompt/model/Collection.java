@@ -4,14 +4,12 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Builder
@@ -41,11 +39,6 @@ public class Collection {
     @ColumnDefault("'private'")
     @Column(name = "visibility", nullable = false, length = 50)
     private String visibility;
-
-    @ColumnDefault("'[]'::jsonb")
-    @Column(name = "tags", nullable = false)
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<Tag> tags = new ArrayList<>();
 
     @Column(name = "created_by")
     private UUID createdBy;
@@ -77,5 +70,8 @@ public class Collection {
     @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "group_id")
     private Group group;
+
+    @OneToMany(mappedBy = "collection", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<CollectionTag> collectionTags = new LinkedHashSet<>();
 
 }

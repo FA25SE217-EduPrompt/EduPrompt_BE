@@ -14,7 +14,8 @@
 
         <!-- Body -->
         <div style="padding: 26px;">
-            <h1 style="margin: 0 0 10px; font-size: 20px; color: #0f1720;" th:text="'Welcome to ' + ${appName} + ' 🎉'">Welcome</h1>
+            <h1 style="margin: 0 0 10px; font-size: 20px; color: #0f1720;" th:text="'Welcome to ' + ${appName} + ' 🎉'">
+                Welcome</h1>
             <p style="margin: 0 0 14px; line-height: 1.5; color: #64748b; font-size: 13px;">
                 Hi <span th:text="${name}">User</span>,
             </p>
@@ -25,8 +26,8 @@
 
             <!-- Button -->
             <div style="margin: 18px 0; text-align: center;">
-                <a th:href="${homeLink}"
-                   style="display: inline-block; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 700; background: #0ea5b7; color: #fff;">
+                <a style="display: inline-block; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 700; background: #0ea5b7; color: #fff;"
+                   th:href="${homeLink}">
                     Visit homepage
                 </a>
             </div>
