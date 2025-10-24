@@ -400,7 +400,7 @@ public class GroupServiceImpl implements GroupService {
             if (Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
                 page = groupRepository.findAllByOrderByCreatedAtDesc(pageable);
             } else {
-                page = groupRepository.findBySchoolIdAndIsActiveTrue(currentUserId, pageable);
+                page = groupRepository.findBySchoolIdAndIsActiveTrue(currentUser.getSchoolId(), pageable);
             }
         } else {
             // Non-admins see groups they are active members of
