@@ -86,7 +86,7 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Build Prompt
-        Prompt.PromptBuilder promptBuilder = Prompt.builder()
+        Prompt prompt = Prompt.builder()
                 .title(dto.getTitle())
                 .description(dto.getDescription())
                 .instruction(dto.getInstruction())
@@ -101,9 +101,10 @@ public class PromptServiceImpl implements PromptService {
                 .updatedAt(Instant.now())
                 .isDeleted(false)
                 .visibility(promptVisibility)
-                .collection(null);
+                .collection(null)
+                .build();
 
-        Prompt savedPrompt = promptRepository.save(promptBuilder.build());
+        Prompt savedPrompt = promptRepository.save(prompt);
 
         // Create PromptTag entries
         if (!tags.isEmpty()) {
@@ -183,7 +184,7 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Build Prompt
-        Prompt.PromptBuilder promptBuilder = Prompt.builder()
+        Prompt prompt = Prompt.builder()
                 .title(dto.getTitle())
                 .description(dto.getDescription())
                 .instruction(dto.getInstruction())
@@ -198,9 +199,10 @@ public class PromptServiceImpl implements PromptService {
                 .updatedAt(Instant.now())
                 .isDeleted(false)
                 .visibility(promptVisibility)
-                .collection(collection);
+                .collection(collection)
+                .build();
 
-        Prompt savedPrompt = promptRepository.save(promptBuilder.build());
+        Prompt savedPrompt = promptRepository.save(prompt);
 
         // Create PromptTag entries
         if (!tags.isEmpty()) {
@@ -246,6 +248,7 @@ public class PromptServiceImpl implements PromptService {
                             : null;
 
                     return DetailPromptResponse.builder()
+                            .id(prompt.getId())
                             .title(prompt.getTitle())
                             .description(prompt.getDescription())
                             .context(prompt.getContext())
@@ -786,6 +789,7 @@ public class PromptServiceImpl implements PromptService {
                 : null;
 
         return DetailPromptResponse.builder()
+                .id(prompt.getId())
                 .title(prompt.getTitle())
                 .description(prompt.getDescription())
                 .context(prompt.getContext())
