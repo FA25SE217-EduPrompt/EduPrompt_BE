@@ -218,7 +218,8 @@ public class PermissionServiceImpl implements PermissionService {
         }
 
         // Collection owner can edit their own collection
-        return userPrincipal.getUserId().equals(collection.getUser().getId());
+        UUID ownerId = collection.getCreatedBy();
+        return userPrincipal.getUserId().equals(ownerId);
 
 //        // For PUBLIC collections, anyone with appropriate role can edit
 //        if (Visibility.PUBLIC.name().equals(collection.getVisibility())) {
