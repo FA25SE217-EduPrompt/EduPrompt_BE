@@ -1,4 +1,6 @@
-package SEP490.EduPrompt.dto.request.prompt;
+package SEP490.EduPrompt.dto.response.prompt;
+
+import SEP490.EduPrompt.dto.request.prompt.PromptSummaryResponse;
 
 import java.util.List;
 
