@@ -1,9 +1,9 @@
 package SEP490.EduPrompt.service.prompt;
 
 import SEP490.EduPrompt.dto.request.prompt.*;
-import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
-import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import org.springframework.data.domain.Pageable;
 

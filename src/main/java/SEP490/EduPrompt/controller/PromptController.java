@@ -2,9 +2,9 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.ResponseDto;
-import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
-import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.prompt.PromptService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -147,9 +147,9 @@ public class PromptController {
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Filtering prompts for user: {} with params: createdBy={}, collectionName={}, tagTypes={}, tagValues={}, schoolName={}, groupName={}, title={}, includeDeleted={}",
-                currentUser.getUserId(), createdBy, collectionName, tagTypes,tagValues, schoolName, groupName, title, includeDeleted);
+                currentUser.getUserId(), createdBy, collectionName, tagTypes, tagValues, schoolName, groupName, title, includeDeleted);
 
-        PromptFilterRequest request = new PromptFilterRequest(createdBy, collectionName, tagTypes,tagValues, schoolName, groupName, title, includeDeleted);
+        PromptFilterRequest request = new PromptFilterRequest(createdBy, collectionName, tagTypes, tagValues, schoolName, groupName, title, includeDeleted);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         PaginatedPromptResponse response = promptService.filterPrompts(request, currentUser, pageable);
         return ResponseDto.success(response);

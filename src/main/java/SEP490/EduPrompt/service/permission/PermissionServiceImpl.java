@@ -103,7 +103,7 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    public boolean isSchoolAdmin(UserPrincipal user)  {
+    public boolean isSchoolAdmin(UserPrincipal user) {
         if (user == null) return false;
         return Role.SCHOOL_ADMIN.name().equalsIgnoreCase(user.getRole());
     }
