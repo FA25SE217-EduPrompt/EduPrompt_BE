@@ -47,4 +47,14 @@ public class AiSuggestionLog {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "optimization_queue_id")
+    private OptimizationQueue optimizationQueue;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+    }
+
 }

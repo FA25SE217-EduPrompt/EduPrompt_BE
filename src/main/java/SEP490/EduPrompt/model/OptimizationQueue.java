@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -16,26 +17,32 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "prompt_usages")
-public class PromptUsage {
+@Table(name = "optimization_queue")
+public class OptimizationQueue {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false)
     private UUID id;
 
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "prompt_id", nullable = false)
     private Prompt prompt;
 
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "requested_by", nullable = false)
+    private User requestedBy;
 
-    @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @NotNull
+    @Column(name = "input", nullable = false, length = Integer.MAX_VALUE)
+    private String input;
+
+    @Size(max = 50)
+    @ColumnDefault("'pending'")
+    @Column(name = "status", length = 50)
+    private String status;
 
     @Size(max = 255)
     @ColumnDefault("'gpt-4o-mini'")
@@ -45,12 +52,24 @@ public class PromptUsage {
     @Column(name = "output", length = Integer.MAX_VALUE)
     private String output;
 
-    @Column(name = "execution_time_ms")
-    private Integer executionTimeMs;
+    @Column(name = "error_message", length = Integer.MAX_VALUE)
+    private String errorMessage;
+
+    @ColumnDefault("now()")
+    @Column(name = "created_at")
+    private Instant createdAt;
+
+    @Column(name = "updated_at")
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
     }
 
 }
