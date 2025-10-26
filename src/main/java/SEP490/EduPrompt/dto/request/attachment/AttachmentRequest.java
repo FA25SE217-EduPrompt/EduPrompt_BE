@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.dto.request.attachment;
 
+import SEP490.EduPrompt.enums.FileType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -15,7 +16,7 @@ public class AttachmentRequest {
     @NotBlank(message = "Public ID is required")
     private String publicId;
 
-    private String fileType;
+    private FileType fileType;
 
     private String fileName;
 

@@ -1,6 +1,5 @@
 package SEP490.EduPrompt.service.attachment;
 
-import SEP490.EduPrompt.config.CloudinaryConfig;
 import SEP490.EduPrompt.dto.request.attachment.AttachmentRequest;
 import SEP490.EduPrompt.dto.response.attachment.AttachmentResponse;
 import SEP490.EduPrompt.dto.response.attachment.UploadSignatureResponse;
@@ -94,7 +93,7 @@ public class AttachmentServiceImpl implements AttachmentService {
                 .url(request.getUrl())
                 .publicId(request.getPublicId())
                 .fileName(request.getFileName())
-                .fileType(request.getFileType())
+                .fileType(request.getFileType().name())
                 .size(request.getSize())
                 .promptVersion(promptVersion)
                 .createdAt(Instant.now())

@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.enums;
 
+import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -13,4 +14,16 @@ public enum FileType {
 
     private final String uploadPreset;
     private final String resourceType;
+
+    public static FileType parseFileType(String f) {
+        if (f == null || f.isBlank()) {
+            throw new InvalidInputException("FileType is required. Allowed: IMAGE, VIDEO, DOCUMENT");
+        }
+        String normalized = f.trim().toUpperCase().replace(' ', '_').replace('-', '_');
+        try {
+            return FileType.valueOf(normalized);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidInputException("Invalid fileType: " + f + ". Allowed: IMAGE, VIDEO, DOCUMENT");
+        }
+    }
 }
