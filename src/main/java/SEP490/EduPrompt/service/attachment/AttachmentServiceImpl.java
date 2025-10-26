@@ -122,7 +122,6 @@ public class AttachmentServiceImpl implements AttachmentService {
         Attachment attachment = attachmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Attachment not found with id: " + id));
-        log.info("Deleted attachment: {}", attachment.getId());
 
         // optionally: delete from cloudinary
         try {
@@ -137,6 +136,7 @@ public class AttachmentServiceImpl implements AttachmentService {
 
         // delete for real (not soft-delete)
         attachmentRepository.delete(attachment);
+        log.info("Deleted attachment: {}", attachment.getId());
     }
 
     private AttachmentResponse mapToResponse(Attachment attachment) {
