@@ -41,7 +41,7 @@ ALTER TABLE ai_suggestion_logs
     ADD FOREIGN KEY (optimization_queue_id) REFERENCES optimization_queue(id) ON DELETE SET NULL;
 
 ALTER TABLE attachments
-    ADD COLUMN IF NOT EXISTS public_id VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS public_id VARCHAR(255) , -- if public id is null, that means attachment url is public
     ADD COLUMN IF NOT EXISTS file_name VARCHAR(255),
     ADD COLUMN IF NOT EXISTS size BIGINT;
 
