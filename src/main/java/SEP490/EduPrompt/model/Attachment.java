@@ -1,7 +1,7 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
+
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -30,9 +30,7 @@ public class Attachment {
     private PromptVersion promptVersion;
 
     @Size(max = 255)
-    @NotNull
-    @ColumnDefault("''")
-    @Column(name = "public_id", nullable = false)
+    @Column(name = "public_id")
     private String publicId;
 
     @Size(max = 255)
