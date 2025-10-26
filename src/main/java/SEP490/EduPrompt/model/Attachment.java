@@ -1,6 +1,8 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
@@ -27,6 +29,19 @@ public class Attachment {
     @JoinColumn(name = "prompt_version_id", nullable = false)
     private PromptVersion promptVersion;
 
+    @Size(max = 255)
+    @NotNull
+    @ColumnDefault("''")
+    @Column(name = "public_id", nullable = false)
+    private String publicId;
+
+    @Size(max = 255)
+    @Column(name = "file_name")
+    private String fileName;
+
+    @Column(name = "size")
+    private Long size;
+
     @Column(name = "url", nullable = false, length = Integer.MAX_VALUE)
     private String url;
 
@@ -41,5 +56,4 @@ public class Attachment {
     @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "created_by")
     private User createdBy;
-
 }
