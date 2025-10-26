@@ -23,6 +23,11 @@ public class CloudinaryConfig {
     private String apiSecret;
 
 
+    /**
+     * Exposes a configured Cloudinary client as a Spring bean.
+     *
+     * @return a Cloudinary instance configured with the injected cloud name, API key, and API secret
+     */
     @Bean
     public Cloudinary cloudinary() {
         Map<String, String> config = new HashMap<>();

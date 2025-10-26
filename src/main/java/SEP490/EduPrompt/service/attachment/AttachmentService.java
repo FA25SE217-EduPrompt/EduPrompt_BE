@@ -11,28 +11,34 @@ import java.util.UUID;
 
 public interface AttachmentService {
     /**
-     * Generate Cloudinary upload signature for client-side upload
-     * @return UploadSignatureResponse containing signature, timestamp, apiKey, cloudName, uploadPreset
-     */
+ * Generates an upload signature and related parameters for client-side Cloudinary uploads.
+ *
+ * @param type the FileType indicating the kind of file to be uploaded
+ * @return an UploadSignatureResponse containing signature, timestamp, apiKey, cloudName, and uploadPreset
+ */
     UploadSignatureResponse generateUploadSignature(FileType type);
 
     /**
-     * Save attachment metadata after successful upload to Cloudinary
-     * @param request AttachmentRequest containing url, publicId, fileType, fileName, size
-     * @return AttachmentResponse with saved attachment details
-     */
+ * Persist attachment metadata submitted after a successful Cloudinary upload and associate it with the current user.
+ *
+ * @param request      metadata produced by or required for the attachment (Cloudinary `url` and `publicId`, plus `fileType`, `fileName`, and `size`)
+ * @param currentUser  the authenticated user who owns or created the attachment
+ * @return             an AttachmentResponse containing the stored attachment's identifier, URL, and related metadata
+ */
     AttachmentResponse createAttachment(AttachmentRequest request, UserPrincipal currentUser);
 
     /**
-     * Get all attachments for a specific prompt version
-     * @param promptVersionId UUID of the prompt version
-     * @return List of AttachmentResponse
-     */
+ * Retrieve attachments associated with a specific prompt version.
+ *
+ * @param promptVersionId the UUID identifying the prompt version
+ * @return a list of AttachmentResponse objects for the specified prompt version; empty if none exist
+ */
     List<AttachmentResponse> getAttachmentsByPromptVersion(UUID promptVersionId);
 
     /**
-     * Delete an attachment by ID
-     * @param id UUID of the attachment
-     */
+ * Delete the attachment identified by the given UUID.
+ *
+ * @param id the UUID of the attachment to delete
+ */
     void deleteAttachment(UUID id);
 }

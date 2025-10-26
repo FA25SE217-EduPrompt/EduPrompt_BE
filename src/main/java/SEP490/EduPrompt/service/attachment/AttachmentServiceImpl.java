@@ -42,6 +42,13 @@ public class AttachmentServiceImpl implements AttachmentService {
     @Value("${cloudinary.api-key}")
     private String apiKey;
 
+    /**
+     * Generate a signed upload payload for Cloudinary configured for the specified file type.
+     *
+     * @param fileType descriptor that provides the upload preset and resource type to use for the signature
+     * @return an UploadSignatureResponse containing the signature, timestamp, API key, cloud name, upload preset, and resource type
+     * @throws SignatureGenerationException if a signature cannot be generated
+     */
     @Override
     public UploadSignatureResponse generateUploadSignature(FileType fileType) {
         try {
@@ -78,6 +85,14 @@ public class AttachmentServiceImpl implements AttachmentService {
         }
     }
 
+    /**
+     * Creates and persists a new Attachment associated with the specified PromptVersion and creator.
+     *
+     * @param request      the attachment creation data, including promptVersionId, url, publicId, fileName, fileType, and size
+     * @param currentUser  the principal of the user creating the attachment
+     * @return             an AttachmentResponse representing the saved attachment
+     * @throws ResourceNotFoundException if the referenced PromptVersion does not exist
+     */
     @Override
     @Transactional
     public AttachmentResponse createAttachment(AttachmentRequest request, UserPrincipal currentUser) {
@@ -107,6 +122,12 @@ public class AttachmentServiceImpl implements AttachmentService {
         return mapToResponse(savedAttachment);
     }
 
+    /**
+     * Retrieve all attachments associated with a prompt version.
+     *
+     * @param promptVersionId the UUID of the PromptVersion whose attachments to retrieve
+     * @return a list of AttachmentResponse objects for the specified prompt version; empty list if none exist
+     */
     @Override
     public List<AttachmentResponse> getAttachmentsByPromptVersion(UUID promptVersionId) {
         List<Attachment> attachments = attachmentRepository
@@ -117,6 +138,12 @@ public class AttachmentServiceImpl implements AttachmentService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Delete the attachment identified by the given ID from Cloudinary (if present) and from the repository.
+     *
+     * @param id the UUID of the attachment to delete
+     * @throws ResourceNotFoundException if no attachment exists with the given ID
+     */
     @Override
     @Transactional
     public void deleteAttachment(UUID id) {
@@ -140,6 +167,12 @@ public class AttachmentServiceImpl implements AttachmentService {
         attachmentRepository.delete(attachment);
     }
 
+    /**
+     * Convert an Attachment entity into an AttachmentResponse DTO.
+     *
+     * @param attachment the Attachment entity to convert
+     * @return an AttachmentResponse populated with id, publicId, url, fileName, fileType, size, and createdAt
+     */
     private AttachmentResponse mapToResponse(Attachment attachment) {
         return AttachmentResponse.builder()
                 .id(attachment.getId())

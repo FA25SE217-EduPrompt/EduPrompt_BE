@@ -26,10 +26,10 @@ public class AttachmentController {
     private final AttachmentService attachmentService;
 
     /**
-     * GET /api/attachments/upload-signature?fileType=IMAGE
-     * Generate Cloudinary upload signature for client-side upload
-     * fileType is upper-case ofc
-     * @return UploadSignatureResponse containing signature, timestamp, apiKey, cloudName, uploadPreset
+     * Generate a Cloudinary upload signature for client-side uploads.
+     *
+     * @param fileType the file type to sign; defaults to IMAGE when not provided
+     * @return an UploadSignatureResponse containing the signature, timestamp, API key, cloud name, and upload preset
      */
     @GetMapping("/upload-signature")
     public ResponseDto<UploadSignatureResponse> getUploadSignature(
@@ -40,11 +40,10 @@ public class AttachmentController {
     }
 
     /**
-     * POST /api/attachments
-     * Save attachment metadata after successful upload to Cloudinary
+     * Save attachment metadata after a successful client upload to Cloudinary.
      *
-     * @param request AttachmentRequest containing url, publicId, fileType, fileName, size, promptVersionId
-     * @return AttachmentResponse with saved attachment details
+     * @param request contains attachment data such as url, publicId, fileType, fileName, size, and promptVersionId
+     * @return the saved attachment details as an AttachmentResponse
      */
     @PostMapping()
     @ResponseStatus(HttpStatus.CREATED)
@@ -57,11 +56,10 @@ public class AttachmentController {
     }
 
     /**
-     * GET /api/attachments/prompt-version/{promptVersionId}
-     * Get all attachments for a specific prompt version
+     * Retrieve all attachments for the specified prompt version.
      *
-     * @param promptVersionId UUID of the prompt version
-     * @return List of AttachmentResponse
+     * @param promptVersionId the prompt version ID to fetch attachments for
+     * @return the list of attachments for the specified prompt version
      */
     @GetMapping("/prompt-version/{promptVersionId}")
     public ResponseDto<List<AttachmentResponse>> getAttachmentsByPromptVersion(
@@ -73,11 +71,10 @@ public class AttachmentController {
     }
 
     /**
-     * DELETE /api/attachments/{id}
-     * real Delete an attachment by ID
-     * optional: delete on cloudinary as well :D
-     * @param id UUID of the attachment
-     * @return ResponseDto with no content
+     * Delete an attachment by its identifier.
+     *
+     * @param id the UUID of the attachment to delete
+     * @return a ResponseDto with no content
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
