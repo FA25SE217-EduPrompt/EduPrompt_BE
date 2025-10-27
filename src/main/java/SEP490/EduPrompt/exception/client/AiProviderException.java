@@ -6,8 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
-public class SignatureGenerationException extends BaseException {
-    public SignatureGenerationException(String message) {
+public class AiProviderException extends BaseException {
+    public AiProviderException(String message) {
         super(ExceptionCode.FAILED_SIGNATURE_GENERATION.name(), message, HttpStatus.SERVICE_UNAVAILABLE);
     }
 }
