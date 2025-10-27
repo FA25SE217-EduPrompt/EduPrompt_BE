@@ -62,6 +62,14 @@ public class OptimizationQueue {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    @Size(max = 255)
+    @Column(name = "idempotency_key")
+    private String idempotencyKey;
+
+    @ColumnDefault("0")
+    @Column(name = "retry_count")
+    private Integer retryCount;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();

@@ -34,7 +34,12 @@ CREATE TABLE optimization_queue (
                                     FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
+ALTER TABLE optimization_queue
+    ADD COLUMN idempotency_key VARCHAR(255) UNIQUE, -- Prevent duplicate requests
+    ADD COLUMN retry_count INT DEFAULT 0,
 
+ALTER TABLE prompt_usages
+    ADD COLUMN idempotency_key VARCHAR(255) UNIQUE;
 
 ALTER TABLE ai_suggestion_logs
     ADD COLUMN optimization_queue_id UUID,

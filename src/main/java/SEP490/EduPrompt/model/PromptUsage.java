@@ -48,6 +48,10 @@ public class PromptUsage {
     @Column(name = "execution_time_ms")
     private Integer executionTimeMs;
 
+    @Size(max = 255)
+    @Column(name = "idempotency_key")
+    private String idempotencyKey;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
