@@ -421,7 +421,7 @@ public class AuthServiceImpl implements AuthService {
             UserAuth auth = existingAuth.get();
             auth.setLastLogin(Instant.now());
             userAuthRepository.save(auth);
-        }else {
+        } else {
             user = User.builder()
                     .email(email)
                     .firstName((String) payload.get("given_name"))
@@ -463,7 +463,7 @@ public class AuthServiceImpl implements AuthService {
         String email = jwtUtil.extractUsername(token);
 
         // Verify user exists
-        UserAuth userAuth= userAuthRepository.findByEmail(email)
+        UserAuth userAuth = userAuthRepository.findByEmail(email)
                 .orElseThrow(() -> new TokenInvalidException("User not found"));
 
         User user = userAuth.getUser();

@@ -1,7 +1,6 @@
 package SEP490.EduPrompt.config;
 
 import com.cloudinary.Cloudinary;
-import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -29,6 +29,7 @@ public class AttachmentController {
      * GET /api/attachments/upload-signature?fileType=IMAGE
      * Generate Cloudinary upload signature for client-side upload
      * fileType is upper-case ofc
+     *
      * @return UploadSignatureResponse containing signature, timestamp, apiKey, cloudName, uploadPreset
      */
     @GetMapping("/upload-signature")
@@ -76,6 +77,7 @@ public class AttachmentController {
      * DELETE /api/attachments/{id}
      * real Delete an attachment by ID
      * optional: delete on cloudinary as well :D
+     *
      * @param id UUID of the attachment
      * @return ResponseDto with no content
      */
