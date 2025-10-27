@@ -29,10 +29,8 @@ public class UserQuota {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "subscription_id", nullable = false)
-    private Subscription subscription;
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private UUID userId;
 
     @Column(name = "testing_quota_remaining")
     private Integer testingQuotaRemaining;
@@ -55,6 +53,32 @@ public class UserQuota {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "school_subscription_id")
+    private SchoolSubscription schoolSubscription;
+
+    @Column(name = "school_subscription_id", insertable = false, updatable = false)
+    private String schoolSubscriptionId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "subscription_tier_id")
+    private SubscriptionTier subscriptionTier;
+
+    @Column(name = "subscription_tier_id", insertable = false, updatable = false)
+    private String subscriptionTierId;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "individual_token_remaining", nullable = false)
+    private Integer individualTokenRemaining;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "individual_token_limit", nullable = false)
+    private Integer individualTokenLimit;
 
     @PrePersist
     protected void onCreate() {

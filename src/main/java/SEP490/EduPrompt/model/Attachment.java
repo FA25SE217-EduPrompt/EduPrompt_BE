@@ -1,7 +1,6 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
-
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -54,4 +53,9 @@ public class Attachment {
     @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "created_by")
     private User createdBy;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+    }
 }

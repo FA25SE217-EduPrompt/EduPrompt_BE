@@ -20,6 +20,7 @@ import java.util.UUID;
 @Table(name = "optimization_queue")
 public class OptimizationQueue {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false)
     private UUID id;
 
@@ -34,6 +35,9 @@ public class OptimizationQueue {
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "requested_by", nullable = false)
     private User requestedBy;
+
+    @Column(name = "requested_by", insertable = false, updatable = false)
+    private UUID requestedById; //this is umm... hard to understand sometime..., it's userId in short
 
     @NotNull
     @Column(name = "input", nullable = false, length = Integer.MAX_VALUE)
@@ -69,6 +73,18 @@ public class OptimizationQueue {
     @ColumnDefault("0")
     @Column(name = "retry_count")
     private Integer retryCount;
+
+    @NotNull
+    @ColumnDefault("3")
+    @Column(name = "max_retries", nullable = false)
+    private Integer maxRetries;
+
+    @ColumnDefault("0.7")
+    @Column(name = "temperature")
+    private Double temperature;
+
+    @Column(name = "max_tokens")
+    private Integer maxTokens;
 
     @PrePersist
     protected void onCreate() {

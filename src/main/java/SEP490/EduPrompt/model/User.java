@@ -24,8 +24,11 @@ public class User {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "subscription_id")
-    private Subscription subscription;
+    @JoinColumn(name = "subscription_tier_id")
+    private SubscriptionTier subscriptionTier;
+
+    @Column(name = "subscription_tier_id", insertable = false, updatable = false)
+    private String subscriptionTierId;
 
     @Column(name = "school_id")
     private UUID schoolId;
@@ -60,5 +63,4 @@ public class User {
     @ColumnDefault("now()")
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
-
 }

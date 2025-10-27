@@ -28,10 +28,16 @@ public class PromptUsage {
     @JoinColumn(name = "prompt_id", nullable = false)
     private Prompt prompt;
 
+    @Column(name = "prompt_id", insertable = false, updatable = false)
+    private UUID promptId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private UUID userId;
 
     @ColumnDefault("now()")
     @Column(name = "created_at", nullable = false)
@@ -52,9 +58,25 @@ public class PromptUsage {
     @Column(name = "idempotency_key")
     private String idempotencyKey;
 
+    @Column(name = "input_text", length = Integer.MAX_VALUE)
+    private String inputText;
+
+    @Column(name = "tokens_used")
+    private Integer tokensUsed;
+
+    @ColumnDefault("0.7")
+    @Column(name = "temperature")
+    private Double temperature;
+
+    @Column(name = "max_tokens")
+    private Integer maxTokens;
+
+    @ColumnDefault("1.0")
+    @Column(name = "top_p")
+    private Double topP;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
     }
-
 }
