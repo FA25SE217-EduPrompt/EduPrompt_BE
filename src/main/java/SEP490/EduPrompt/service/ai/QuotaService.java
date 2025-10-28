@@ -8,7 +8,11 @@ import java.util.UUID;
 public interface QuotaService {
     UserQuotaResponse getUserQuota(UUID userId);
 
-    void validateAndDecrementQuota(UUID userId, QuotaType quotaType);
+    void validateQuota(UUID userId, QuotaType quotaType, int estimatedToken);
+
+    void decrementQuota(UUID userId, QuotaType quotaType, int tokenUsed);
+
+    void validateAndDecrementQuota(UUID userId, QuotaType quotaType, int tokenUsed);
 
     void resetExpiredQuotas();
 
