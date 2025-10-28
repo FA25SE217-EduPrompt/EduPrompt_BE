@@ -67,11 +67,13 @@ spring:
       port: ${REDISPORT}
       password: ${REDISPASSWORD:}
       timeout: 60000
-      jedis:
+      lettuce:
         pool:
           max-active: 8
           max-idle: 8
           min-idle: 0
+          max-wait: -1ms
+        shutdown-timeout: 100ms
 
 springdoc:
   api-docs:
