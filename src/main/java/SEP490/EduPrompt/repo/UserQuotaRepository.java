@@ -24,9 +24,9 @@ public interface UserQuotaRepository extends JpaRepository<UserQuota, UUID> {
 
     List<UserQuota> findByQuotaResetDateBefore(Instant date);
 
-    @Query("SELECT uq FROM UserQuota uq WHERE uq.userId = :userId AND uq.subscriptionId = :subscriptionId")
-    Optional<UserQuota> findByUserIdAndSubscriptionId(
+    @Query("SELECT uq FROM UserQuota uq WHERE uq.userId = :userId AND uq.subscriptionTierId = :subscriptionTierId")
+    Optional<UserQuota> findByUserIdAndSubscriptionTierId(
             @Param("userId") UUID userId,
-            @Param("subscriptionId") UUID subscriptionId
+            @Param("subscriptionTierId") UUID subscriptionTierId
     );
 }
