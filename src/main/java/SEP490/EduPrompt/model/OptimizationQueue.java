@@ -30,6 +30,9 @@ public class OptimizationQueue {
     @JoinColumn(name = "prompt_id", nullable = false)
     private Prompt prompt;
 
+    @Column(name = "prompt_id", insertable = false, updatable = false)
+    private UUID promptId;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)

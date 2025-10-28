@@ -1,10 +1,12 @@
 package SEP490.EduPrompt.dto.response.prompt;
 
 import SEP490.EduPrompt.enums.QueueStatus;
+import lombok.Builder;
 
 import java.time.Instant;
 import java.util.UUID;
 
+@Builder
 public record OptimizationQueueResponse(
         UUID id,
         UUID promptId,
