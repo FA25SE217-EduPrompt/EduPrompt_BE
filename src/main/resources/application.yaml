@@ -97,6 +97,10 @@ open:
     group: "SEP490"
     scan-package: "SEP490.EduPrompt.controller"
 
+openai:
+  api:
+    key: ${OPENAI_API_KEY}
+
 
 ## Postmark Configuration
 #postmark:
