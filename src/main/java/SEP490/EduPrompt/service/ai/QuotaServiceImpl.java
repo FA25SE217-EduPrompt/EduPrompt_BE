@@ -262,6 +262,58 @@ public class QuotaServiceImpl implements QuotaService {
         log.info("Quota synced successfully for user: {}", userId);
     }
 
+    @Override
+    @Transactional
+    public void refundTokens(UUID userId, int tokensToRefund) {
+        log.info("Refunding {} tokens for user: {}", tokensToRefund, userId);
+
+        UserQuota userQuota = userQuotaRepository.findByUserIdWithLock(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (userQuota.getSchoolSubscriptionId() != null) {
+            SchoolSubscription schoolSub = userQuota.getSchoolSubscription();
+            schoolSub.setSchoolTokenRemaining(schoolSub.getSchoolTokenRemaining() + tokensToRefund);
+            schoolSub.setUpdatedAt(Instant.now());
+            schoolSubscriptionRepository.save(schoolSub);
+        } else {
+            // only refund token count
+            int limit = userQuota.getIndividualTokenLimit();
+            int current = userQuota.getIndividualTokenRemaining();
+            userQuota.setIndividualTokenRemaining(Math.min(current + tokensToRefund, limit));
+        }
+
+        userQuota.setUpdatedAt(Instant.now());
+        userQuotaRepository.save(userQuota);
+    }
+
+    @Override
+    @Transactional
+    public void refundQuota(UUID userId, QuotaType quotaType, int tokensToRefund) {
+        // Refund tokens
+        refundTokens(userId, tokensToRefund);
+
+        // Also refund action count since operation failed
+        UserQuota userQuota = userQuotaRepository.findByUserIdWithLock(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (userQuota.getSchoolSubscriptionId() == null) { // School users don't have action limits
+            switch (quotaType) {
+                case TEST -> {
+                    int limit = userQuota.getTestingQuotaLimit();
+                    int current = userQuota.getTestingQuotaRemaining();
+                    userQuota.setTestingQuotaRemaining(Math.min(current + 1, limit));
+                }
+                case OPTIMIZATION -> {
+                    int limit = userQuota.getOptimizationQuotaLimit();
+                    int current = userQuota.getOptimizationQuotaRemaining();
+                    userQuota.setOptimizationQuotaRemaining(Math.min(current + 1, limit));
+                }
+            }
+            userQuota.setUpdatedAt(Instant.now());
+            userQuotaRepository.save(userQuota);
+        }
+    }
+
     private void resetUserQuota(UserQuota userQuota) {
         log.debug("Resetting quota for user: {}", userQuota.getUserId());
 

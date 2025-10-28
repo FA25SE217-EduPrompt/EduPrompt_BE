@@ -17,4 +17,8 @@ public interface QuotaService {
     void resetExpiredQuotas();
 
     void syncUserQuotaWithSubscriptionTier(UUID userId, UUID subscriptionTierId);
+
+    void refundQuota(UUID userId, QuotaType quotaType, int tokens); // refund tokens + action count
+
+    void refundTokens(UUID userId, int tokens);
 }
