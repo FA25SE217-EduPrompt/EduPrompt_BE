@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.service.ai;
 
 import SEP490.EduPrompt.dto.request.prompt.PromptTestRequest;
+import SEP490.EduPrompt.dto.response.prompt.ClientPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptTestResponse;
 import SEP490.EduPrompt.enums.AiModel;
 import SEP490.EduPrompt.enums.QuotaType;
@@ -31,7 +32,6 @@ public class PromptTestingServiceImpl implements PromptTestingService {
     private final AiClientService aiClientService;
 
     @Override
-    @Transactional
     public PromptTestResponse testPrompt(UUID userId, PromptTestRequest request, String idempotencyKey) {
         log.info("Testing prompt: {} for user: {} with idempotency key: {}",
                 request.promptId(), userId, idempotencyKey);
@@ -44,9 +44,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
             return mapToResponse(existingUsage.get());
         }
 
-        // validate and decrement quota
-        //TODO: need to handle token usage
-        quotaService.validateAndDecrementQuota(userId, QuotaType.TEST);
+        quotaService.validateQuota(userId, QuotaType.TEST, request.maxTokens());
 
         // Fetch prompt
         Prompt prompt = promptRepository.findById(request.promptId())
@@ -54,7 +52,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
 
         // Call AI model
         long startTime = System.currentTimeMillis();
-        String output = aiClientService.testPrompt(
+        ClientPromptResponse response = aiClientService.testPrompt(
                 prompt,
                 request.aiModel().getName(),
                 request.inputText(),
@@ -64,8 +62,10 @@ public class PromptTestingServiceImpl implements PromptTestingService {
         );
         int executionTime = (int) (System.currentTimeMillis() - startTime);
 
-        // Calculate tokens (approximate - for accurate count, parse OpenAI response)
-        int tokensUsed = estimateTokens(output);
+        int tokensUsed = response.totalTokens();
+
+        // validate and decrement quota
+        quotaService.decrementQuota(userId, QuotaType.TEST, tokensUsed);
 
         // Save usage with idempotency key
         PromptUsage usage = PromptUsage.builder()
@@ -73,7 +73,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
                 .userId(userId)
                 .aiModel(request.aiModel().getName())
                 .inputText(request.inputText())
-                .output(output)
+                .output(response.content())
                 .tokensUsed(tokensUsed)
                 .executionTimeMs(executionTime)
                 .idempotencyKey(idempotencyKey)
@@ -125,10 +125,5 @@ public class PromptTestingServiceImpl implements PromptTestingService {
                 usage.getTopP(),
                 usage.getCreatedAt()
         );
-    }
-
-    private int estimateTokens(String text) {
-        //TODO: might use openai tiktoken to calculate this
-        return text != null ? text.length() / 4 : 0;
     }
 }

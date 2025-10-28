@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.service.ai;
 
+import SEP490.EduPrompt.dto.response.prompt.ClientPromptResponse;
 import SEP490.EduPrompt.enums.AiModel;
 import SEP490.EduPrompt.exception.client.AiProviderException;
 import SEP490.EduPrompt.model.Prompt;
@@ -21,6 +22,7 @@ import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,25 +54,32 @@ public class AiClientServiceImpl implements AiClientService {
     }
 
     @Override
-    public String testPrompt(Prompt prompt, String aiModel, String inputText,
+    public ClientPromptResponse testPrompt(Prompt prompt, String aiModel, String inputText,
                              Double temperature, Integer maxTokens, Double topP) {
         log.info("Testing prompt {} with model: {}", prompt.getId(), aiModel);
 
         String fullPrompt = buildFullPrompt(prompt, inputText);
+        //just call openai api for now
         return callOpenAiApi(fullPrompt, aiModel, temperature, maxTokens, topP);
     }
 
     @Override
-    public String optimizePrompt(Prompt prompt, String optimizationInput,
+    public ClientPromptResponse optimizePrompt(Prompt prompt, String optimizationInput,
                                  Double temperature, Integer maxTokens) {
         log.info("Optimizing prompt {}", prompt.getId());
 
         String optimizationPrompt = buildOptimizationPrompt(prompt, optimizationInput);
+        //just call openai api for now
         return callOpenAiApi(optimizationPrompt, AiModel.GPT_4O_MINI.getName(), temperature, maxTokens, 1.0);
     }
 
-    private String callOpenAiApi(String prompt, String model, Double temperature,
-                                 Integer maxTokens, Double topP) {
+    public ClientPromptResponse callOpenAiApi(
+            String prompt,
+            String model,
+            Double temperature,
+            Integer maxTokens,
+            Double topP
+    ) {
         try {
             log.debug("Calling OpenAI API with model: {}", model);
 
@@ -80,15 +89,9 @@ public class AiClientServiceImpl implements AiClientService {
                     Map.of("role", "user", "content", prompt)
             ));
 
-            if (temperature != null) {
-                requestBody.put("temperature", temperature);
-            }
-            if (maxTokens != null) {
-                requestBody.put("max_tokens", maxTokens);
-            }
-            if (topP != null) {
-                requestBody.put("top_p", topP);
-            }
+            if (temperature != null) requestBody.put("temperature", temperature);
+            if (maxTokens != null) requestBody.put("max_tokens", maxTokens);
+            if (topP != null) requestBody.put("top_p", topP);
 
             Map<String, Object> responseBody = webClient.post()
                     .uri(openaiApiUrl)
@@ -109,25 +112,37 @@ public class AiClientServiceImpl implements AiClientService {
                                         return Mono.error(new AiProviderException(
                                                 "OpenAI API server error: " + clientResponse.statusCode()));
                                     }))
-                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
-                    })
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
                     .block();
 
-            if (responseBody != null) {
-                //follow the openai response
-                List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
+            Map<String, Object> usage = (Map<String, Object>) responseBody.get("usage");
+            String id = (String) responseBody.get("id");
+            Long createdSeconds = responseBody.get("created") instanceof Number
+                    ? ((Number) responseBody.get("created")).longValue()
+                    : null;
 
-                if (choices != null && !choices.isEmpty()) {
-                    //get the first choice
-                    Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-                    String content = (String) message.get("content");
-
-                    log.info("OpenAI API call successful");
-                    return content;
-                }
+            String content = null, finishReason = null;
+            if (choices != null && !choices.isEmpty()) {
+                Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+                content = (String) message.get("content");
+                finishReason = (String) choices.get(0).get("finish_reason");
             }
 
-            throw new AiProviderException("Invalid response from OpenAI API");
+            return ClientPromptResponse.builder()
+                    .content(content)
+                    .prompt(prompt)
+                    .model(model)
+                    .temperature(temperature)
+                    .maxTokens(maxTokens)
+                    .topP(topP)
+                    .promptTokens(usage != null ? (Integer) usage.get("prompt_tokens") : null)
+                    .completionTokens(usage != null ? (Integer) usage.get("completion_tokens") : null)
+                    .totalTokens(usage != null ? (Integer) usage.get("total_tokens") : null)
+                    .finishReason(finishReason)
+                    .id(id)
+                    .createdAt(createdSeconds != null ? Instant.ofEpochSecond(createdSeconds) : Instant.now())
+                    .build();
 
         } catch (WebClientRequestException e) {
             log.error("Request error calling OpenAI API: {}", e.getMessage());
@@ -140,6 +155,7 @@ public class AiClientServiceImpl implements AiClientService {
             throw new AiProviderException("Failed to call OpenAI API: " + e.getMessage());
         }
     }
+
 
     private String buildFullPrompt(Prompt prompt, String inputText) {
         StringBuilder fullPrompt = new StringBuilder();
