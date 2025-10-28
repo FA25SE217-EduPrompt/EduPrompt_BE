@@ -74,18 +74,18 @@ public class QuotaServiceImpl implements QuotaService {
         } else {
             int indvTokenRemaining = userQuota.getIndividualTokenRemaining();
             if (indvTokenRemaining < estimatedTokens) {
-                throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getOptimizationQuotaRemaining());
+                throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), indvTokenRemaining);
             }
 
             switch (quotaType) {
                 case TEST -> {
                     int testQuota = userQuota.getTestingQuotaRemaining();
-                    if (testQuota < 1) throw new QuotaExceededException(QuotaType.TEST, userQuota.getQuotaResetDate(), userQuota.getOptimizationQuotaRemaining());
+                    if (testQuota < 1) throw new QuotaExceededException(QuotaType.TEST, userQuota.getQuotaResetDate(), testQuota);
                 }
 
                 case OPTIMIZATION -> {
                     int optQuota = userQuota.getOptimizationQuotaRemaining();
-                    if (optQuota < 1) throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(), userQuota.getOptimizationQuotaRemaining());
+                    if (optQuota < 1) throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(), optQuota);
                 }
 
                 default -> throw new InvalidInputException("Unknown quota type");
@@ -159,7 +159,7 @@ public class QuotaServiceImpl implements QuotaService {
             schoolSub.setSchoolTokenRemaining(schoolTokensLeft - tokenUsed);
             schoolSub.setUpdatedAt(Instant.now());
             schoolSubscriptionRepository.save(schoolSub);
-            log.info("Decremented school pool for user {} by {}, remaining: {}", userId, tokenUsed, schoolSub.getSchoolTokenRemaining());
+            log.info("Decremented school pool for user {} by {}, remaining: {}", userId, tokenUsed, schoolTokensLeft);
         }
         // if user dont have school sub, then proceed as normal
         else {
@@ -179,7 +179,7 @@ public class QuotaServiceImpl implements QuotaService {
                         throw new QuotaExceededException(
                                 QuotaType.TEST,
                                 userQuota.getQuotaResetDate(),
-                                userQuota.getOptimizationQuotaRemaining()
+                                testQuotaLeft
                         );
                     }
                     userQuota.setTestingQuotaRemaining(testQuotaLeft - 1);
@@ -190,12 +190,12 @@ public class QuotaServiceImpl implements QuotaService {
                         throw new QuotaExceededException(
                                 QuotaType.OPTIMIZATION,
                                 userQuota.getQuotaResetDate(),
-                                userQuota.getOptimizationQuotaRemaining()
+                                optQuotaLeft
                         );
                     }
                     userQuota.setOptimizationQuotaRemaining(optQuotaLeft - 1);
                 }
-                default -> throw new IllegalArgumentException("Unknown quota type");
+                default -> throw new InvalidInputException("Unknown quota type");
             }
 
             userQuota.setIndividualTokenRemaining(indvTokensLeft - tokenUsed);
