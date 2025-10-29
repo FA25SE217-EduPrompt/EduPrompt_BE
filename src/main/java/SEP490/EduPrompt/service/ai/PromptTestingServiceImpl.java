@@ -10,8 +10,10 @@ import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.client.AiProviderException;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.PromptUsage;
+import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.repo.PromptUsageRepository;
+import SEP490.EduPrompt.repo.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +43,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
     private final AiClientService aiClientService;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     @Override
     public PromptTestResponse testPrompt(UUID userId, PromptTestRequest request, String idempotencyKey) {
@@ -51,14 +54,15 @@ public class PromptTestingServiceImpl implements PromptTestingService {
         String cacheKey = IDEMPOTENCY_KEY_PREFIX + idempotencyKey;
         String cachedResult = redisTemplate.opsForValue().get(cacheKey);
 
-        log.info("Idempotent retry detected in Redis for key: {}, returning cached result", idempotencyKey);
-        try {
-            return objectMapper.readValue(cachedResult, PromptTestResponse.class);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to deserialize cached result, will reprocess", e);
-            // not fatal, continue
+        if (cachedResult != null) { //no this could be null, dont trust the ide
+            try {
+                log.info("Idempotent retry detected in Redis for key: {}, returning cached result", idempotencyKey);
+                return objectMapper.readValue(cachedResult, PromptTestResponse.class);
+            } catch (JsonProcessingException e) {
+                log.error("Failed to deserialize cached result, will reprocess", e);
+                // not fatal, continue
+            }
         }
-
         // check database as fallback if not found in redis
         Optional<PromptUsage> existingUsage = usageRepository.findByIdempotencyKey(idempotencyKey);
         if (existingUsage.isPresent()) {
@@ -84,12 +88,14 @@ public class PromptTestingServiceImpl implements PromptTestingService {
         try {
             // double-check after acquiring lock
             cachedResult = redisTemplate.opsForValue().get(cacheKey);
-            log.info("Result appeared while waiting for lock, returning cached result");
-            try {
-                return objectMapper.readValue(cachedResult, PromptTestResponse.class);
-            } catch (JsonProcessingException e) {
-                log.error("Failed to deserialize cached result, will reprocess", e);
-                // not fatal, continue to reprocess
+            if (cachedResult != null) { //no this could be null, dont trust the ide
+                try {
+                    log.info("Idempotent retry detected in Redis for key: {}, returning cached result", idempotencyKey);
+                    return objectMapper.readValue(cachedResult, PromptTestResponse.class);
+                } catch (JsonProcessingException e) {
+                    log.error("Failed to deserialize cached result, will reprocess", e);
+                    // not fatal, continue
+                }
             }
 
             //  assume decrement token used by max token in user request
@@ -123,10 +129,11 @@ public class PromptTestingServiceImpl implements PromptTestingService {
                     quotaService.refundTokens(userId, tokensToRefund);
                     log.debug("Refunded {} unused tokens for user: {}", tokensToRefund, userId);
                 }
+                User user = userRepository.getReferenceById(userId);
 
                 PromptUsage usage = PromptUsage.builder()
-                        .promptId(request.promptId())
-                        .userId(userId)
+                        .prompt(prompt)
+                        .user(user)
                         .aiModel(request.aiModel().getName())
                         .inputText(request.inputText())
                         .output(response.content())

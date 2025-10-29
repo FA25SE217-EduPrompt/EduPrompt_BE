@@ -11,9 +11,11 @@ import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.AiSuggestionLog;
 import SEP490.EduPrompt.model.OptimizationQueue;
 import SEP490.EduPrompt.model.Prompt;
+import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.AiSuggestionLogRepository;
 import SEP490.EduPrompt.repo.OptimizationQueueRepository;
 import SEP490.EduPrompt.repo.PromptRepository;
+import SEP490.EduPrompt.repo.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +47,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     private final AiClientService aiClientService;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
@@ -57,12 +60,14 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         String cacheKey = IDEMPOTENCY_KEY_PREFIX + idempotencyKey;
         String cachedResult = redisTemplate.opsForValue().get(cacheKey);
 
-        log.info("Idempotent retry detected in Redis for key: {}, returning cached result", idempotencyKey);
-        try {
-            return objectMapper.readValue(cachedResult, OptimizationQueueResponse.class);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to deserialize cached result, will reprocess", e);
-            // not fatal, continue
+        if (cachedResult != null) { // this could be null, dont trust the ide
+            log.info("Idempotent retry detected in Redis for key: {}, returning cached result", idempotencyKey);
+            try {
+                return objectMapper.readValue(cachedResult, OptimizationQueueResponse.class);
+            } catch (JsonProcessingException e) {
+                log.error("Failed to deserialize cached result, will reprocess", e);
+                // not fatal, continue
+            }
         }
 
         // Check database as fallback if not found in redis
@@ -90,25 +95,29 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         try {
             // Double-check after acquiring lock
             cachedResult = redisTemplate.opsForValue().get(cacheKey);
-            log.info("Result appeared while waiting for lock, returning cached result");
-            try {
-                return objectMapper.readValue(cachedResult, OptimizationQueueResponse.class);
-            } catch (JsonProcessingException e) {
-                log.error("Failed to deserialize cached result, will reprocess", e);
-                // not fatal, continue to reprocess
+            if (cachedResult != null) { // this could be null, dont trust the ide
+                log.info("Result appeared while waiting for lock, returning cached result");
+                try {
+                    return objectMapper.readValue(cachedResult, OptimizationQueueResponse.class);
+                } catch (JsonProcessingException e) {
+                    log.error("Failed to deserialize cached result, will reprocess", e);
+                    // not fatal, continue to reprocess
+                }
             }
 
             // Validate quota (but don't decrement yet - this will happen during processing)
             quotaService.validateQuota(userId, QuotaType.OPTIMIZATION, request.maxTokens());
 
             // Verify prompt exists
-            promptRepository.findById(request.promptId())
+            Prompt prompt = promptRepository.findById(request.promptId())
                     .orElseThrow(() -> new ResourceNotFoundException("prompt not found with id: " + request.promptId()));
 
             // Create queue entry
+            User user = userRepository.getReferenceById(userId);
+
             OptimizationQueue queueEntry = OptimizationQueue.builder()
-                    .promptId(request.promptId())
-                    .requestedById(userId)
+                    .prompt(prompt)
+                    .requestedBy(user)
                     .input(request.optimizationInput())
                     .status(QueueStatus.PENDING.name())
                     .aiModel(AiModel.GPT_4O_MINI.getName())
@@ -224,13 +233,13 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
             // Save suggestion log
             AiSuggestionLog suggestionLog = AiSuggestionLog.builder()
-                    .promptId(item.getPromptId())
+                    .prompt(prompt)
                     .requestedBy(userId)
                     .input(item.getInput())
                     .output(optimizedPrompt.content())
                     .aiModel(item.getAiModel())
                     .status(QueueStatus.COMPLETED.name())
-                    .optimizationQueueId(item.getId())
+                    .optimizationQueue(item)
                     .createdAt(Instant.now())
                     .build();
 
