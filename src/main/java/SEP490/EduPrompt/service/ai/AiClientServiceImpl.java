@@ -4,6 +4,8 @@ import SEP490.EduPrompt.dto.response.prompt.ClientPromptResponse;
 import SEP490.EduPrompt.enums.AiModel;
 import SEP490.EduPrompt.exception.client.AiProviderException;
 import SEP490.EduPrompt.model.Prompt;
+import com.google.genai.Client;
+import com.google.genai.types.*;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
@@ -26,6 +28,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -34,12 +37,15 @@ public class AiClientServiceImpl implements AiClientService {
 
     private static final int TIMEOUT_SECONDS = 30;
     private final WebClient webClient;
+
+    private final Client client;
+
     @Value("${openai.api.key}")
     private String openaiApiKey;
     @Value("${openai.api.url:https://api.openai.com/v1/chat/completions}")
     private String openaiApiUrl;
 
-    public AiClientServiceImpl(WebClient.Builder webClientBuilder) {
+    public AiClientServiceImpl(WebClient.Builder webClientBuilder, Client client) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, TIMEOUT_SECONDS * 1000)
                 .responseTimeout(Duration.ofSeconds(TIMEOUT_SECONDS))
@@ -51,26 +57,27 @@ public class AiClientServiceImpl implements AiClientService {
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
+        this.client = client;
     }
 
     @Override
     public ClientPromptResponse testPrompt(Prompt prompt, String aiModel, String inputText,
-                             Double temperature, Integer maxTokens, Double topP) {
+                                           Double temperature, Integer maxTokens, Double topP) {
         log.info("Testing prompt {} with model: {}", prompt.getId(), aiModel);
 
         String fullPrompt = buildFullPrompt(prompt, inputText);
         //just call openai api for now
-        return callOpenAiApi(fullPrompt, aiModel, temperature, maxTokens, topP);
+        return callGeminiApi(fullPrompt, aiModel, temperature, maxTokens, topP);
     }
 
     @Override
     public ClientPromptResponse optimizePrompt(Prompt prompt, String optimizationInput,
-                                 Double temperature, Integer maxTokens) {
+                                               Double temperature, Integer maxTokens) {
         log.info("Optimizing prompt {}", prompt.getId());
 
         String optimizationPrompt = buildOptimizationPrompt(prompt, optimizationInput);
         //just call openai api for now
-        return callOpenAiApi(optimizationPrompt, AiModel.GPT_4O_MINI.getName(), temperature, maxTokens, 1.0);
+        return callGeminiApi(optimizationPrompt, AiModel.GPT_4O_MINI.getName(), temperature, maxTokens, 1.0);
     }
 
     public ClientPromptResponse callOpenAiApi(
@@ -112,7 +119,8 @@ public class AiClientServiceImpl implements AiClientService {
                                         return Mono.error(new AiProviderException(
                                                 "OpenAI API server error: " + clientResponse.statusCode()));
                                     }))
-                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                    })
                     .block();
 
             List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
@@ -154,6 +162,106 @@ public class AiClientServiceImpl implements AiClientService {
             log.error("Error calling OpenAI API", e);
             throw new AiProviderException("Failed to call OpenAI API: " + e.getMessage());
         }
+    }
+
+    public ClientPromptResponse callGeminiApi(
+            String prompt,
+            String model,
+            Double temperature,
+            Integer maxTokens,
+            Double topP
+    ) {
+        String effectiveModel = (model != null && !model.isBlank()) ? model : "gemini-2.0-flash-exp";
+        log.debug("Calling Gemini API with model: {}", effectiveModel);
+
+        try {
+            // Build generation config
+            GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
+            if (temperature != null) {
+                configBuilder.temperature(temperature.floatValue());
+            }
+            if (maxTokens != null) {
+                configBuilder.maxOutputTokens(maxTokens);
+            }
+            if (topP != null) {
+                configBuilder.topP(topP.floatValue());
+            }
+
+            // Build content with user role and text part
+            Content content = Content.builder()
+                    .role("user")
+                    .parts(List.of(Part.builder().text(prompt).build()))
+                    .build();
+
+            // Generate content using the client
+            GenerateContentResponse response = client.models.generateContent(
+                    effectiveModel,
+                    List.of(content),
+                    configBuilder.build()
+            );
+            log.info("Gemini API response: {}", response);
+
+            // Extract response content safely
+            String responseContent = extractResponseContent(response);
+            String finishReason = extractFinishReason(response);
+
+            // Extract usage metadata
+            Integer promptTokens = null;
+            Integer completionTokens = null;
+            Integer totalTokens = null;
+
+            if (response.usageMetadata().isPresent()) {
+                var usageMetadata = response.usageMetadata().get();
+                promptTokens = usageMetadata.promptTokenCount().orElse(null);
+                completionTokens = usageMetadata.candidatesTokenCount().orElse(null);
+                totalTokens = usageMetadata.totalTokenCount().orElse(null);
+            }
+
+            // Generate a unique ID
+            String responseId = UUID.randomUUID().toString();
+
+            return ClientPromptResponse.builder()
+                    .content(responseContent)
+                    .prompt(prompt)
+                    .model(effectiveModel)
+                    .temperature(temperature)
+                    .maxTokens(maxTokens)
+                    .topP(topP)
+                    .promptTokens(promptTokens)
+                    .completionTokens(completionTokens)
+                    .totalTokens(totalTokens)
+                    .finishReason(finishReason)
+                    .id(responseId)
+                    .createdAt(Instant.now())
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Error calling Gemini API with model {}: {}", effectiveModel, e.getMessage(), e);
+            throw new AiProviderException("Failed to call Gemini API: " + e.getMessage());
+        }
+    }
+
+    private String extractResponseContent(GenerateContentResponse response) {
+        return response.candidates()
+                .flatMap(candidates -> candidates.isEmpty() ?
+                        java.util.Optional.empty() :
+                        java.util.Optional.of(candidates.getFirst()))
+                .flatMap(Candidate::content)
+                .flatMap(Content::parts)
+                .flatMap(parts -> parts.isEmpty() ?
+                        java.util.Optional.empty() :
+                        java.util.Optional.of(parts.getFirst()))
+                .flatMap(Part::text)
+                .orElse("");
+    }
+
+    private String extractFinishReason(GenerateContentResponse response) {
+        return response.candidates()
+                .filter(candidates -> !candidates.isEmpty())
+                .map(List::getFirst)
+                .flatMap(Candidate::finishReason)
+                .map(FinishReason::toString)
+                .orElse("UNKNOWN");
     }
 
 

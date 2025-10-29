@@ -9,7 +9,7 @@ import java.util.Locale;
 public enum AiModel {
     GPT_4O_MINI("gpt-4o-mini"),
     CLAUDE_3_5_SONNET("claude-3.5-sonnet"),
-    GEMINI_2_0_FLASH("gemini-2.5-flash");
+    GEMINI_2_5_FLASH("gemini-2.5-flash");
 
     private final String name;
 
@@ -23,7 +23,8 @@ public enum AiModel {
         }
         String normalized = a
                 .toUpperCase(Locale.ROOT)
-                .replace("-", "_");
+                .replace("-", "_")
+                .replace(".", "_");
         try {
             return AiModel.valueOf(normalized);
         } catch (IllegalArgumentException e) {
