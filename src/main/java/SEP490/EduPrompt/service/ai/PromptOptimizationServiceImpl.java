@@ -229,7 +229,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
                     .input(item.getInput())
                     .output(optimizedPrompt.content())
                     .aiModel(item.getAiModel())
-                    .status("completed")
+                    .status(QueueStatus.COMPLETED.name())
                     .optimizationQueueId(item.getId())
                     .createdAt(Instant.now())
                     .build();
