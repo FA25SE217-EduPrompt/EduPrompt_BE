@@ -25,4 +25,11 @@ public class QuotaController {
         UserQuotaResponse result = quotaService.getUserQuota(userId);
         return ResponseDto.success(result);
     }
+
+    @GetMapping("/sync-user-quota/{userId}")
+    public ResponseDto<String> syncUserQuota(@PathVariable UUID userId) {
+        UUID freeTierSubId = UUID.fromString("1025743d-bf58-4fef-ac95-912c6b1037d8");
+        quotaService.syncUserQuotaWithSubscriptionTier(userId, freeTierSubId);
+        return ResponseDto.success("sync user quota completed");
+    }
 }
