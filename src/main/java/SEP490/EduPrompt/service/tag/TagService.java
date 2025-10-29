@@ -10,7 +10,9 @@ import java.util.List;
 
 public interface TagService {
     List<TagResponse> createBatch(CreateTagBatchRequest request);
+
     Page<TagResponse> filterTags(List<String> types, Pageable pageable);
+
     List<Tag> findAllByIdIn(List<java.util.UUID> ids);
 
 }

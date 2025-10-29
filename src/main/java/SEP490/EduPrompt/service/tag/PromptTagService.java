@@ -11,6 +11,8 @@ import java.util.UUID;
 
 public interface PromptTagService {
     BatchAddResultResponse addTags(UUID promptId, AddTagsToPromptRequest request, UserPrincipal user);
+
     void removeTag(UUID promptId, RemoveTagFromPromptRequest request, UserPrincipal user);
+
     List<TagResponse> getTagsForPrompt(UUID promptId, UserPrincipal user);
 }
