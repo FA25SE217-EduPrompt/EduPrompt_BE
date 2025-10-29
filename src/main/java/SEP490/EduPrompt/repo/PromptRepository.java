@@ -64,4 +64,12 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
 
     @Query("SELECT p FROM Prompt p JOIN FETCH p.user JOIN FETCH p.collection c LEFT JOIN FETCH c.group WHERE p.collection.id = :collectionId AND p.isDeleted = false")
     List<Prompt> findByCollectionIdAndIsDeletedFalse(UUID collectionId);
+
+    @Query("""
+        SELECT p FROM Prompt p
+        LEFT JOIN FETCH p.collection c
+        LEFT JOIN FETCH c.group g
+        WHERE p.id = :id AND p.isDeleted = false
+        """)
+    Optional<Prompt> findActiveById(@Param("id") UUID id);
 }
