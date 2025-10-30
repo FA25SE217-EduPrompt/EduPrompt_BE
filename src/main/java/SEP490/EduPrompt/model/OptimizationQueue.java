@@ -30,7 +30,7 @@ public class OptimizationQueue {
     @JoinColumn(name = "prompt_id", nullable = false)
     private Prompt prompt;
 
-    @Column(name = "prompt_id", insertable = false, updatable = false)
+    @Column(name = "prompt_id", updatable = false)
     private UUID promptId;
 
     @NotNull
@@ -39,7 +39,7 @@ public class OptimizationQueue {
     @JoinColumn(name = "requested_by", nullable = false)
     private User requestedBy;
 
-    @Column(name = "requested_by", insertable = false, updatable = false)
+    @Column(name = "requested_by", updatable = false)
     private UUID requestedById; //this is umm... hard to understand sometime..., it's userId in short
 
     @NotNull
