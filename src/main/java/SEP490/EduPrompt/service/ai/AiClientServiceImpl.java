@@ -6,68 +6,57 @@ import SEP490.EduPrompt.exception.client.AiProviderException;
 import SEP490.EduPrompt.model.Prompt;
 import com.google.genai.Client;
 import com.google.genai.types.*;
-import io.netty.channel.ChannelOption;
-import io.netty.handler.timeout.ReadTimeoutHandler;
-import io.netty.handler.timeout.WriteTimeoutHandler;
+import com.openai.client.OpenAIClient;
+import com.openai.errors.OpenAIException;
+import com.openai.errors.OpenAIServiceException;
+import com.openai.models.ChatModel;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
+import com.openai.models.completions.CompletionUsage;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientRequestException;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.core.publisher.Mono;
-import reactor.netty.http.client.HttpClient;
 
-import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class AiClientServiceImpl implements AiClientService {
 
     private static final int TIMEOUT_SECONDS = 30;
-    private final WebClient webClient;
-
+    //gemini client
     private final Client client;
-
-    @Value("${openai.api-key}")
-    private String openaiApiKey;
-    @Value("${openai.api.url:https://api.openai.com/v1/chat/completions}")
-    private String openaiApiUrl;
-
-    public AiClientServiceImpl(WebClient.Builder webClientBuilder, Client client) {
-        HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, TIMEOUT_SECONDS * 1000)
-                .responseTimeout(Duration.ofSeconds(TIMEOUT_SECONDS))
-                .doOnConnected(conn -> conn
-                        .addHandlerLast(new ReadTimeoutHandler(TIMEOUT_SECONDS, TimeUnit.SECONDS))
-                        .addHandlerLast(new WriteTimeoutHandler(TIMEOUT_SECONDS, TimeUnit.SECONDS)));
-
-        this.webClient = webClientBuilder
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-        this.client = client;
-    }
+    //openai client
+    private final OpenAIClient openAiClient;
 
     @Override
-    public ClientPromptResponse testPrompt(Prompt prompt, String aiModel, String inputText,
+    public ClientPromptResponse testPrompt(Prompt prompt, AiModel aiModel, String inputText,
                                            Double temperature, Integer maxTokens, Double topP) {
-        log.info("Testing prompt {} with model: {}", prompt.getId(), aiModel);
+        log.info("Testing prompt {} with model: {}", prompt.getId(), aiModel.getName());
 
         String fullPrompt = buildFullPrompt(prompt, inputText);
-        //just call openai api for now
-        return callGeminiApi(fullPrompt, aiModel, temperature, maxTokens, topP);
+
+        switch (aiModel) {
+            case GEMINI_2_5_FLASH -> {
+                return callGeminiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
+            }
+
+            case GPT_4O_MINI -> {
+                return callOpenAiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
+            }
+
+            case CLAUDE_3_5_SONNET -> {
+                return callAnthropicApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
+            }
+
+            default -> throw new AiProviderException("Unsupported ai model: " + aiModel.getName());
+        }
+
+
     }
 
     @Override
@@ -76,7 +65,7 @@ public class AiClientServiceImpl implements AiClientService {
         log.info("Optimizing prompt {}", prompt.getId());
 
         String optimizationPrompt = buildOptimizationPrompt(prompt, optimizationInput);
-        //just call openai api for now
+        //just call gemini api for now, might plan to allow to choose model when optimize
         return callGeminiApi(optimizationPrompt, AiModel.GPT_4O_MINI.getName(), temperature, maxTokens, 1.0);
     }
 
@@ -90,52 +79,41 @@ public class AiClientServiceImpl implements AiClientService {
         try {
             log.debug("Calling OpenAI API with model: {}", model);
 
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", model);
-            requestBody.put("messages", List.of(
-                    Map.of("role", "user", "content", prompt)
-            ));
+            // Build the chat completion request
+            ChatCompletionCreateParams.Builder requestBuilder = ChatCompletionCreateParams.builder()
+                    .model(ChatModel.GPT_4O_MINI)
+                    .addMessage(ChatCompletionUserMessageParam.builder()
+                            .content(ChatCompletionUserMessageParam.Content.ofText(prompt))
+                            .build()
+                    );
 
-            if (temperature != null) requestBody.put("temperature", temperature);
-            if (maxTokens != null) requestBody.put("max_tokens", maxTokens);
-            if (topP != null) requestBody.put("top_p", topP);
-
-            Map<String, Object> responseBody = webClient.post()
-                    .uri(openaiApiUrl)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + openaiApiKey)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
-                            clientResponse.bodyToMono(String.class)
-                                    .flatMap(errorBody -> {
-                                        log.error("OpenAI API client error: {}", errorBody);
-                                        return Mono.error(new AiProviderException(
-                                                "OpenAI API client error: " + clientResponse.statusCode()));
-                                    }))
-                    .onStatus(HttpStatusCode::is5xxServerError, clientResponse ->
-                            clientResponse.bodyToMono(String.class)
-                                    .flatMap(errorBody -> {
-                                        log.error("OpenAI API server error: {}", errorBody);
-                                        return Mono.error(new AiProviderException(
-                                                "OpenAI API server error: " + clientResponse.statusCode()));
-                                    }))
-                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
-                    })
-                    .block();
-
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
-            Map<String, Object> usage = (Map<String, Object>) responseBody.get("usage");
-            String id = (String) responseBody.get("id");
-            Long createdSeconds = responseBody.get("created") instanceof Number
-                    ? ((Number) responseBody.get("created")).longValue()
-                    : null;
-
-            String content = null, finishReason = null;
-            if (choices != null && !choices.isEmpty()) {
-                Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-                content = (String) message.get("content");
-                finishReason = (String) choices.get(0).get("finish_reason");
+            // Add optional parameters only if provided
+            if (temperature != null) {
+                requestBuilder.temperature(temperature);
             }
+            if (maxTokens != null) {
+                requestBuilder.maxCompletionTokens(maxTokens.longValue());
+            }
+            if (topP != null) {
+                requestBuilder.topP(topP);
+            }
+
+            ChatCompletionCreateParams request = requestBuilder.build();
+
+            // Call OpenAI API using the SDK
+            ChatCompletion completion = openAiClient.chat().completions().create(request);
+
+            // Extract response data
+            String content = null;
+            String finishReason = null;
+
+            if (!completion.choices().isEmpty()) {
+                ChatCompletion.Choice choice = completion.choices().getFirst();
+                content = choice.message().content().orElse(null);
+                finishReason = choice.finishReason().toString();
+            }
+
+            CompletionUsage usage = completion.usage().orElse(null);
 
             return ClientPromptResponse.builder()
                     .content(content)
@@ -144,22 +122,22 @@ public class AiClientServiceImpl implements AiClientService {
                     .temperature(temperature)
                     .maxTokens(maxTokens)
                     .topP(topP)
-                    .promptTokens(usage != null ? (Integer) usage.get("prompt_tokens") : null)
-                    .completionTokens(usage != null ? (Integer) usage.get("completion_tokens") : null)
-                    .totalTokens(usage != null ? (Integer) usage.get("total_tokens") : null)
+                    .promptTokens(usage != null ? Math.toIntExact(usage.promptTokens()) : null)
+                    .completionTokens(usage != null ? Math.toIntExact(usage.completionTokens()) : null)
+                    .totalTokens(usage != null ? Math.toIntExact(usage.totalTokens()) : null)
                     .finishReason(finishReason)
-                    .id(id)
-                    .createdAt(createdSeconds != null ? Instant.ofEpochSecond(createdSeconds) : Instant.now())
+                    .id(completion.id())
+                    .createdAt(Instant.ofEpochSecond(completion.created()))
                     .build();
 
-        } catch (WebClientRequestException e) {
-            log.error("Request error calling OpenAI API: {}", e.getMessage());
-            throw new AiProviderException("Failed to connect to OpenAI API: " + e.getMessage());
-        } catch (WebClientResponseException e) {
-            log.error("HTTP error calling OpenAI API: {} - {}", e.getStatusCode(), e.getMessage());
+        } catch (OpenAIServiceException e) {
+            log.error("OpenAI service error: {} - {}", e.statusCode(), e.getMessage());
             throw new AiProviderException("OpenAI API error: " + e.getMessage());
+        } catch (OpenAIException e) {
+            log.error("OpenAI SDK error: {}", e.getMessage());
+            throw new AiProviderException("Failed to call OpenAI API: " + e.getMessage());
         } catch (Exception e) {
-            log.error("Error calling OpenAI API", e);
+            log.error("Unexpected error calling OpenAI API", e);
             throw new AiProviderException("Failed to call OpenAI API: " + e.getMessage());
         }
     }
@@ -171,7 +149,7 @@ public class AiClientServiceImpl implements AiClientService {
             Integer maxTokens,
             Double topP
     ) {
-        String effectiveModel = (model != null && !model.isBlank()) ? model : "gemini-2.0-flash-exp";
+        String effectiveModel = (model != null && !model.isBlank()) ? model : AiModel.GEMINI_2_5_FLASH.getName();
         log.debug("Calling Gemini API with model: {}", effectiveModel);
 
         try {
@@ -239,6 +217,17 @@ public class AiClientServiceImpl implements AiClientService {
             log.error("Error calling Gemini API with model {}: {}", effectiveModel, e.getMessage(), e);
             throw new AiProviderException("Failed to call Gemini API: " + e.getMessage());
         }
+    }
+
+    public ClientPromptResponse callAnthropicApi(
+            String prompt,
+            String model,
+            Double temperature,
+            Integer maxTokens,
+            Double topP
+    ){
+        //TODO: need another 5$ of starting credit to use
+        return null;
     }
 
     private String extractResponseContent(GenerateContentResponse response) {
