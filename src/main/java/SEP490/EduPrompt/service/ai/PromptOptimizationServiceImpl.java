@@ -73,7 +73,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         // Check database as fallback if not found in redis
         Optional<OptimizationQueue> existingQueue = queueRepository.findByIdempotencyKey(idempotencyKey);
         if (existingQueue.isPresent()) {
-            log.info("Idempotent retry detected in DB for key: {}, caching and returning result", idempotencyKey);
+            log.info("Idempotent retry detected in DB for key: {}, caching and returning result", existingQueue.get().getIdempotencyKey());
             OptimizationQueueResponse response = mapToResponse(existingQueue.get());
             cacheIdempotencyResult(cacheKey, response);
             return response;

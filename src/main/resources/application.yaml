@@ -7,7 +7,7 @@ app:
   frontend-url: ${FRONTEND_URL}
   jwt:
     secret: ${JWT_SECRET}
-    expiration: 900000 # 15min in milliseconds
+    expiration: 3600000 # 15min in milliseconds
 
 management:
   endpoints:
@@ -98,9 +98,9 @@ open:
     scan-package: "SEP490.EduPrompt.controller"
 
 openai:
-  api:
-    key: ${OPENAI_API_KEY}
-
+  api-key: ${OPENAI_API_KEY}
+gemini:
+  api-key: ${GEMINI_API_KEY}
 
 ## Postmark Configuration
 #postmark:

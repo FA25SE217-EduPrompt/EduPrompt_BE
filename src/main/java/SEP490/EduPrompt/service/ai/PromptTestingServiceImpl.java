@@ -66,7 +66,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
         // check database as fallback if not found in redis
         Optional<PromptUsage> existingUsage = usageRepository.findByIdempotencyKey(idempotencyKey);
         if (existingUsage.isPresent()) {
-            log.info("Idempotent retry detected in DB for key: {}, caching and returning result", idempotencyKey);
+            log.info("Idempotent retry detected in DB for key: {}, caching and returning result", existingUsage.get().getIdempotencyKey());
             PromptTestResponse response = mapToResponse(existingUsage.get());
             cacheIdempotencyResult(cacheKey, response);
             return response;

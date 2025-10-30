@@ -40,7 +40,7 @@ public class AiClientServiceImpl implements AiClientService {
 
     private final Client client;
 
-    @Value("${openai.api.key}")
+    @Value("${openai.api-key}")
     private String openaiApiKey;
     @Value("${openai.api.url:https://api.openai.com/v1/chat/completions}")
     private String openaiApiUrl;
