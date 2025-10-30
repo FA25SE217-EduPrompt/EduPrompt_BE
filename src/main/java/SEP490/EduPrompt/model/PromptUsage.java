@@ -28,7 +28,7 @@ public class PromptUsage {
     @JoinColumn(name = "prompt_id", nullable = false)
     private Prompt prompt;
 
-    @Column(name = "prompt_id", updatable = false)
+    @Column(name = "prompt_id", insertable = false, updatable = false)
     private UUID promptId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -36,7 +36,7 @@ public class PromptUsage {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "user_id", updatable = false)
+    @Column(name = "user_id", insertable = false, updatable = false)
     private UUID userId;
 
     @ColumnDefault("now()")

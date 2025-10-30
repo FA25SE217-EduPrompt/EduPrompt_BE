@@ -29,7 +29,7 @@ public class UserQuota {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "user_id", updatable = false)
+    @Column(name = "user_id", insertable = false, updatable = false)
     private UUID userId;
 
     @Column(name = "testing_quota_remaining")
@@ -59,7 +59,7 @@ public class UserQuota {
     @JoinColumn(name = "school_subscription_id")
     private SchoolSubscription schoolSubscription;
 
-    @Column(name = "school_subscription_id", updatable = false)
+    @Column(name = "school_subscription_id", insertable = false, updatable = false)
     private String schoolSubscriptionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -67,7 +67,7 @@ public class UserQuota {
     @JoinColumn(name = "subscription_tier_id")
     private SubscriptionTier subscriptionTier;
 
-    @Column(name = "subscription_tier_id", updatable = false)
+    @Column(name = "subscription_tier_id", insertable = false, updatable = false)
     private String subscriptionTierId;
 
     @NotNull

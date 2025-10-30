@@ -27,7 +27,7 @@ public class AiSuggestionLog {
     @JoinColumn(name = "prompt_id", nullable = false)
     private Prompt prompt;
 
-    @Column(name = "prompt_id", updatable = false)
+    @Column(name = "prompt_id", insertable = false, updatable = false)
     private UUID promptId;
 
     @Column(name = "requested_by", nullable = false)
@@ -55,7 +55,7 @@ public class AiSuggestionLog {
     @JoinColumn(name = "optimization_queue_id")
     private OptimizationQueue optimizationQueue;
 
-    @Column(name = "optimization_queue_id", updatable = false)
+    @Column(name = "optimization_queue_id", insertable = false, updatable = false)
     private UUID optimizationQueueId;
 
     @PrePersist
