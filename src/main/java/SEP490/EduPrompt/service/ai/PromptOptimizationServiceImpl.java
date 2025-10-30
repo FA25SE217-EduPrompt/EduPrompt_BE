@@ -234,6 +234,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
             // Save suggestion log
             AiSuggestionLog suggestionLog = AiSuggestionLog.builder()
                     .prompt(prompt)
+                    .promptId(prompt.getId())
                     .requestedBy(userId)
                     .input(item.getInput())
                     .output(optimizedPrompt.content())

@@ -113,7 +113,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
             try {
                 response = aiClientService.testPrompt(
                         prompt,
-                        request.aiModel().getName(),
+                        request.aiModel(),
                         request.inputText(),
                         request.temperature(),
                         request.maxTokens(),
@@ -133,6 +133,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
 
                 PromptUsage usage = PromptUsage.builder()
                         .prompt(prompt)
+                        .promptId(prompt.getId())
                         .user(user)
                         .aiModel(request.aiModel().getName())
                         .inputText(request.inputText())
@@ -191,19 +192,19 @@ public class PromptTestingServiceImpl implements PromptTestingService {
     }
 
     private PromptTestResponse mapToResponse(PromptUsage usage) {
-        return new PromptTestResponse(
-                usage.getId(),
-                usage.getPromptId(),
-                AiModel.parseAiModel(usage.getAiModel()),
-                usage.getInputText(),
-                usage.getOutput(),
-                usage.getTokensUsed(),
-                usage.getExecutionTimeMs(),
-                usage.getTemperature(),
-                usage.getMaxTokens(),
-                usage.getTopP(),
-                usage.getCreatedAt()
-        );
+        return  PromptTestResponse.builder()
+                .id(usage.getId())
+                .promptId(usage.getPromptId())
+                .aiModel(AiModel.parseAiModel(usage.getAiModel()))
+                .inputText(usage.getInputText())
+                .output(usage.getOutput())
+                .tokensUsed(usage.getTokensUsed())
+                .executionTimeMs(usage.getExecutionTimeMs())
+                .temperature(usage.getTemperature())
+                .maxTokens(usage.getMaxTokens())
+                .topP(usage.getTopP())
+                .createdAt(usage.getCreatedAt())
+                .build();
     }
 
     private void cacheIdempotencyResult(String cacheKey, PromptTestResponse response) {
