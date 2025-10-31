@@ -6,7 +6,6 @@ import java.util.UUID;
 public record SchoolSubscriptionResponse(
         UUID id,
         UUID schoolId,
-        String tierName,
         Integer tokenPool,
         Integer tokenRemaining,
         Instant startDate,

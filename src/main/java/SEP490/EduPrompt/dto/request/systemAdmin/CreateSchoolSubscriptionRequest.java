@@ -5,7 +5,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record CreateSchoolSubscriptionRequest(
-        @NotNull UUID subscriptionTierId,
+        Integer schoolTokenPool,
+        Integer schoolTokenRemaining,
+        Instant quotaResetDate,
         Instant startDate,
         Instant endDate
 ) {}
