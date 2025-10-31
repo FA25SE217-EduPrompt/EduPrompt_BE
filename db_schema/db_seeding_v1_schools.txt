@@ -1,0 +1,62 @@
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('85a8e584-7d7b-443a-a075-a691e892b60e', 'THPT Chuyên Hà Nội - Amsterdam', 'Số 1 Đại Cồ Việt, Hai Bà Trưng', '024 3869 2368', 'Hai Bà Trưng', 'Hà Nội', '2025-10-31 14:28:22.386323', '2025-10-31 14:28:22.386323');
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('17821339-59cc-40d5-ad6c-63feeee95768', 'THPT Chuyên Lê Hồng Phong', 'Số 235 Nguyễn Văn Cừ, Quận 5', '028 3835 0090', 'Quận 5', 'TP. Hồ Chí Minh', '2025-10-31 14:30:48.829808', '2025-10-31 14:30:48.829808');
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('ba2410d0-7184-49c6-889c-e69ab6047c5d', 'THPT Chuyên Trần Phú', 'Số 1 Đường Lê Hồng Phong, Ngô Quyền', '0225 3836 146', 'Ngô Quyền', 'Hải Phòng', '2025-10-31 14:31:00.177890', '2025-10-31 14:31:00.177890');
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('c8a0646b-d82b-424e-98fc-a01b62cc46ae', 'THPT Chuyên Khoa học Tự nhiên', 'Số 18 Ngõ 218 Hoàng Quốc Việt, Cầu Giấy', '024 3756 3600', 'Cầu Giấy', 'Hà Nội', '2025-10-31 14:31:11.321146', '2025-10-31 14:31:11.321146');
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('c446f690-726a-4e7c-bcaf-411f3f2f4836', 'THPT Chuyên Ngoại ngữ', 'Số 136 Xuân Thủy, Cầu Giấy', '024 3754 8208', 'Cầu Giấy', 'Hà Nội', '2025-10-31 14:31:21.084263', '2025-10-31 14:31:21.084263');
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('7ab69f64-9bc7-4886-8dd0-bb69ee9e2251', 'THPT Chuyên Quốc Học', 'Số 12 Lê Lợi, Vĩnh Ninh', '0234 3823 058', 'Thành phố Huế', 'Thừa Thiên Huế', '2025-10-31 14:31:33.237467', '2025-10-31 14:31:33.237467');
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('55b8bac0-4fa9-4da4-a8c5-00c651ec3016', 'THPT Chuyên Lê Hồng Phong', 'Số 1 Nguyễn Thị Minh Khai, Phường Trần Hưng Đạo', '0228 3641 256', 'Thành phố Nam Định', 'Nam Định', '2025-10-31 14:31:45.428174', '2025-10-31 14:31:45.428174');
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('669253dd-c5a1-421d-ade2-46d29e1412ee', 'THPT Chuyên Bắc Giang', 'Số 1 Đường Hoàng Văn Thụ, Thành phố Bắc Giang', '0204 3824 222', 'Thành phố Bắc Giang', 'Bắc Giang', '2025-10-31 14:31:57.350801', '2025-10-31 14:31:57.350801');
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('645e99b5-694b-449f-9a01-96102bad0812', 'THPT Chuyên Nguyễn Huệ', 'Số 1 Đường Nguyễn Tất Thành, Phường Liên Bảo', '0211 3841 224', 'Thành phố Vĩnh Yên', 'Vĩnh Phúc', '2025-10-31 14:32:06.971271', '2025-10-31 14:32:06.971271');
+INSERT INTO public.schools (id, name, address, phone_number, district, province, created_at, updated_at) VALUES ('3dacad41-482f-49c7-8e71-6dcbb5c485b2', 'THPT Chuyên Lam Sơn', 'Số 1 Đường Lê Lợi, Phường Lam Sơn', '0237 3852 115', 'Thành phố Thanh Hóa', 'Thanh Hóa', '2025-10-31 14:32:34.679155', '2025-10-31 14:32:34.679155');
+-- ==========================================
+-- INSERT SAMPLE DATA INTO subscription_tiers
+-- ==========================================
+INSERT INTO subscription_tiers (
+    id,
+    name,
+    price,
+    individual_token_limit,
+    testing_quota_limit,
+    optimization_quota_limit,
+    description,
+    is_active,
+    created_at,
+    updated_at
+) VALUES
+    (
+        gen_random_uuid(),
+        'Free',
+        0,
+        20000,
+        10,
+        10,
+        'Free tier with limited tokens and quotas, suitable for individual users starting out.',
+        true,
+        now(),
+        now()
+    ),
+    (
+        gen_random_uuid(),
+        'Pro',
+        19.99,
+        1000000,
+        100,
+        100,
+        'Pro plan for power users and small teams needing higher quotas and tokens.',
+        true,
+        now(),
+        now()
+    ),
+    (
+        gen_random_uuid(),
+        'Premium',
+        49.99,
+        -1,
+        -1,
+        -1,
+        'Premium tier with unlimited tokens and quotas for enterprise-level use.',
+        true,
+        now(),
+        now()
+    );
+
