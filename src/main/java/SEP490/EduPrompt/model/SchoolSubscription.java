@@ -67,6 +67,7 @@ public class SchoolSubscription {
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
+        updatedAt = Instant.now();
     }
 
     @PreUpdate

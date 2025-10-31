@@ -39,11 +39,6 @@ public class SubscriptionTier {
 
     @NotNull
     @ColumnDefault("0")
-    @Column(name = "school_token_pool", nullable = false)
-    private Integer schoolTokenPool;
-
-    @NotNull
-    @ColumnDefault("0")
     @Column(name = "testing_quota_limit", nullable = false)
     private Integer testingQuotaLimit;
 
