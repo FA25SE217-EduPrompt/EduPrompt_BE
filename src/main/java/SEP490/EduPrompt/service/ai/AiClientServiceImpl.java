@@ -16,66 +16,87 @@ import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
 import com.openai.models.completions.CompletionUsage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class AiClientServiceImpl implements AiClientService {
 
-    private static final int TIMEOUT_SECONDS = 30;
-    //gemini client
-    private final Client client;
-    //openai client
+    private final Client geminiClient;
     private final OpenAIClient openAiClient;
 
+    @Value("${ai.timeout.read:30}")
+    private int readTimeoutSeconds;
+
     @Override
-    public ClientPromptResponse testPrompt(Prompt prompt, AiModel aiModel, String inputText,
-                                           Double temperature, Integer maxTokens, Double topP) {
+    public ClientPromptResponse testPrompt(
+            Prompt prompt,
+            AiModel aiModel,
+            String inputText,
+            Double temperature,
+            Integer maxTokens,
+            Double topP) {
+
         log.info("Testing prompt {} with model: {}", prompt.getId(), aiModel.getName());
 
         String fullPrompt = buildFullPrompt(prompt, inputText);
 
-        switch (aiModel) {
-            case GEMINI_2_5_FLASH -> {
-                return callGeminiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
-            }
-
-            case GPT_4O_MINI -> {
-                return callOpenAiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
-            }
-
-            case CLAUDE_3_5_SONNET -> {
-                return callAnthropicApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
-            }
-
-            default -> throw new AiProviderException("Unsupported ai model: " + aiModel.getName());
+        try {
+            return switch (aiModel) {
+                case GEMINI_2_5_FLASH -> callGeminiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
+                case GPT_4O_MINI -> callOpenAiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
+                case CLAUDE_3_5_SONNET -> callAnthropicApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
+                default -> throw new AiProviderException("Unsupported AI model: " + aiModel.getName());
+            };
+        } catch (AiProviderException e) {
+            // Already wrapped, re-throw
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error calling AI model {}", aiModel.getName(), e);
+            throw new AiProviderException("AI call failed: " + e.getMessage(), e);
         }
-
-
     }
 
     @Override
-    public ClientPromptResponse optimizePrompt(Prompt prompt, String optimizationInput,
-                                               Double temperature, Integer maxTokens) {
+    public ClientPromptResponse optimizePrompt(
+            Prompt prompt,
+            String optimizationInput,
+            Double temperature,
+            Integer maxTokens) {
+
         log.info("Optimizing prompt {}", prompt.getId());
 
         String optimizationPrompt = buildOptimizationPrompt(prompt, optimizationInput);
-        //just call gemini api for now, might plan to allow to choose model when optimize
-        return callGeminiApi(optimizationPrompt, AiModel.GPT_4O_MINI.getName(), temperature, maxTokens, 1.0);
+
+        // Use GPT-4O-MINI for optimization , might change this later
+        return callOpenAiApi(
+                optimizationPrompt,
+                AiModel.GPT_4O_MINI.getName(),
+                temperature,
+                maxTokens,
+                1.0
+        );
     }
 
-    public ClientPromptResponse callOpenAiApi(
+    /**
+     * Call OpenAI API with timeout handling
+     */
+    protected ClientPromptResponse callOpenAiApi(
             String prompt,
             String model,
             Double temperature,
             Integer maxTokens,
-            Double topP
-    ) {
+            Double topP) {
+
+        long startTime = System.currentTimeMillis();
+
         try {
             log.debug("Calling OpenAI API with model: {}", model);
 
@@ -87,7 +108,7 @@ public class AiClientServiceImpl implements AiClientService {
                             .build()
                     );
 
-            // Add optional parameters only if provided
+            // Add optional parameters
             if (temperature != null) {
                 requestBuilder.temperature(temperature);
             }
@@ -100,8 +121,11 @@ public class AiClientServiceImpl implements AiClientService {
 
             ChatCompletionCreateParams request = requestBuilder.build();
 
-            // Call OpenAI API using the SDK
+            // Call OpenAI API with configured timeouts
             ChatCompletion completion = openAiClient.chat().completions().create(request);
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("OpenAI API call completed in {}ms", duration);
 
             // Extract response data
             String content = null;
@@ -131,25 +155,56 @@ public class AiClientServiceImpl implements AiClientService {
                     .build();
 
         } catch (OpenAIServiceException e) {
-            log.error("OpenAI service error: {} - {}", e.statusCode(), e.getMessage());
-            throw new AiProviderException("OpenAI API error: " + e.getMessage());
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("OpenAI service error after {}ms: {} - {}", duration, e.statusCode(), e.getMessage());
+
+            // more specific error messages
+            String errorMsg = switch (e.statusCode()) {
+                case 429 -> "Rate limit exceeded. Please try again later.";
+                case 500, 502, 503 -> "OpenAI service temporarily unavailable. Please retry.";
+                case 401 -> "Invalid API key configuration.";
+                default -> "OpenAI API error: " + e.getMessage();
+            };
+
+            throw new AiProviderException(errorMsg, e);
+
         } catch (OpenAIException e) {
-            log.error("OpenAI SDK error: {}", e.getMessage());
-            throw new AiProviderException("Failed to call OpenAI API: " + e.getMessage());
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("OpenAI SDK error after {}ms: {}", duration, e.getMessage());
+            throw new AiProviderException("Failed to call OpenAI API: " + e.getMessage(), e);
+
         } catch (Exception e) {
-            log.error("Unexpected error calling OpenAI API", e);
-            throw new AiProviderException("Failed to call OpenAI API: " + e.getMessage());
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("Unexpected error calling OpenAI API after {}ms", duration, e);
+
+            // Check if it's a timeout
+            if (e.getCause() instanceof java.net.SocketTimeoutException) {
+                throw new AiProviderException(
+                        String.format("OpenAI request timed out after %d seconds", readTimeoutSeconds),
+                        e
+                );
+            }
+
+            throw new AiProviderException("Failed to call OpenAI API: " + e.getMessage(), e);
         }
     }
 
-    public ClientPromptResponse callGeminiApi(
+    /**
+     * Call Gemini API with timeout handling
+     */
+    protected ClientPromptResponse callGeminiApi(
             String prompt,
             String model,
             Double temperature,
             Integer maxTokens,
-            Double topP
-    ) {
-        String effectiveModel = (model != null && !model.isBlank()) ? model : AiModel.GEMINI_2_5_FLASH.getName();
+            Double topP) {
+
+        String effectiveModel = (model != null && !model.isBlank())
+                ? model
+                : AiModel.GEMINI_2_5_FLASH.getName();
+
+        long startTime = System.currentTimeMillis();
+
         log.debug("Calling Gemini API with model: {}", effectiveModel);
 
         try {
@@ -171,13 +226,15 @@ public class AiClientServiceImpl implements AiClientService {
                     .parts(List.of(Part.builder().text(prompt).build()))
                     .build();
 
-            // Generate content using the client
-            GenerateContentResponse response = client.models.generateContent(
+            // Generate content
+            GenerateContentResponse response = geminiClient.models.generateContent(
                     effectiveModel,
                     List.of(content),
                     configBuilder.build()
             );
-            log.info("Gemini API response: {}", response);
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Gemini API call completed in {}ms", duration);
 
             // Extract response content safely
             String responseContent = extractResponseContent(response);
@@ -195,7 +252,6 @@ public class AiClientServiceImpl implements AiClientService {
                 totalTokens = usageMetadata.totalTokenCount().orElse(null);
             }
 
-            // Generate a unique ID
             String responseId = UUID.randomUUID().toString();
 
             return ClientPromptResponse.builder()
@@ -214,22 +270,37 @@ public class AiClientServiceImpl implements AiClientService {
                     .build();
 
         } catch (Exception e) {
-            log.error("Error calling Gemini API with model {}: {}", effectiveModel, e.getMessage(), e);
-            throw new AiProviderException("Failed to call Gemini API: " + e.getMessage());
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("Error calling Gemini API after {}ms with model {}: {}",
+                    duration, effectiveModel, e.getMessage(), e);
+
+            // Check for timeout
+            if (e.getCause() instanceof java.net.SocketTimeoutException) {
+                throw new AiProviderException(
+                        String.format("Gemini request timed out after %d seconds", readTimeoutSeconds),
+                        e
+                );
+            }
+
+            throw new AiProviderException("Failed to call Gemini API: " + e.getMessage(), e);
         }
     }
 
-    public ClientPromptResponse callAnthropicApi(
+    protected ClientPromptResponse callAnthropicApi(
             String prompt,
             String model,
             Double temperature,
             Integer maxTokens,
-            Double topP
-    ){
-        //TODO: need another 5$ of starting credit to use
-        return null;
+            Double topP) {
+
+        //TODO: Implement when i get the $5 credit, im broke (T-T)
+        log.warn("Anthropic API not yet implemented");
+        throw new AiProviderException("Anthropic API not yet implemented");
     }
 
+    /**
+     * this helper method onl for gemini response
+     */
     private String extractResponseContent(GenerateContentResponse response) {
         return response.candidates()
                 .flatMap(candidates -> candidates.isEmpty() ?
@@ -244,6 +315,9 @@ public class AiClientServiceImpl implements AiClientService {
                 .orElse("");
     }
 
+    /**
+     * this helper method onl for gemini response
+     */
     private String extractFinishReason(GenerateContentResponse response) {
         return response.candidates()
                 .filter(candidates -> !candidates.isEmpty())
@@ -252,7 +326,6 @@ public class AiClientServiceImpl implements AiClientService {
                 .map(FinishReason::toString)
                 .orElse("UNKNOWN");
     }
-
 
     private String buildFullPrompt(Prompt prompt, String inputText) {
         StringBuilder fullPrompt = new StringBuilder();
@@ -287,25 +360,24 @@ public class AiClientServiceImpl implements AiClientService {
 
         return String.format(
                 """
-                        You are an expert prompt engineer. Your task is to optimize the following prompt for high school teacher with better clarity, effectiveness, and results.
-                                        
-                        Current Prompt:
-                        %s
-                                        
-                        Optimization Request:
-                        %s
-                                        
-                        Please provide an improved version of the prompt that:
-                        1. Maintains the original intent and requirements
-                        2. Improves clarity and structure
-                        3. Follows best practices for prompt engineering
-                        4. Addresses the specific optimization request
-                                        
-                        Return only the optimized prompt without explanations.
-                        """,
+                You are an expert prompt engineer. Your task is to optimize the following prompt for high school teachers with better clarity, effectiveness, and results.
+                                
+                Current Prompt:
+                %s
+                                
+                Optimization Request:
+                %s
+                                
+                Please provide an improved version of the prompt that:
+                1. Maintains the original intent and requirements
+                2. Improves clarity and structure
+                3. Follows best practices for prompt engineering
+                4. Addresses the specific optimization request
+                                
+                Return only the optimized prompt without explanations.
+                """,
                 currentPrompt,
                 optimizationInput
         );
     }
 }
-
