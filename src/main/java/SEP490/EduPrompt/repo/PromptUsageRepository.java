@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.repo;
 
+import SEP490.EduPrompt.enums.QueueStatus;
 import SEP490.EduPrompt.model.PromptUsage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +27,11 @@ public interface PromptUsageRepository extends JpaRepository<PromptUsage, UUID> 
             @Param("since") LocalDateTime since
     );
 
+    int countByStatus(String usageStatus);
+
     List<PromptUsage> findByPromptIdOrderByCreatedAtDesc(UUID promptId);
+
+    Page<PromptUsage> findByStatusOrderByCreatedAtAsc(String queueStatus, Pageable pageable);
 
     Page<PromptUsage> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 

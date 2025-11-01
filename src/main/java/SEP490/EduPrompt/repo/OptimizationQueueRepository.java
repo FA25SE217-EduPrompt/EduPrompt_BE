@@ -2,6 +2,8 @@ package SEP490.EduPrompt.repo;
 
 import SEP490.EduPrompt.enums.QueueStatus;
 import SEP490.EduPrompt.model.OptimizationQueue;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,4 +38,14 @@ public interface OptimizationQueueRepository extends JpaRepository<OptimizationQ
             "AND oq.retryCount < oq.maxRetries " +
             "ORDER BY oq.createdAt ASC")
     List<OptimizationQueue> findPendingItemsForProcessing(@Param("status") QueueStatus status);
+
+    @Query("SELECT oq FROM OptimizationQueue oq " +
+            "WHERE oq.status = :status " +
+            "AND oq.retryCount < oq.maxRetries")
+    Page<OptimizationQueue> findPendingItemsForProcessing(
+            @Param("status") String queueStatus,
+            Pageable pageable);
+
+    @Query("SELECT COUNT(q) FROM OptimizationQueue q WHERE q.status = :status")
+    long countByStatus(@Param("status") String status);
 }
