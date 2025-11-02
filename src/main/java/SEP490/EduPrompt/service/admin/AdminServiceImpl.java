@@ -3,22 +3,28 @@ package SEP490.EduPrompt.service.admin;
 import SEP490.EduPrompt.dto.request.RegisterRequest;
 import SEP490.EduPrompt.dto.request.school.CreateSchoolRequest;
 import SEP490.EduPrompt.dto.request.schoolAdmin.BulkAssignTeachersRequest;
+import SEP490.EduPrompt.dto.request.schoolAdmin.RemoveTeacherFromSchoolRequest;
 import SEP490.EduPrompt.dto.request.systemAdmin.CreateSchoolSubscriptionRequest;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.dto.response.school.CreateSchoolResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.BulkAssignTeachersResponse;
+import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolAdminTeacherResponse;
+import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolSubscriptionUsageResponse;
 import SEP490.EduPrompt.dto.response.systemAdmin.SchoolSubscriptionResponse;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.EmailAlreadyExistedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
+import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
 import SEP490.EduPrompt.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,6 +40,7 @@ public class AdminServiceImpl implements AdminService {
     private final SchoolSubscriptionRepository schoolSubRepo;
     private final PermissionService permissionService;
     private final SchoolRepository schoolRepo;
+    private final UserQuotaRepository userQuotaRepo;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepo;
     private final UserAuthRepository userAuthRepo;
@@ -238,6 +245,79 @@ public class AdminServiceImpl implements AdminService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public SchoolSubscriptionUsageResponse getSubscriptionUsage(UUID adminUserId) {
+        User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
+        UUID schoolId = admin.getSchoolId();
+
+        SchoolSubscription sub = schoolSubRepo.findActiveBySchoolId(schoolId)
+                .orElseThrow(() -> new ResourceNotFoundException("No active subscription found"));
+
+        long teacherCount = userRepo.countBySchoolIdAndRole(schoolId, Role.TEACHER.name());
+
+        long tokenUsed = sub.getSchoolTokenPool() - sub.getSchoolTokenRemaining();
+
+        return new SchoolSubscriptionUsageResponse(
+                sub.getId(),
+                sub.getSchool().getName(),
+                sub.getSchoolTokenPool(),
+                tokenUsed,
+                sub.getSchoolTokenRemaining(),
+                sub.getStartDate(),
+                sub.getEndDate(),
+                sub.getQuotaResetDate(),
+                sub.getIsActive(),
+                (int) teacherCount
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SchoolAdminTeacherResponse> getTeachersInSchool(UUID adminUserId, Pageable pageable) {
+        User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
+        UUID schoolId = admin.getSchoolId();
+
+        return userRepo.findBySchoolIdAndRole(schoolId, Role.TEACHER.name(), pageable)
+                .map(this::toTeacherResponse);
+    }
+
+    @Override
+    public void removeTeacherFromSchool(UUID adminUserId, RemoveTeacherFromSchoolRequest request) {
+        User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
+        UUID schoolId = admin.getSchoolId();
+        UUID teacherId = request.teacherId();
+
+        User teacher = userRepo.findById(teacherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher not found"));
+
+        if (!"TEACHER".equalsIgnoreCase(teacher.getRole())) {
+            throw new InvalidActionException("Can only remove teachers");
+        }
+        if (!schoolId.equals(teacher.getSchoolId())) {
+            throw new AccessDeniedException("Teacher does not belong to your school");
+        }
+
+        // Remove from school
+        teacher.setSchoolId(null);
+        teacher.setIsActive(false);
+
+        // Reset quota to individual (zero)
+        UserQuota quota = userQuotaRepo.findByUserId(teacherId)
+                .orElseGet(() -> UserQuota.builder().user(teacher).build());
+
+        quota.setSchoolSubscription(null);
+        quota.setSubscriptionTier(null);
+        quota.setIndividualTokenLimit(0);
+        quota.setIndividualTokenRemaining(0);
+        quota.setTestingQuotaLimit(0);
+        quota.setOptimizationQuotaLimit(0);
+
+        userRepo.save(teacher);
+        userQuotaRepo.save(quota);
+    }
+
+    //============Helper============
     private static Set<String> validateInput(BulkAssignTeachersRequest request, User admin) {
         if (!Role.SCHOOL_ADMIN.name().equals(admin.getRole())) {
             throw new AccessDeniedException("Only SCHOOL_ADMIN can assign teachers");
@@ -255,10 +335,6 @@ public class AdminServiceImpl implements AdminService {
         return uniqueEmails;
     }
 
-
-
-
-    //============Helper============
     private SchoolSubscriptionResponse toSubscriptionResponse(SchoolSubscription sub) {
         return new SchoolSubscriptionResponse(
                 sub.getId(),
@@ -270,5 +346,18 @@ public class AdminServiceImpl implements AdminService {
                 sub.getQuotaResetDate(),
                 sub.getIsActive()
         );
+    }
+
+    private SchoolAdminTeacherResponse toTeacherResponse(User user) {
+        return SchoolAdminTeacherResponse.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .isActive(user.getIsActive())
+                .isVerified(user.getIsVerified())
+                .createdAt(user.getCreatedAt())
+                .build();
     }
 }
