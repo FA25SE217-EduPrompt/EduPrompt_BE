@@ -148,14 +148,15 @@ public class AdminServiceImpl implements AdminService {
         userRepo.saveAll(usersToSave);
 
         int assignedCount = usersToSave.size();
+        List<UUID> listUserIds = usersToSave.stream().map(User::getId).toList();
 
         return new BulkAssignTeachersResponse(
-                usersToSave,
+                listUserIds,
                 uniqueEmails.size(),
                 assignedCount,
                 createdCount,
                 skipped,
-                List.of()
+                List.of()  // why parsing an empty list ?
         );
     }
 
