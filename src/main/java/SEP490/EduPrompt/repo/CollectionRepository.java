@@ -29,4 +29,11 @@ public interface CollectionRepository extends JpaRepository<Collection, UUID> {
     Optional<Collection> findByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
 
     boolean existsByNameIgnoreCase(String name);
+
+    @Query("""
+        SELECT c FROM Collection c
+        LEFT JOIN FETCH c.group g
+        WHERE c.id = :id AND c.isDeleted = false
+        """)
+    Optional<Collection> findActiveById(@Param("id") UUID id);
 }

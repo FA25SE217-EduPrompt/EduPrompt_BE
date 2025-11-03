@@ -1,0 +1,85 @@
+-- Update prompt_usages table for testing feature
+ALTER TABLE prompt_usages
+    ADD COLUMN ai_model VARCHAR(255) NOT NULL DEFAULT 'gpt-4o-mini',
+    ADD COLUMN input_text TEXT,
+    ADD COLUMN output TEXT,
+    ADD COLUMN tokens_used INT,
+    ADD COLUMN execution_time_ms INT,
+    ADD COLUMN idempotency_key VARCHAR(255),
+    ADD COLUMN temperature DOUBLE PRECISION DEFAULT 0.7,
+    ADD COLUMN max_tokens INT,
+    ADD COLUMN top_p DOUBLE PRECISION DEFAULT 1.0;
+
+ALTER TABLE prompt_usages
+    ADD CONSTRAINT ux_prompt_usages_idempotency UNIQUE (idempotency_key);
+
+-- Create user_quota table for quota management
+CREATE TABLE user_quota (
+                            id UUID PRIMARY KEY,
+                            user_id UUID NOT NULL,
+                            subscription_id UUID NOT NULL,
+                            testing_quota_remaining INT NOT NULL DEFAULT 0,
+                            testing_quota_limit INT NOT NULL DEFAULT 0,
+                            optimization_quota_remaining INT NOT NULL DEFAULT 0,
+                            optimization_quota_limit INT NOT NULL DEFAULT 0,
+                            quota_reset_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                            created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+                            updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+                            CONSTRAINT fk_userquota_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            CONSTRAINT fk_userquota_subscription FOREIGN KEY (subscription_id) REFERENCES subscription(id) ON DELETE CASCADE,
+                            CONSTRAINT ux_userquota_user UNIQUE (user_id)
+);
+
+-- Create optimization_queue table for async optimization
+CREATE TABLE optimization_queue (
+                                    id UUID PRIMARY KEY,
+                                    prompt_id UUID NOT NULL,
+                                    requested_by UUID NOT NULL,
+                                    input TEXT NOT NULL,
+                                    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+                                    ai_model VARCHAR(255) NOT NULL DEFAULT 'gpt-4o-mini',
+                                    output TEXT,
+                                    error_message TEXT,
+                                    idempotency_key VARCHAR(255),
+                                    retry_count INT NOT NULL DEFAULT 0,
+                                    max_retries INT NOT NULL DEFAULT 3,
+                                    temperature DOUBLE PRECISION DEFAULT 0.7,
+                                    max_tokens INT,
+                                    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+                                    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+                                    CONSTRAINT fk_optqueue_prompt FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+                                    CONSTRAINT fk_optqueue_user FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE CASCADE,
+                                    CONSTRAINT ux_optqueue_idempotency UNIQUE (idempotency_key)
+);
+
+-- Update ai_suggestion_logs to link with optimization_queue
+ALTER TABLE ai_suggestion_logs
+    ADD COLUMN optimization_queue_id UUID,
+    ADD CONSTRAINT fk_aisugg_optqueue FOREIGN KEY (optimization_queue_id) REFERENCES optimization_queue(id) ON DELETE SET NULL;
+
+-- Create indexes for performance
+CREATE INDEX idx_userquota_user ON user_quota (user_id);
+CREATE INDEX idx_userquota_reset_date ON user_quota (quota_reset_date);
+CREATE INDEX idx_userquota_subscription ON user_quota (subscription_id);
+
+CREATE INDEX idx_optqueue_status ON optimization_queue (status);
+CREATE INDEX idx_optqueue_requested_by ON optimization_queue (requested_by);
+CREATE INDEX idx_optqueue_created ON optimization_queue (created_at);
+CREATE INDEX idx_optqueue_status_created ON optimization_queue (status, created_at);
+
+CREATE INDEX idx_prompt_usages_user_created ON prompt_usages (user_id, created_at);
+CREATE INDEX idx_prompt_usages_prompt ON prompt_usages (prompt_id);
+
+-- Add comments for documentation (just add, easier to understand can't be bad)
+COMMENT ON TABLE user_quota IS 'Tracks daily quota limits and remaining requests per user';
+COMMENT ON TABLE optimization_queue IS 'Queue for async prompt optimization requests';
+COMMENT ON COLUMN prompt_usages.idempotency_key IS 'Prevents duplicate testing requests on client retry';
+COMMENT ON COLUMN optimization_queue.idempotency_key IS 'Prevents duplicate optimization requests on client retry';
+COMMENT ON COLUMN optimization_queue.retry_count IS 'Number of retry attempts for failed optimizations';
+COMMENT ON COLUMN prompt_usages.temperature IS 'AI model temperature parameter (0.0-2.0)';
+COMMENT ON COLUMN prompt_usages.top_p IS 'AI model nucleus sampling parameter (0.0-1.0)';
+
+ALTER TABLE attachments
+    ADD COLUMN IF NOT EXISTS public_id VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS file_name VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS size BIGINT;

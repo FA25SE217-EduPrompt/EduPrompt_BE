@@ -1,0 +1,59 @@
+ALTER TABLE user_auth ADD CONSTRAINT ux_user_auth_email UNIQUE (email);
+ALTER TABLE users ADD CONSTRAINT ux_users_email UNIQUE (email);
+
+ALTER TABLE prompts ADD COLUMN title text;
+ALTER TABLE prompts ADD COLUMN description text;
+
+-- Tags table
+CREATE TABLE tags (
+                      id UUID PRIMARY KEY,
+                      type VARCHAR(50) NOT NULL,
+                      value VARCHAR(100) NOT NULL,
+                      UNIQUE (type, value)
+);
+
+ALTER TABLE tags ADD CONSTRAINT ux_tags_type_value UNIQUE (type, value);
+
+-- Prompt tags join table
+CREATE TABLE prompt_tags (
+                             prompt_id UUID NOT NULL,
+                             tag_id UUID NOT NULL,
+                             created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+                             PRIMARY KEY (prompt_id, tag_id),
+                             CONSTRAINT fk_prompt_tags_prompt FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+                             CONSTRAINT fk_prompt_tags_tag FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+-- Collection tags join table
+CREATE TABLE collection_tags (
+                                 collection_id UUID NOT NULL,
+                                 tag_id UUID NOT NULL,
+                                 created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+                                 PRIMARY KEY (collection_id, tag_id),
+                                 CONSTRAINT fk_collection_tags_collection FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,
+                                 CONSTRAINT fk_collection_tags_tag FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+-- Indexes for search/filtering (e.g., by tag type/value)
+CREATE INDEX idx_tags_type_value ON tags (type, value);
+CREATE INDEX idx_prompt_tags_tag_id ON prompt_tags (tag_id);
+CREATE INDEX idx_collection_tags_tag_id ON collection_tags (tag_id);
+
+-- Drop old JSONB columns (after data migration)
+ALTER TABLE prompts DROP COLUMN tags;
+ALTER TABLE collections DROP COLUMN tags;
+
+-- Add group and collection relationship to prompt
+
+ALTER TABLE prompts ADD COLUMN group_id uuid NULL;
+ALTER TABLE prompts ADD COLUMN school_id uuid NULL;
+
+ALTER TABLE prompts
+    ADD CONSTRAINT fk_prompt_group
+        FOREIGN KEY (group_id) REFERENCES groups(id)
+            ON DELETE SET NULL;
+
+ALTER TABLE prompts
+    ADD CONSTRAINT fk_prompt_school
+        FOREIGN KEY (school_id) REFERENCES schools(id)
+            ON DELETE SET NULL;

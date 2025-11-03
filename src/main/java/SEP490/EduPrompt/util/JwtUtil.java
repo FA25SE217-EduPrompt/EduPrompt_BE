@@ -110,6 +110,7 @@ public class JwtUtil {
         Map<String, Object> claims = new HashMap<>();
         return createToken(claims, userDetails.getUsername());
     }
+
     /**
      * this method is used to generate accessToken
      */

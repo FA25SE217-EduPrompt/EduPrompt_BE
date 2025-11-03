@@ -67,17 +67,24 @@ spring:
       port: ${REDISPORT}
       password: ${REDISPASSWORD:}
       timeout: 60000
-      jedis:
+      lettuce:
         pool:
           max-active: 8
           max-idle: 8
           min-idle: 0
+          max-wait: -1ms
+        shutdown-timeout: 100ms
 
 springdoc:
   api-docs:
     enabled: true
   swagger-ui:
     enabled: true
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
 
 open:
   api:
@@ -89,6 +96,10 @@ open:
       description: "SpringBoot"
     group: "SEP490"
     scan-package: "SEP490.EduPrompt.controller"
+
+openai:
+  api:
+    key: ${OPENAI_API_KEY}
 
 
 ## Postmark Configuration

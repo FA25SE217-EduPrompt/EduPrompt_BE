@@ -1,0 +1,94 @@
+-- Update for subscription
+CREATE TABLE subscription_tiers (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  price DOUBLE PRECISION NOT NULL DEFAULT 0,
+
+  -- For individual (non-school) users
+  individual_token_limit INT NOT NULL DEFAULT 0,
+
+  -- For school subscriptions (shared pool)
+  school_token_pool INT NOT NULL DEFAULT 0,
+
+  -- Per-user feature quotas (applies to both individual and school users)
+  testing_quota_limit INT NOT NULL DEFAULT 0,
+  optimization_quota_limit INT NOT NULL DEFAULT 0,
+
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
+);
+
+DROP TABLE subscription CASCADE;
+
+-- 2. Create school_subscriptions table
+CREATE TABLE school_subscriptions (
+  id UUID PRIMARY KEY,
+  school_id UUID NOT NULL,
+  subscription_tier_id UUID NOT NULL,
+
+  -- School shared token pool
+  school_token_pool INT NOT NULL,
+  school_token_remaining INT NOT NULL,
+
+  quota_reset_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  start_date TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  end_date TIMESTAMP WITHOUT TIME ZONE,
+  is_active BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_school_subscriptions_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE,
+  CONSTRAINT fk_school_subscriptions_tier FOREIGN KEY (subscription_tier_id) REFERENCES subscription_tiers(id) ON DELETE RESTRICT
+);
+
+-- 3. Create user_quota table
+
+DROP TABLE IF EXISTS user_quota CASCADE;
+
+CREATE TABLE user_quota (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  school_subscription_id UUID,
+  subscription_tier_id UUID,
+
+  -- Individual user tokens (ignored if school_subscription_id is set)
+  individual_token_remaining INT NOT NULL DEFAULT 0,
+  individual_token_limit INT NOT NULL DEFAULT 0,
+
+  -- Per-user feature quotas
+  testing_quota_remaining INT NOT NULL DEFAULT 0,
+  testing_quota_limit INT NOT NULL DEFAULT 0,
+  optimization_quota_remaining INT NOT NULL DEFAULT 0,
+  optimization_quota_limit INT NOT NULL DEFAULT 0,
+
+  quota_reset_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_userquota_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_userquota_school_subscription FOREIGN KEY (school_subscription_id) REFERENCES school_subscriptions(id) ON DELETE SET NULL,
+  CONSTRAINT fk_userquota_subscription_tier FOREIGN KEY (subscription_tier_id) REFERENCES subscription_tiers(id) ON DELETE SET NULL,
+  CONSTRAINT ux_userquota_user UNIQUE (user_id),
+  CONSTRAINT chk_userquota_subscription_type CHECK (
+    (school_subscription_id IS NOT NULL AND subscription_tier_id IS NULL) OR
+    (school_subscription_id IS NULL AND subscription_tier_id IS NOT NULL)
+  )
+);
+
+-- 4. Create indexes
+CREATE INDEX idx_school_subscriptions_school ON school_subscriptions (school_id) WHERE is_active = TRUE;
+CREATE INDEX idx_school_subscriptions_tier ON school_subscriptions (subscription_tier_id);
+CREATE INDEX idx_school_subscriptions_active ON school_subscriptions (is_active, end_date);
+CREATE INDEX idx_school_subscriptions_reset ON school_subscriptions (quota_reset_date);
+
+CREATE INDEX idx_userquota_user ON user_quota (user_id);
+CREATE INDEX idx_userquota_reset_date ON user_quota (quota_reset_date);
+CREATE INDEX idx_userquota_school_sub ON user_quota (school_subscription_id);
+CREATE INDEX idx_userquota_tier ON user_quota (subscription_tier_id);
+
+-- 5. Update users table
+ALTER TABLE users
+  ADD COLUMN subscription_tier_id UUID,
+  ADD CONSTRAINT fk_users_subscription_tier FOREIGN KEY (subscription_tier_id) REFERENCES subscription_tiers(id) ON DELETE SET NULL;
+
+ALTER TABLE users DROP CONSTRAINT IF EXISTS fk_users_subscription;

@@ -50,4 +50,17 @@ public class UserAuth {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @PrePersist
+    public void onPrePersist()
+    {
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    public void onPreUpdate()
+    {
+        this.updatedAt = Instant.now();
+    }
+
 }

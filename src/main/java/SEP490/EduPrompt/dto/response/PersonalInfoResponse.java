@@ -13,4 +13,5 @@ public record PersonalInfoResponse(
         boolean isSystemAdmin,
         boolean isSchoolAdmin,
         boolean isTeacher
-        ){}
+) {
+}
