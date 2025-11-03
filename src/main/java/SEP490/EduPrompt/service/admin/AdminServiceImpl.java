@@ -273,7 +273,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<SchoolAdminTeacherResponse> getTeachersInSchool(UUID adminUserId, Pageable pageable) {
         User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
         UUID schoolId = admin.getSchoolId();
@@ -283,6 +283,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    @Transactional
     public void removeTeacherFromSchool(UUID adminUserId, RemoveTeacherFromSchoolRequest request) {
         User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
         UUID schoolId = admin.getSchoolId();
@@ -318,7 +319,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     //============Helper============
-    private static Set<String> validateInput(BulkAssignTeachersRequest request, User admin) {
+    private Set<String> validateInput(BulkAssignTeachersRequest request, User admin) {
         if (!Role.SCHOOL_ADMIN.name().equals(admin.getRole())) {
             throw new AccessDeniedException("Only SCHOOL_ADMIN can assign teachers");
         }
@@ -360,4 +361,5 @@ public class AdminServiceImpl implements AdminService {
                 .createdAt(user.getCreatedAt())
                 .build();
     }
+
 }
