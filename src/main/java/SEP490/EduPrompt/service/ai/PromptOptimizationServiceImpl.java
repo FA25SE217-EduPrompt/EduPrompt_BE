@@ -205,7 +205,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     protected void processOptimizationItemWithTransaction(OptimizationQueue item) {
         try {
             // Execute in a NEW transaction using TransactionTemplate
-            transactionTemplate.execute(status -> {
+            transactionTemplate.executeWithoutResult(status -> {
                 try {
                     // Reload item to ensure we have latest version (optimistic locking)
                     OptimizationQueue currentItem = queueRepository.findById(item.getId())
@@ -215,18 +215,16 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
                     if (!QueueStatus.PENDING.name().equals(currentItem.getStatus())) {
                         log.info("Item {} already processed, skipping. Status: {}",
                                 currentItem.getId(), currentItem.getStatus());
-                        return null;
+                        return;
                     }
 
                     // Process the item
                     processOptimizationItem(currentItem);
-                    return null;
 
                 } catch (Exception e) {
                     log.error("Failed to process optimization item: {}, handling failure", item.getId(), e);
                     handleOptimizationFailure(item, e.getMessage());
                     // Don't re-throw - we want to commit the failure status
-                    return null;
                 }
             });
 

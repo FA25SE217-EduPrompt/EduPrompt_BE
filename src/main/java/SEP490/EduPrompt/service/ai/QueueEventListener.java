@@ -51,7 +51,7 @@ public class QueueEventListener {
     public void onOptimizationQueued(String message) {
         try {
             UUID queueId = UUID.fromString(message);
-            log.info("🔔 Received optimization event for queue: {}", queueId);
+            log.info("Received optimization event for queue: {}", queueId);
 
             processOptimizationItem(queueId);
 
@@ -80,7 +80,7 @@ public class QueueEventListener {
      * Process optimization item in isolated transaction
      */
     private void processOptimizationItem(UUID queueId) {
-        transactionTemplate.execute(status -> {
+        transactionTemplate.executeWithoutResult(status -> {
             try {
                 // Reload item with pessimistic lock to prevent duplicate processing
                 OptimizationQueue item = queueRepository.findById(queueId)
@@ -88,13 +88,13 @@ public class QueueEventListener {
 
                 if (item == null) {
                     log.warn("Optimization queue item not found: {}", queueId);
-                    return null;
+                    return;
                 }
 
                 // Check if already processed
                 if (!QueueStatus.PENDING.name().equals(item.getStatus())) {
                     log.info("Item {} already processed, status: {}", queueId, item.getStatus());
-                    return null;
+                    return;
                 }
 
                 // Mark as PROCESSING
@@ -106,12 +106,10 @@ public class QueueEventListener {
 
                 // Process outside transaction (AI call)
                 processOptimizationLogic(item);
-                return null;
 
             } catch (Exception e) {
                 log.error("Failed to process optimization: {}", queueId, e);
                 handleOptimizationFailure(queueId, e.getMessage());
-                return null;
             }
         });
     }
@@ -151,7 +149,7 @@ public class QueueEventListener {
             }
 
             // Save results in new transaction
-            transactionTemplate.execute(status -> {
+            transactionTemplate.executeWithoutResult(status -> {
                 // Save suggestion log
                 AiSuggestionLog suggestionLog = AiSuggestionLog.builder()
                         .prompt(prompt)
@@ -172,8 +170,6 @@ public class QueueEventListener {
                 item.setStatus(QueueStatus.COMPLETED.name());
                 item.setUpdatedAt(Instant.now());
                 queueRepository.save(item);
-
-                return null;
             });
 
             log.info("Optimization completed: {}", item.getId());
@@ -189,7 +185,7 @@ public class QueueEventListener {
      * Process test item in isolated transaction
      */
     private void processTestItem(UUID usageId) {
-        transactionTemplate.execute(status -> {
+        transactionTemplate.executeWithoutResult(status -> {
             try {
                 // Reload item
                 PromptUsage usage = usageRepository.findById(usageId)
@@ -197,13 +193,13 @@ public class QueueEventListener {
 
                 if (usage == null) {
                     log.warn("Test usage not found: {}", usageId);
-                    return null;
+                    return;
                 }
 
                 // Check if already processed
                 if (!QueueStatus.PENDING.name().equals(usage.getStatus())) {
                     log.info("Usage {} already processed, status: {}", usageId, usage.getStatus());
-                    return null;
+                    return;
                 }
 
                 // Mark as PROCESSING
@@ -215,12 +211,10 @@ public class QueueEventListener {
 
                 // Process outside transaction
                 processTestLogic(usage);
-                return null;
 
             } catch (Exception e) {
                 log.error("Failed to process test: {}", usageId, e);
                 handleTestFailure(usageId, e.getMessage());
-                return null;
             }
         });
     }
@@ -263,14 +257,13 @@ public class QueueEventListener {
             }
 
             // Save results in new transaction
-            transactionTemplate.execute(status -> {
+            transactionTemplate.executeWithoutResult(status -> {
                 usage.setOutput(response.content());
                 usage.setTokensUsed(tokensUsed);
                 usage.setExecutionTimeMs(executionTime);
                 usage.setStatus(QueueStatus.COMPLETED.name());
                 usage.setUpdatedAt(Instant.now());
                 usageRepository.save(usage);
-                return null;
             });
 
             log.info("Test completed: {}", usage.getId());
@@ -286,9 +279,9 @@ public class QueueEventListener {
      * Handle optimization failure
      */
     private void handleOptimizationFailure(UUID queueId, String errorMessage) {
-        transactionTemplate.execute(status -> {
+        transactionTemplate.executeWithoutResult(status -> {
             OptimizationQueue item = queueRepository.findById(queueId).orElse(null);
-            if (item == null) return null;
+            if (item == null) return;
 
             item.setRetryCount(item.getRetryCount() + 1);
             item.setErrorMessage(errorMessage);
@@ -304,7 +297,6 @@ public class QueueEventListener {
             }
 
             queueRepository.save(item);
-            return null;
         });
     }
 
@@ -312,15 +304,14 @@ public class QueueEventListener {
      * Handle test failure
      */
     private void handleTestFailure(UUID usageId, String errorMessage) {
-        transactionTemplate.execute(status -> {
+        transactionTemplate.executeWithoutResult(status -> {
             PromptUsage usage = usageRepository.findById(usageId).orElse(null);
-            if (usage == null) return null;
+            if (usage == null) return;
 
             usage.setStatus(QueueStatus.FAILED.name());
             usage.setErrorMessage(errorMessage);
             usage.setUpdatedAt(Instant.now());
             usageRepository.save(usage);
-            return null;
         });
     }
 
