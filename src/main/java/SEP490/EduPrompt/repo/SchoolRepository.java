@@ -11,5 +11,5 @@ public interface SchoolRepository extends JpaRepository<School, UUID> {
 
     Optional<School> findByNameIgnoreCase(String name);
 
-    boolean existsByNameAndDistrictAndProvince(String name, String district, String province);
+    boolean existsByNameIgnoreCaseAndDistrictIgnoreCaseAndProvinceIgnoreCase(String name, String district, String province);
 }
