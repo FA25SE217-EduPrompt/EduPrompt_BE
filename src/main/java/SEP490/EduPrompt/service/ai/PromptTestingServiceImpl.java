@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Event-driven PromptTestingService
@@ -216,6 +217,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
                         .prompt(prompt)
                         .promptId(prompt.getId())
                         .user(user)
+                        .userId(userId)
                         .aiModel(request.aiModel().getName())
                         .inputText(request.inputText())
                         .status(QueueStatus.PENDING.name())
@@ -296,7 +298,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
 
             return future.get(AI_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-        } catch (java.util.concurrent.TimeoutException e) {
+        } catch (TimeoutException e) {
             throw new AiProviderException("AI request timed out after " + AI_CALL_TIMEOUT_SECONDS + " seconds");
         } catch (Exception e) {
             throw new AiProviderException("AI call failed: " + e.getMessage());

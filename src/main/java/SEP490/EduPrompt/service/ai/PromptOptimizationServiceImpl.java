@@ -1,18 +1,15 @@
 package SEP490.EduPrompt.service.ai;
 
 import SEP490.EduPrompt.dto.request.prompt.PromptOptimizationRequest;
-import SEP490.EduPrompt.dto.response.prompt.ClientPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.OptimizationQueueResponse;
 import SEP490.EduPrompt.enums.AiModel;
 import SEP490.EduPrompt.enums.QueueStatus;
 import SEP490.EduPrompt.enums.QuotaType;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
-import SEP490.EduPrompt.model.AiSuggestionLog;
 import SEP490.EduPrompt.model.OptimizationQueue;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.User;
-import SEP490.EduPrompt.repo.AiSuggestionLogRepository;
 import SEP490.EduPrompt.repo.OptimizationQueueRepository;
 import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.repo.UserRepository;
@@ -47,8 +44,6 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     private final QuotaService quotaService;
     private final PromptRepository promptRepository;
     private final OptimizationQueueRepository queueRepository;
-    private final AiSuggestionLogRepository suggestionRepository;
-    private final AiClientService aiClientService;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
@@ -114,7 +109,9 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
                 OptimizationQueue queueEntry = OptimizationQueue.builder()
                         .prompt(prompt)
+                        .promptId(prompt.getId())
                         .requestedBy(user)
+                        .requestedById(userId)
                         .input(request.optimizationInput())
                         .status(QueueStatus.PENDING.name())
                         .aiModel(AiModel.GPT_4O_MINI.getName())
@@ -129,6 +126,8 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
                 return queueRepository.save(queueEntry);
             });
+            //publish event to redis
+            publishOptimizationEvent(savedQueue.getId());
 
             // Cache result AFTER transaction commits successfully
             OptimizationQueueResponse response = mapToResponse(savedQueue);
@@ -165,161 +164,46 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     }
 
     /**
-     * Process queue in batches , no @Transaction
-     * Each item gets its own transaction via TransactionTemplate
+     * Publish optimization event to Redis
+     */
+    private void publishOptimizationEvent(UUID queueId) {
+        try {
+            redisTemplate.convertAndSend(
+                    "queue:optimization",
+                    queueId.toString()
+            );
+            log.debug("Published optimization event for queue: {}", queueId);
+        } catch (Exception e) {
+            log.error("Failed to publish optimization event, will rely on fallback scheduler", e);
+        }
+    }
+
+    /**
+     * fallback: process queue in batches if events fail
+     * Runs every 10 minutes as backup only
      */
     @Override
-    @Scheduled(fixedDelay = 30000)
+    @Scheduled(fixedDelay = 600000, initialDelay = 60000) // Every 10 minutes
     public void processOptimizationQueue() {
-        log.info("Starting optimization queue processing");
+        log.debug("Running fallback queue processor");
+
+        // Quick check - exit early if no pending items
+        long pendingCount = queueRepository.countByStatus(QueueStatus.PENDING.name());
+        if (pendingCount == 0) {
+            return;
+        }
+
+        log.warn("Found {} pending optimizations, processing (event system may have failed)", pendingCount);
 
         Pageable pageable = PageRequest.of(0, BATCH_SIZE);
-        List<OptimizationQueue> pendingItems;
+        List<OptimizationQueue> pendingItems = queueRepository.findPendingItemsForProcessing(
+                QueueStatus.PENDING.name(), pageable
+        ).getContent();
 
-        do {
-            // Fetch batch (outside transaction)
-            pendingItems = queueRepository.findPendingItemsForProcessing(
-                    QueueStatus.PENDING.name(), pageable
-            ).getContent();
-
-            if (pendingItems.isEmpty()) {
-                break;
-            }
-
-            log.info("Processing batch of {} pending optimization requests", pendingItems.size());
-
-            // Process each item in its own transaction using TransactionTemplate
-            for (OptimizationQueue item : pendingItems) {
-                processOptimizationItemWithTransaction(item);
-            }
-
-        } while (pendingItems.size() == BATCH_SIZE);
-
-        log.info("Optimization queue processing completed");
-    }
-
-    /**
-     * Using TransactionTemplate
-     * Each item processed in its own transaction
-     */
-    protected void processOptimizationItemWithTransaction(OptimizationQueue item) {
-        try {
-            // Execute in a NEW transaction using TransactionTemplate
-            transactionTemplate.executeWithoutResult(status -> {
-                try {
-                    // Reload item to ensure we have latest version (optimistic locking)
-                    OptimizationQueue currentItem = queueRepository.findById(item.getId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Queue item not found: " + item.getId()));
-
-                    // Check if already being processed or completed
-                    if (!QueueStatus.PENDING.name().equals(currentItem.getStatus())) {
-                        log.info("Item {} already processed, skipping. Status: {}",
-                                currentItem.getId(), currentItem.getStatus());
-                        return;
-                    }
-
-                    // Process the item
-                    processOptimizationItem(currentItem);
-
-                } catch (Exception e) {
-                    log.error("Failed to process optimization item: {}, handling failure", item.getId(), e);
-                    handleOptimizationFailure(item, e.getMessage());
-                    // Don't re-throw - we want to commit the failure status
-                }
-            });
-
-        } catch (Exception e) {
-            log.error("Error in transaction execution for item: {}", item.getId(), e);
+        // Re-trigger events for pending items
+        for (OptimizationQueue item : pendingItems) {
+            publishOptimizationEvent(item.getId());
         }
-    }
-
-    /**
-     * Core processing logic - runs within transaction from TransactionTemplate
-     */
-    private void processOptimizationItem(OptimizationQueue item) {
-        log.info("Processing optimization item: {}", item.getId());
-
-        // Update status to PROCESSING
-        item.setStatus(QueueStatus.PROCESSING.name());
-        item.setUpdatedAt(Instant.now());
-        queueRepository.saveAndFlush(item); // flush to prevent duplicate processing
-
-        UUID userId = item.getRequestedById();
-        int reservedTokens = item.getMaxTokens();
-
-        try {
-            // Reserve tokens (should use MANDATORY propagation to join this transaction)
-            quotaService.validateAndDecrementQuota(userId, QuotaType.OPTIMIZATION, reservedTokens);
-
-            Prompt prompt = promptRepository.findById(item.getPromptId())
-                    .orElseThrow(() -> new ResourceNotFoundException("prompt not found with id: " + item.getPromptId()));
-
-            // Call AI model - this is external call, not in transaction
-            ClientPromptResponse optimizedPrompt = aiClientService.optimizePrompt(
-                    prompt,
-                    item.getInput(),
-                    item.getTemperature(),
-                    item.getMaxTokens()
-            );
-
-            int tokensUsed = optimizedPrompt.totalTokens();
-
-            // refund unused tokens
-            int tokensToRefund = reservedTokens - tokensUsed;
-            if (tokensToRefund > 0) {
-                quotaService.refundTokens(userId, tokensToRefund);
-                log.debug("Refunded {} unused tokens for user: {}", tokensToRefund, userId);
-            }
-
-            // Save suggestion log
-            AiSuggestionLog suggestionLog = AiSuggestionLog.builder()
-                    .prompt(prompt)
-                    .promptId(prompt.getId())
-                    .requestedBy(userId)
-                    .input(item.getInput())
-                    .output(optimizedPrompt.content())
-                    .aiModel(item.getAiModel())
-                    .status(QueueStatus.COMPLETED.name())
-                    .optimizationQueue(item)
-                    .createdAt(Instant.now())
-                    .build();
-
-            suggestionRepository.save(suggestionLog);
-
-            // Update queue status
-            item.setOutput(optimizedPrompt.content());
-            item.setStatus(QueueStatus.COMPLETED.name());
-            item.setUpdatedAt(Instant.now());
-            queueRepository.save(item);
-
-            log.info("Optimization completed successfully for item: {}", item.getId());
-
-        } catch (Exception e) {
-            // Refund all reserved tokens on failure
-            log.error("AI call failed for optimization item: {}, refunding quota", item.getId(), e);
-            quotaService.refundQuota(userId, QuotaType.OPTIMIZATION, reservedTokens);
-            throw e; // Re-throw to trigger rollback
-        }
-    }
-
-    /**
-     * Handle failure - run in same transaction as this method processOptimizationItemWithTransaction()
-     */
-    private void handleOptimizationFailure(OptimizationQueue item, String errorMessage) {
-        item.setRetryCount(item.getRetryCount() + 1);
-        item.setErrorMessage(errorMessage);
-        item.setUpdatedAt(Instant.now());
-
-        if (item.getRetryCount() >= item.getMaxRetries()) {
-            log.warn("Max retries reached for optimization item: {}. Marking as FAILED", item.getId());
-            item.setStatus(QueueStatus.FAILED.name());
-        } else {
-            log.info("Retry {}/{} for optimization item: {}",
-                    item.getRetryCount(), item.getMaxRetries(), item.getId());
-            item.setStatus(QueueStatus.PENDING.name());
-        }
-
-        queueRepository.save(item);
     }
 
     /**
