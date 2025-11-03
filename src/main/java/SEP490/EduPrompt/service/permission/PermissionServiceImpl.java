@@ -3,6 +3,7 @@ package SEP490.EduPrompt.service.permission;
 import SEP490.EduPrompt.enums.GroupRole;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
+import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Collection;
@@ -220,20 +221,18 @@ public class PermissionServiceImpl implements PermissionService {
         // Collection owner can edit their own collection
         UUID ownerId = collection.getCreatedBy();
         return userPrincipal.getUserId().equals(ownerId);
-
-//        // For PUBLIC collections, anyone with appropriate role can edit
-//        if (Visibility.PUBLIC.name().equals(collection.getVisibility())) {
-//            return hasEditCollectionRole(userPrincipal);
-//        }
-
-        // For PRIVATE collections, only owner can edit (already checked above)
     }
 
-    // Helper method to check if user has roles that allow editing collections
-    private boolean hasEditCollectionRole(UserPrincipal userPrincipal) {
-        String role = userPrincipal.getRole();
-        return Role.TEACHER.name().equalsIgnoreCase(role) ||
-                Role.SCHOOL_ADMIN.name().equalsIgnoreCase(role) ||
-                Role.SYSTEM_ADMIN.name().equalsIgnoreCase(role);
+    public User validateAndGetSchoolAdmin(UUID adminUserId) {
+        User admin = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
+
+        if (!Role.SCHOOL_ADMIN.name().equals(admin.getRole())) {
+            throw new AccessDeniedException("Only SCHOOL_ADMIN can perform this action");
+        }
+        if (admin.getSchoolId() == null) {
+            throw new AccessDeniedException("School admin has no school assigned");
+        }
+        return admin;
     }
 }

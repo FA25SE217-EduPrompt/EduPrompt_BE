@@ -2,6 +2,7 @@ package SEP490.EduPrompt.service.permission;
 
 import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.model.Prompt;
+import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 
 import java.util.UUID;
@@ -19,6 +20,8 @@ public interface PermissionService {
     boolean isSchoolMember(UserPrincipal user, UUID schoolId);
 
     boolean isGroupAdmin(UserPrincipal user, UUID groupId);
+
+    User validateAndGetSchoolAdmin(UUID adminUserId);
 
     //for collection
     boolean canViewCollection(UserPrincipal userPrincipal, Collection collection);

@@ -42,5 +42,4 @@ public class School {
     @ColumnDefault("now()")
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
-
 }

@@ -1,0 +1,31 @@
+-- ==========================================
+-- STEP 1: Drop all foreign key constraints between the two tables
+-- ==========================================
+ALTER TABLE school_subscriptions
+    DROP CONSTRAINT IF EXISTS fk_school_subscriptions_tier;
+
+ALTER TABLE school_subscriptions
+    DROP CONSTRAINT IF EXISTS fk_school_subscriptions_school;
+
+-- ==========================================
+-- STEP 2: Drop indexes related to those relationships
+-- ==========================================
+DROP INDEX IF EXISTS idx_school_subscriptions_tier;
+DROP INDEX IF EXISTS idx_school_subscriptions_school;
+
+-- ==========================================
+-- STEP 3: Drop the column subscription_tier_id from school_subscriptions
+-- ==========================================
+ALTER TABLE school_subscriptions
+    DROP COLUMN IF EXISTS subscription_tier_id;
+
+-- ==========================================
+-- STEP 4: Drop the column school_token_pool from subscription_tiers
+-- ==========================================
+ALTER TABLE subscription_tiers
+    DROP COLUMN IF EXISTS school_token_pool;
+
+-- ==========================================
+-- (Optional) Step 5: Drop other indexes that depend on dropped columns
+-- ==========================================
+-- None remaining for these specific columns, but this placeholder is for future safety.
