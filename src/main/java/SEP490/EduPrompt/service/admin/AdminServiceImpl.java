@@ -156,7 +156,7 @@ public class AdminServiceImpl implements AdminService {
                 assignedCount,
                 createdCount,
                 skipped,
-                List.of()
+                List.of()  // why parsing an empty list ?
         );
     }
 
@@ -211,7 +211,7 @@ public class AdminServiceImpl implements AdminService {
             throw new AccessDeniedException("Only SYSTEM_ADMIN can create a new school");
         }
 
-        boolean exists = schoolRepo.existsByNameAndDistrictAndProvince(
+        boolean exists = schoolRepo.existsByNameIgnoreCaseAndDistrictIgnoreCaseAndProvinceIgnoreCase(
                 request.name().trim(),
                 request.district().trim(),
                 request.province().trim()
