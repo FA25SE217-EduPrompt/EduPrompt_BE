@@ -23,6 +23,7 @@ import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
 import SEP490.EduPrompt.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,11 +36,13 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminServiceImpl implements AdminService {
 
     private final SchoolSubscriptionRepository schoolSubRepo;
     private final PermissionService permissionService;
     private final SchoolRepository schoolRepo;
+    private final SubscriptionTierRepository subRepo;
     private final UserQuotaRepository userQuotaRepo;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepo;
@@ -49,16 +52,23 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public SchoolSubscriptionResponse createSchoolSubscription(UUID schoolId, CreateSchoolSubscriptionRequest request) {
+        log.info("Creating school subscription for schoolId: {}", schoolId);
         UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (!permissionService.isSystemAdmin(principal)) {
+            log.warn("Access denied: User {} attempted to create subscription without SYSTEM_ADMIN role", principal.getUserId());
             throw new AccessDeniedException("Only SYSTEM_ADMIN can create school subscriptions");
+
         }
 
         School school = schoolRepo.findById(schoolId)
-                .orElseThrow(() -> new ResourceNotFoundException("School not found: " + schoolId));
+                .orElseThrow(() -> {
+                    log.error("School not found: {}", schoolId);
+                    return new ResourceNotFoundException("School not found: " + schoolId);
+                });
 
         // Optional: enforce one active per school
         schoolSubRepo.findActiveBySchoolId(schoolId).ifPresent(ss -> {
+            log.warn("School {} already has an active subscription", schoolId);
             throw new InvalidInputException("School already has an active subscription");
         });
 
@@ -68,13 +78,14 @@ public class AdminServiceImpl implements AdminService {
                 .schoolTokenPool(request.schoolTokenPool())
                 .schoolTokenRemaining(request.schoolTokenRemaining())
                 .quotaResetDate(request.quotaResetDate())
-                .startDate(request.startDate() != null ? request.startDate() : now)
+                .startDate(Instant.now())
                 .endDate(request.endDate())
                 .updatedAt(Instant.now())
                 .isActive(true)
                 .build();
 
         sub = schoolSubRepo.save(sub);
+        log.info("Created school subscription {} for school {}", sub.getId(), schoolId);
 
         return toSubscriptionResponse(sub);
     }
@@ -82,12 +93,17 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public BulkAssignTeachersResponse bulkAssignTeachersToSchool(UUID adminUserId, BulkAssignTeachersRequest request) {
+        log.info("Bulk assigning teachers by adminUserId: {}", adminUserId);
         User admin = userRepo.findById(adminUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
+                .orElseThrow(() -> {
+                    log.error("Admin not found: {}", adminUserId);
+                    return new ResourceNotFoundException("Admin not found");
+                });
 
         Set<String> uniqueEmails = validateInput(request, admin);
         UUID schoolId = admin.getSchoolId();
         SchoolSubscription activeSub = schoolSubRepo.findActiveBySchoolId(schoolId).orElse(null);
+        log.debug("Found active subscription for school {}: {}", schoolId, activeSub != null ? activeSub.getId() : "none");
 
         Map<String, UserAuth> existingMap = userAuthRepo.findMapByEmailIn(new ArrayList<>(uniqueEmails));
 
@@ -107,11 +123,13 @@ public class AdminServiceImpl implements AdminService {
                 // Validate role
                 if (!Role.TEACHER.name().equalsIgnoreCase(user.getRole())) {
                     skipped.add(email + " (not a teacher)");
+                    log.warn("Skipped {}: not a teacher (role: {})", email, user.getRole());
                     continue;
                 }
                 // Prevent cross-school reassignment
                 if (user.getSchoolId() != null && !user.getSchoolId().equals(schoolId)) {
                     skipped.add(email + " (already in another school)");
+                    log.warn("Skipped {}: already in school {}", email, user.getSchoolId());
                     continue;
                 }
 
@@ -139,16 +157,22 @@ public class AdminServiceImpl implements AdminService {
                 userAuthRepo.save(auth); // cascade saves user
                 isNew = true;
                 createdCount++;
+                log.info("Created new teacher for email: {}", email);
             }
 
             user.setSchoolId(schoolId);
             usersToSave.add(user);
         }
 
-        userRepo.saveAll(usersToSave);
+        if (!usersToSave.isEmpty()) {
+            userRepo.saveAll(usersToSave);
+            log.info("Saved {} assigned teachers for school {}", usersToSave.size(), schoolId);
+        }
 
         int assignedCount = usersToSave.size();
         List<UUID> listUserIds = usersToSave.stream().map(User::getId).toList();
+        log.info("Bulk assign completed: requested={}, assigned={}, created={}, skipped={}",
+                uniqueEmails.size(), assignedCount, createdCount, skipped.size());
 
         return new BulkAssignTeachersResponse(
                 listUserIds,
@@ -163,9 +187,11 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public RegisterResponse createSchoolAdminAccount(RegisterRequest registerRequest) {
+        log.info("Creating school admin account for email: {}", registerRequest.getEmail());
         UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (!permissionService.isSystemAdmin(principal)) {
-            throw new AccessDeniedException("Only SYSTEM_ADMIN can create school subscriptions");
+            log.warn("Access denied: User {} attempted to create school admin without SYSTEM_ADMIN role", principal.getUserId());
+            throw new AccessDeniedException("Only SYSTEM_ADMIN can create school admin account");
         }
         if (userAuthRepo.existsByEmail(registerRequest.getEmail().toLowerCase())) {
             throw new EmailAlreadyExistedException();
@@ -186,6 +212,7 @@ public class AdminServiceImpl implements AdminService {
                 .build();
 
         User savedUser = userRepo.save(user);
+        log.debug("Saved user: {}", savedUser.getId());
 
         UserAuth userAuth = UserAuth.builder()
                 .user(savedUser)
@@ -197,6 +224,7 @@ public class AdminServiceImpl implements AdminService {
                 .build();
 
         userAuthRepo.save(userAuth);
+        log.info("Created school admin auth for user: {}", savedUser.getId());
 
         return RegisterResponse.builder()
                 .message("Create school admin successfully")
@@ -208,6 +236,7 @@ public class AdminServiceImpl implements AdminService {
     public CreateSchoolResponse createSchool(CreateSchoolRequest request) {
         UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (!permissionService.isAdmin(principal)) {
+            log.warn("Access denied: User {} attempted to create school without admin permissions", principal.getUserId());
             throw new AccessDeniedException("Only SYSTEM_ADMIN can create a new school");
         }
 
@@ -217,6 +246,7 @@ public class AdminServiceImpl implements AdminService {
                 request.province().trim()
         );
         if (exists) {
+            log.warn("School already exists: {} in {}/{}", request.name(), request.district(), request.province());
             throw new InvalidInputException("School already exist with name: " + request.name());
         }
 
@@ -233,6 +263,7 @@ public class AdminServiceImpl implements AdminService {
                 .build();
 
         School savedSchool = schoolRepo.save(school);
+        log.info("Created school: {} (ID: {})", savedSchool.getName(), savedSchool.getId());
 
         return CreateSchoolResponse.builder()
                 .id(savedSchool.getId())
@@ -249,6 +280,7 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public SchoolSubscriptionUsageResponse getSubscriptionUsage(UUID adminUserId) {
+        log.info("Fetching subscription usage for adminUserId: {}", adminUserId);
         User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
         UUID schoolId = admin.getSchoolId();
 
@@ -257,7 +289,8 @@ public class AdminServiceImpl implements AdminService {
 
         long teacherCount = userRepo.countBySchoolIdAndRole(schoolId, Role.TEACHER.name());
 
-        long tokenUsed = sub.getSchoolTokenPool() - sub.getSchoolTokenRemaining();
+        int tokenUsed = sub.getSchoolTokenPool() - sub.getSchoolTokenRemaining();
+        log.debug("Subscription usage: tokens used={}, remaining={}, teachers={}", tokenUsed, sub.getSchoolTokenRemaining(), teacherCount);
 
         return new SchoolSubscriptionUsageResponse(
                 sub.getId(),
@@ -276,27 +309,38 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public Page<SchoolAdminTeacherResponse> getTeachersInSchool(UUID adminUserId, Pageable pageable) {
+        log.info("Fetching teachers for adminUserId: {} (page: {})", adminUserId, pageable);
         User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
         UUID schoolId = admin.getSchoolId();
 
-        return userRepo.findBySchoolIdAndRole(schoolId, Role.TEACHER.name(), pageable)
+        Page<SchoolAdminTeacherResponse> teachers = userRepo.findBySchoolIdAndRole(schoolId, Role.TEACHER.name(), pageable)
                 .map(this::toTeacherResponse);
+        log.debug("Found {} teachers for school {}", teachers.getTotalElements(), schoolId);
+
+        return teachers;
     }
 
     @Override
     @Transactional
     public void removeTeacherFromSchool(UUID adminUserId, RemoveTeacherFromSchoolRequest request) {
+        log.info("Removing teacher {} by adminUserId: {}", request.teacherId(), adminUserId);
         User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
+        SubscriptionTier tier = subRepo.findByNameEndingWithIgnoreCase("Free");
         UUID schoolId = admin.getSchoolId();
         UUID teacherId = request.teacherId();
 
         User teacher = userRepo.findById(teacherId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher not found"));
+                .orElseThrow(() -> {
+                    log.error("Teacher not found: {}", teacherId);
+                    return new ResourceNotFoundException("Teacher not found");
+                });
 
-        if (!"TEACHER".equalsIgnoreCase(teacher.getRole())) {
+        if (!Role.TEACHER.name().equalsIgnoreCase(teacher.getRole())) {
+            log.warn("Invalid action: Attempt to remove non-teacher {} (role: {})", teacherId, teacher.getRole());
             throw new InvalidActionException("Can only remove teachers");
         }
         if (!schoolId.equals(teacher.getSchoolId())) {
+            log.warn("Access denied: Teacher {} does not belong to school {}", teacherId, schoolId);
             throw new AccessDeniedException("Teacher does not belong to your school");
         }
 
@@ -306,38 +350,55 @@ public class AdminServiceImpl implements AdminService {
 
         // Reset quota to individual (zero)
         UserQuota quota = userQuotaRepo.findByUserId(teacherId)
-                .orElseGet(() -> UserQuota.builder().user(teacher).build());
+                .orElseGet(() -> {
+                    log.debug("Creating new quota for teacher {}", teacherId);
+                    return UserQuota.builder().user(teacher).build();
+                });
 
+        //I don't think this is good, but it works. NEED REVIEW
         quota.setSchoolSubscription(null);
-        quota.setSubscriptionTier(null);
-        quota.setIndividualTokenLimit(0);
-        quota.setIndividualTokenRemaining(0);
-        quota.setTestingQuotaLimit(0);
-        quota.setOptimizationQuotaLimit(0);
+        quota.setSubscriptionTier(tier);
+        quota.setOptimizationQuotaLimit(tier.getOptimizationQuotaLimit());
+        quota.setOptimizationQuotaRemaining(tier.getOptimizationQuotaLimit());
+        quota.setTestingQuotaRemaining(tier.getTestingQuotaLimit());
+        quota.setTestingQuotaLimit(tier.getTestingQuotaLimit());
+        quota.setQuotaResetDate(Instant.now());
+        quota.setIndividualTokenRemaining(tier.getIndividualTokenLimit());
+        quota.setIndividualTokenLimit(tier.getIndividualTokenLimit());
+        quota.setCreatedAt(Instant.now());
+        quota.setUpdatedAt(Instant.now());
 
         userRepo.save(teacher);
         userQuotaRepo.save(quota);
+        log.info("Removed teacher {} from school {} and reset quota", teacherId, schoolId);
     }
 
     //============Helper============
+
     private Set<String> validateInput(BulkAssignTeachersRequest request, User admin) {
+        log.debug("Validating input for bulk assign by admin: {}", admin.getId());
         if (!Role.SCHOOL_ADMIN.name().equals(admin.getRole())) {
+            log.warn("Access denied: Non-school admin {} attempted bulk assign", admin.getId());
             throw new AccessDeniedException("Only SCHOOL_ADMIN can assign teachers");
         }
         if (admin.getSchoolId() == null) {
+            log.warn("Invalid input: School admin {} has no school assigned", admin.getId());
             throw new InvalidInputException("School admin has no school assigned");
         }
 
         List<String> emails = request.emails();
         if (emails.size() > 50) {
+            log.warn("Invalid input: Email list size {} exceeds max 50", emails.size());
             throw new InvalidInputException("Maximum 50 emails allowed");
         }
 
         Set<String> uniqueEmails = new HashSet<>(emails);
+        log.debug("Unique emails after validation: {}", uniqueEmails.size());
         return uniqueEmails;
     }
 
     private SchoolSubscriptionResponse toSubscriptionResponse(SchoolSubscription sub) {
+        log.debug("Mapping subscription {} to response", sub.getId());
         return new SchoolSubscriptionResponse(
                 sub.getId(),
                 sub.getSchool().getId(),
@@ -351,6 +412,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     private SchoolAdminTeacherResponse toTeacherResponse(User user) {
+        log.debug("Mapping teacher {} to response", user.getId());
         return SchoolAdminTeacherResponse.builder()
                 .id(user.getId())
                 .firstName(user.getFirstName())

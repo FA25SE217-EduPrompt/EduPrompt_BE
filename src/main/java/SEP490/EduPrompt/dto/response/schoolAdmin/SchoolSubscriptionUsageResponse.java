@@ -10,7 +10,7 @@ public record SchoolSubscriptionUsageResponse(
         UUID subscriptionId,
         String schoolName,
         Integer totalTokenPool,
-        Long tokenUsed,
+        Integer tokenUsed,
         Integer tokenRemaining,
         Instant startDate,
         Instant endDate,
