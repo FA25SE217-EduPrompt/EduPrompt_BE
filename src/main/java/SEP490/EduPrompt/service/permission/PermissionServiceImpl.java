@@ -8,6 +8,7 @@ import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.model.Prompt;
+import SEP490.EduPrompt.model.TeacherProfile;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
@@ -234,5 +235,22 @@ public class PermissionServiceImpl implements PermissionService {
             throw new AccessDeniedException("School admin has no school assigned");
         }
         return admin;
+    }
+
+    @Override
+    public void validateTeacherRole(User user) {
+        if (!Role.TEACHER.name().equalsIgnoreCase(user.getRole())) {
+            throw new AccessDeniedException("You dont have permission to perform this action");
+        }
+    }
+
+    @Override
+    public void validateOwnershipOrAdmin(TeacherProfile profile, UserPrincipal currentUser) {
+        UUID ownerId = profile.getUser().getId();
+        UUID currentUserId = currentUser.getUserId();
+
+        if (!ownerId.equals(currentUserId) && !isSystemAdmin(currentUser)) {
+            throw new AccessDeniedException("You do not have permission to do this action");
+        }
     }
 }
