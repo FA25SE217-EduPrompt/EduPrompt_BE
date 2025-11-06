@@ -11,3 +11,8 @@ UPDATE prompt_usage SET status = 'COMPLETED' WHERE status IS NULL;
 
 CREATE INDEX idx_prompt_usage_idempotency ON prompt_usage(idempotency_key);
 CREATE INDEX idx_prompt_usage_user_created ON prompt_usage(user_id, created_at DESC);
+
+-- drop not null constraint for first name and last name in user table
+ALTER TABLE users
+ALTER COLUMN first_name DROP NOT NULL,
+ALTER COLUMN last_name DROP NOT NULL;
