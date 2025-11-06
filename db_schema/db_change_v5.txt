@@ -1,18 +1,32 @@
 
 -- Add status and error tracking to PromptUsage table
-ALTER TABLE prompt_usage
+ALTER TABLE prompt_usages
 ADD COLUMN status VARCHAR(20) DEFAULT 'COMPLETED',
 ADD COLUMN error_message TEXT,
-ADD COLUMN updated_at TIMESTAMP,
-ADD INDEX idx_status_created (status, created_at);
+ADD COLUMN updated_at TIMESTAMP;
+
+-- add idempotency key
+ALTER TABLE optimization_queue
+    ADD COLUMN idempotency_key VARCHAR(255) UNIQUE, -- Prevent duplicate requests
+    ADD COLUMN retry_count INT DEFAULT 0;
+
+ALTER TABLE prompt_usages
+    ADD COLUMN idempotency_key VARCHAR(255) UNIQUE;
 
 -- Update existing records to have COMPLETED status
-UPDATE prompt_usage SET status = 'COMPLETED' WHERE status IS NULL;
+UPDATE prompt_usages SET status = 'COMPLETED' WHERE status IS NULL;
 
-CREATE INDEX idx_prompt_usage_idempotency ON prompt_usage(idempotency_key);
-CREATE INDEX idx_prompt_usage_user_created ON prompt_usage(user_id, created_at DESC);
+CREATE INDEX idx_prompt_usage_idempotency ON prompt_usages(idempotency_key);
+CREATE INDEX idx_prompt_usage_user_created ON prompt_usages(user_id, created_at DESC);
 
 -- drop not null constraint for first name and last name in user table
 ALTER TABLE users
 ALTER COLUMN first_name DROP NOT NULL,
 ALTER COLUMN last_name DROP NOT NULL;
+
+-- adjust attachment table
+ALTER TABLE attachments
+    ALTER COLUMN public_id DROP DEFAULT;
+
+ALTER TABLE attachments
+    ALTER COLUMN public_id DROP NOT NULL;
