@@ -230,11 +230,14 @@ public class QuotaServiceImpl implements QuotaService {
 
     @Override
     @Transactional
-    public void syncUserQuotaWithSubscriptionTier(UUID userId, UUID subscriptionTierId) {
-        log.info("Syncing quota for user: {} with subscription: {}", userId, subscriptionTierId);
+    public void syncUserQuotaWithSubscriptionTier(UUID userId) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + userId));
+
+        UUID subscriptionTierId = user.getSubscriptionTierId();
+
+        log.info("Syncing quota for user: {} with subscription: {}", userId, subscriptionTierId);
 
         SubscriptionTier tier = subscriptionTierRepository.findById(subscriptionTierId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subscription tier not found with id : " + subscriptionTierId));
