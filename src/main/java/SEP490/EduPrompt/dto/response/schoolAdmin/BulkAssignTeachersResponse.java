@@ -1,11 +1,10 @@
 package SEP490.EduPrompt.dto.response.schoolAdmin;
 
-import SEP490.EduPrompt.model.User;
-
 import java.util.List;
+import java.util.UUID;
 
 public record BulkAssignTeachersResponse(
-        List<User> users,
+        List<UUID> userIds,
         int totalRequested,
         int assigned,
         int created,

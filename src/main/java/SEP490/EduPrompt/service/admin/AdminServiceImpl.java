@@ -148,14 +148,15 @@ public class AdminServiceImpl implements AdminService {
         userRepo.saveAll(usersToSave);
 
         int assignedCount = usersToSave.size();
+        List<UUID> listUserIds = usersToSave.stream().map(User::getId).toList();
 
         return new BulkAssignTeachersResponse(
-                usersToSave,
+                listUserIds,
                 uniqueEmails.size(),
                 assignedCount,
                 createdCount,
                 skipped,
-                List.of()
+                List.of()  // why parsing an empty list ?
         );
     }
 
@@ -210,7 +211,7 @@ public class AdminServiceImpl implements AdminService {
             throw new AccessDeniedException("Only SYSTEM_ADMIN can create a new school");
         }
 
-        boolean exists = schoolRepo.existsByNameAndDistrictAndProvince(
+        boolean exists = schoolRepo.existsByNameIgnoreCaseAndDistrictIgnoreCaseAndProvinceIgnoreCase(
                 request.name().trim(),
                 request.district().trim(),
                 request.province().trim()
