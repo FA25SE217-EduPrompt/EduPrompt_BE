@@ -75,8 +75,24 @@ public class PromptUsage {
     @Column(name = "top_p")
     private Double topP;
 
+    @Size(max = 20)
+    @ColumnDefault("'COMPLETED'")
+    @Column(name = "status", length = 20)
+    private String status;
+
+    @Column(name = "error_message", length = Integer.MAX_VALUE)
+    private String errorMessage;
+
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
     }
 }
