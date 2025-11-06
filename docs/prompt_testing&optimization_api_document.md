@@ -771,4 +771,4 @@ if (tokensUsed > tokenLimit * 0.8) {
 ## Version
 
 API Version: `1.0`  
-Last Updated: October 2025
+Last Updated: November 2025
