@@ -301,7 +301,6 @@ public class AdminServiceImpl implements AdminService {
 
         // Remove from school
         teacher.setSchoolId(null);
-        teacher.setIsActive(false);
 
         // Reset quota to individual (zero)
         UserQuota quota = userQuotaRepo.findByUserId(teacherId)

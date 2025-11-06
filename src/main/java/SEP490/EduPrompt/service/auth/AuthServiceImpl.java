@@ -167,6 +167,7 @@ public class AuthServiceImpl implements AuthService {
         user.setIsActive(true);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
+        //TODO: Set free tier for new user. New and sync quota with subscription tier
 
         // clear verification token after use (just clear it, don't ask ('-') )
         userAuth.setVerificationToken(null);
@@ -445,6 +446,8 @@ public class AuthServiceImpl implements AuthService {
                     .build();
 
             userAuthRepository.save(auth);
+
+            //TODO: Set free tier for new user. New and sync quota with subscription tier
         }
         assert user != null;
         String token = jwtUtil.generateToken(email, user.getRole());
