@@ -20,4 +20,8 @@ public interface PromptTestingService {
     List<PromptTestResponse> getTestResultsByPromptId(UUID promptId);
 
     Page<PromptTestResponse> getUserTestHistory(UUID userId, Pageable pageable);
+
+    Page<PromptTestResponse> getPromptTestHistory(UUID promptId, UUID userId, Pageable pageable);
+
+    void deleteTestResult(UUID usageId, UUID userId);
 }

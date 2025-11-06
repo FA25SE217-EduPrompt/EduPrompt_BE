@@ -360,6 +360,39 @@ public class PromptTestingServiceImpl implements PromptTestingService {
         return usagePage.map(this::mapToResponse);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PromptTestResponse> getPromptTestHistory(UUID promptId, UUID userId, Pageable pageable) {
+        log.info("Fetching test history for prompt: {} by user: {}", promptId, userId);
+
+        Page<PromptUsage> usagePage = usageRepository.findByPromptIdAndUserIdOrderByCreatedAtDesc(
+                promptId,
+                userId,
+                pageable
+        );
+
+        return usagePage.map(this::mapToResponse);
+    }
+
+    @Override
+    @Transactional
+    public void deleteTestResult(UUID usageId, UUID userId) {
+        log.info("Deleting test result: {} by user: {}", usageId, userId);
+
+        PromptUsage usage = usageRepository.findById(usageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt usage not found: " + usageId));
+
+        // Verify ownership
+        if (!usage.getUserId().equals(userId)) {
+            log.warn("User {} attempted to delete usage {} owned by {}",
+                    userId, usageId, usage.getUserId());
+            throw new ResourceNotFoundException("Prompt usage not found: " + usageId);
+        }
+
+        usageRepository.delete(usage);
+        log.info("Test result deleted successfully: {}", usageId);
+    }
+
     private PromptTestResponse getCachedResponse(String cacheKey) {
         try {
             String cachedResult = redisTemplate.opsForValue().get(cacheKey);

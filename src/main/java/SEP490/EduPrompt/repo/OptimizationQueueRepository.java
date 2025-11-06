@@ -48,4 +48,17 @@ public interface OptimizationQueueRepository extends JpaRepository<OptimizationQ
 
     @Query("SELECT COUNT(q) FROM OptimizationQueue q WHERE q.status = :status")
     long countByStatus(@Param("status") String status);
+
+    Page<OptimizationQueue> findByRequestedByIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+
+    Page<OptimizationQueue> findByPromptIdAndRequestedByIdOrderByCreatedAtDesc(
+            UUID promptId,
+            UUID userId,
+            Pageable pageable
+    );
+
+    List<OptimizationQueue> findByRequestedByIdAndStatusInOrderByCreatedAtDesc(
+            UUID userId,
+            List<String> statuses
+    );
 }

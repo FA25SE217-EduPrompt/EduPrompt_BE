@@ -17,6 +17,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -162,6 +163,106 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
         return mapToResponse(queueEntry);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OptimizationQueueResponse> getUserOptimizationHistory(UUID userId, Pageable pageable) {
+        log.info("Fetching optimization history for user: {}", userId);
+
+        Page<OptimizationQueue> queuePage = queueRepository.findByRequestedByIdOrderByCreatedAtDesc(
+                userId,
+                pageable
+        );
+
+        return queuePage.map(this::mapToResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OptimizationQueueResponse> getPromptOptimizationHistory(UUID promptId, UUID userId, Pageable pageable) {
+        log.info("Fetching optimization history for prompt: {} by user: {}", promptId, userId);
+
+        Page<OptimizationQueue> queuePage = queueRepository.findByPromptIdAndRequestedByIdOrderByCreatedAtDesc(
+                promptId,
+                userId,
+                pageable
+        );
+
+        return queuePage.map(this::mapToResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OptimizationQueueResponse> getPendingOptimizations(UUID userId) {
+        log.info("Fetching pending optimizations for user: {}", userId);
+
+        List<OptimizationQueue> pendingQueues = queueRepository.findByRequestedByIdAndStatusInOrderByCreatedAtDesc(
+                userId,
+                List.of(QueueStatus.PENDING.name(), QueueStatus.PROCESSING.name())
+        );
+
+        return pendingQueues.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public OptimizationQueueResponse retryOptimization(UUID queueId, UUID userId) {
+        log.info("Retrying optimization: {} by user: {}", queueId, userId);
+
+        OptimizationQueue queueEntry = queueRepository.findById(queueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Queue not found with id: " + queueId));
+
+        // check owner
+        if (!queueEntry.getRequestedById().equals(userId)) {
+            log.warn("User {} attempted to retry queue {} owned by {}",
+                    userId, queueId, queueEntry.getRequestedById());
+            throw new ResourceNotFoundException("Queue not found with id: " + queueId);
+        }
+
+        // check if queue status is failed
+        if (!QueueStatus.FAILED.name().equals(queueEntry.getStatus())) {
+            throw new InvalidInputException("Cannot retry optimization with status: " + queueEntry.getStatus());
+        }
+
+        // reset for retry
+        queueEntry.setStatus(QueueStatus.PENDING.name());
+        queueEntry.setRetryCount(0);
+        queueEntry.setErrorMessage(null);
+        queueEntry.setUpdatedAt(Instant.now());
+
+        OptimizationQueue savedQueue = queueRepository.save(queueEntry);
+        log.info("Optimization queued for retry: {}", queueId);
+
+        return mapToResponse(savedQueue);
+    }
+
+    @Override
+    @Transactional
+    public void cancelOptimization(UUID queueId, UUID userId) {
+        log.info("Cancelling optimization: {} by user: {}", queueId, userId);
+
+        OptimizationQueue queueEntry = queueRepository.findById(queueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Queue not found with id: " + queueId));
+
+        // check owner
+        if (!queueEntry.getRequestedById().equals(userId)) {
+            log.warn("User {} attempted to cancel queue {} owned by {}",
+                    userId, queueId, queueEntry.getRequestedById());
+            throw new ResourceNotFoundException("Queue not found with id: " + queueId);
+        }
+
+        // can only cancel pending or failed
+        String status = queueEntry.getStatus();
+        if (!QueueStatus.PENDING.name().equals(status) && !QueueStatus.FAILED.name().equals(status)) {
+            throw new InvalidInputException("Cannot cancel optimization with status: " + status);
+        }
+
+        queueRepository.delete(queueEntry);
+        log.info("Optimization cancelled successfully: {}", queueId);
+    }
+
 
     /**
      * Publish optimization event to Redis

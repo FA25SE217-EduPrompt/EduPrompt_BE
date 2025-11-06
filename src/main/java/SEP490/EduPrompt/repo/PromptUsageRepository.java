@@ -43,4 +43,10 @@ public interface PromptUsageRepository extends JpaRepository<PromptUsage, UUID> 
             @Param("promptId") UUID promptId,
             @Param("userId") UUID userId
     );
+
+    Page<PromptUsage> findByPromptIdAndUserIdOrderByCreatedAtDesc(
+            UUID promptId,
+            UUID userId,
+            Pageable pageable
+    );
 }
