@@ -54,9 +54,8 @@ public class PromptServiceImpl implements PromptService {
         // Fetch User entity
         User user = userRepository.findById(currentUser.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        //Fetch user quota
-        UUID userId = user.getId();
-        UserQuota userQuota = userQuotaRepository.findByUserId(userId)
+
+        UserQuota userQuota = userQuotaRepository.findByUserId(currentUser.getUserId())
                 .orElseGet(() -> UserQuota.builder().user(user).build());
 
         // Permission check
@@ -132,6 +131,7 @@ public class PromptServiceImpl implements PromptService {
             promptTagRepository.saveAll(promptTags);
         }
         userQuota.setPromptActionRemaining(userQuota.getPromptActionRemaining() - 1);
+        userQuotaRepository.save(userQuota);
 
         // Build response
         return buildPromptResponse(savedPrompt);
@@ -144,6 +144,7 @@ public class PromptServiceImpl implements PromptService {
         User user = userRepository.findById(currentUser.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         UUID userId = user.getId();
+        //This part is potential for error: If the userQuota not found then will new userQuota but with all field null
         UserQuota userQuota = userQuotaRepository.findByUserId(userId)
                 .orElseGet(() -> UserQuota.builder().user(user).build());
 
@@ -239,6 +240,7 @@ public class PromptServiceImpl implements PromptService {
         }
 
         userQuota.setPromptActionRemaining(userQuota.getPromptActionRemaining() - 1);
+        userQuotaRepository.save(userQuota);
 
         // Build response
         return buildPromptResponse(savedPrompt);
@@ -546,7 +548,7 @@ public class PromptServiceImpl implements PromptService {
         // Check visibility and permissions
         permissionService.validatePromptAccess(prompt, currentUser);
 
-        if (!promptViewLogRepository.existByPromptIdAndUserId(promptId, userId)) {
+        if (promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, userId).isEmpty()) {
             PromptViewLog promptViewLog = PromptViewLog.builder()
                     .user(user)
                     .prompt(prompt)
@@ -554,6 +556,7 @@ public class PromptServiceImpl implements PromptService {
             promptViewLogRepository.save(promptViewLog);
 
             userQuota.setPromptUnlockRemaining(userQuota.getPromptUnlockRemaining() - 1);
+            userQuotaRepository.save(userQuota);
         }
 
         // Build and return response with only requested fields

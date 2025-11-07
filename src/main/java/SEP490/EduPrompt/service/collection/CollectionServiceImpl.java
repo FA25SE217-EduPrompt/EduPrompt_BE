@@ -63,6 +63,7 @@ public class CollectionServiceImpl implements CollectionService {
 
     private final CollectionRepository collectionRepository;
     private final CollectionTagRepository collectionTagRepository;
+    private final UserQuotaRepository userQuotaRepository;
     private final PermissionService permissionService;
     private final UserRepository userRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -137,6 +138,8 @@ public class CollectionServiceImpl implements CollectionService {
         UUID currentUserId = currentUser.getUserId();
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        UserQuota userQuota = userQuotaRepository.findByUserId(currentUserId)
+                .orElseGet(() -> UserQuota.builder().user(user).build());
 
         Visibility vis = parseVisibility(request.visibility());
 
@@ -192,6 +195,9 @@ public class CollectionServiceImpl implements CollectionService {
             collectionTagRepository.saveAll(collectionTags);
         }
         log.info("Collection created: {} by user: {}", saved.getId(), currentUserId);
+
+        userQuota.setCollectionActionRemaining(userQuota.getCollectionActionRemaining() - 1);
+        userQuotaRepository.save(userQuota);
 
         return CreateCollectionResponse.builder()
                 .name(collection.getName())
