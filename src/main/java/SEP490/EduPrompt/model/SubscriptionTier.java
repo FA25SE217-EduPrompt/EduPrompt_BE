@@ -65,6 +65,21 @@ public class SubscriptionTier {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "prompt_unlock_limit", nullable = false)
+    private Integer promptUnlockLimit;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "prompt_action_limit", nullable = false)
+    private Integer promptActionLimit;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "collection_action_limit", nullable = false)
+    private Integer collectionActionLimit;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
