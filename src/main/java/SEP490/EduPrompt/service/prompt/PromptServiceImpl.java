@@ -35,8 +35,10 @@ import java.util.stream.Collectors;
 public class PromptServiceImpl implements PromptService {
 
     private final PromptRepository promptRepository;
+    private final PromptViewLogRepository  promptViewLogRepository;
     private final CollectionRepository collectionRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final UserQuotaRepository userQuotaRepository;
     private final SchoolRepository schoolRepository;
     private final TagRepository tagRepository;
     private final PromptTagRepository promptTagRepository;
@@ -52,10 +54,18 @@ public class PromptServiceImpl implements PromptService {
         // Fetch User entity
         User user = userRepository.findById(currentUser.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        //Fetch user quota
+        UUID userId = user.getId();
+        UserQuota userQuota = userQuotaRepository.findByUserId(userId)
+                .orElseGet(() -> UserQuota.builder().user(user).build());
 
         // Permission check
         if (!permissionService.canCreatePrompt(currentUser)) {
             throw new AccessDeniedException("You do not have permission to create a prompt");
+        }
+
+        if (userQuota.getPromptActionRemaining() == 0) {
+            throw new InvalidActionException("User prompt action limit reached");
         }
 
         String promptVisibility = Visibility.parseVisibility(dto.getVisibility()).name();
@@ -121,6 +131,7 @@ public class PromptServiceImpl implements PromptService {
                     .collect(Collectors.toList());
             promptTagRepository.saveAll(promptTags);
         }
+        userQuota.setPromptActionRemaining(userQuota.getPromptActionRemaining() - 1);
 
         // Build response
         return buildPromptResponse(savedPrompt);
@@ -132,10 +143,17 @@ public class PromptServiceImpl implements PromptService {
         // Fetch User entity
         User user = userRepository.findById(currentUser.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        UUID userId = user.getId();
+        UserQuota userQuota = userQuotaRepository.findByUserId(userId)
+                .orElseGet(() -> UserQuota.builder().user(user).build());
 
         // Permission check
         if (!permissionService.canCreatePrompt(currentUser)) {
             throw new AccessDeniedException("You do not have permission to create a prompt");
+        }
+
+        if (userQuota.getPromptActionRemaining() == 0) {
+            throw new InvalidActionException("User prompt action limit reached");
         }
 
         // Validate and default visibility
@@ -219,6 +237,8 @@ public class PromptServiceImpl implements PromptService {
                     .collect(Collectors.toList());
             promptTagRepository.saveAll(promptTags);
         }
+
+        userQuota.setPromptActionRemaining(userQuota.getPromptActionRemaining() - 1);
 
         // Build response
         return buildPromptResponse(savedPrompt);
@@ -305,7 +325,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId) {
         if (userId == null) {
             throw new InvalidInputException("User ID must not be null");
@@ -319,7 +339,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId) {
         if (collectionId == null) {
             throw new InvalidInputException("Collection ID must not be null");
@@ -482,7 +502,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public DetailPromptResponse getPromptById(UUID promptId, UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
@@ -494,35 +514,46 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Check visibility and permissions
-        switch (Visibility.valueOf(prompt.getVisibility())) {
-            case PRIVATE:
-                if (!currentUser.getUserId().equals(prompt.getCreatedBy()) && !permissionService.isAdmin(currentUser)) {
-                    throw new AccessDeniedException("You do not have permission to view this private prompt");
-                }
-                break;
-            case GROUP:
-                if (prompt.getCollection() == null || prompt.getCollection().getGroup() == null) {
-                    throw new ResourceNotFoundException("Group not found for this prompt");
-                }
-                if (!permissionService.isGroupMember(currentUser, prompt.getCollection().getGroup().getId())) {
-                    throw new AccessDeniedException("You are not a member of the group associated with this prompt");
-                }
-                break;
-            case SCHOOL:
-                if (currentUser.getSchoolId() == null) {
-                    throw new AccessDeniedException("You must have a school affiliation to view this prompt");
-                }
-                User promptOwner = userRepository.findById(prompt.getCreatedBy())
-                        .orElseThrow(() -> new ResourceNotFoundException("Prompt owner not found"));
-                if (!currentUser.getSchoolId().equals(promptOwner.getSchoolId())) {
-                    throw new AccessDeniedException("You do not belong to the same school as the prompt owner");
-                }
-                break;
-            case PUBLIC:
-                // No additional checks needed for public prompts
-                break;
-            default:
-                throw new InvalidInputException("Invalid visibility value: " + prompt.getVisibility());
+        permissionService.validatePromptAccess(prompt, currentUser);
+
+        // Build and return response with only requested fields
+        return buildPromptResponse(prompt);
+    }
+
+    @Override
+    @Transactional
+    public DetailPromptResponse viewPromptDetails(UUID promptId, UserPrincipal currentUser) {
+        // Fetch prompt
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+        // Fetch User
+        User user = userRepository.findById(currentUser.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        // Fetch UserQuota
+        UUID userId = user.getId();
+        UserQuota userQuota = userQuotaRepository.findByUserId(userId)
+                .orElseGet(() -> UserQuota.builder().user(user).build());
+
+        // Check if prompt is deleted and user has permission to view deleted prompts
+        if (prompt.getIsDeleted() != null && prompt.getIsDeleted() && !permissionService.isSystemAdmin(currentUser)) {
+            throw new ResourceNotFoundException("Prompt not found or has been deleted");
+        }
+
+        if (userQuota.getPromptUnlockRemaining() == 0) {
+            throw new InvalidActionException("User prompt unlock limit reach!! Please upgrade your subscription!!");
+        }
+
+        // Check visibility and permissions
+        permissionService.validatePromptAccess(prompt, currentUser);
+
+        if (!promptViewLogRepository.existByPromptIdAndUserId(promptId, userId)) {
+            PromptViewLog promptViewLog = PromptViewLog.builder()
+                    .user(user)
+                    .prompt(prompt)
+                    .build();
+            promptViewLogRepository.save(promptViewLog);
+
+            userQuota.setPromptUnlockRemaining(userQuota.getPromptUnlockRemaining() - 1);
         }
 
         // Build and return response with only requested fields

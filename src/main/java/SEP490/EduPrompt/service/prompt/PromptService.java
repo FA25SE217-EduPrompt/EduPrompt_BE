@@ -33,5 +33,5 @@ public interface PromptService {
 
     DetailPromptResponse getPromptById(UUID promptId, UserPrincipal currentUser);
 
-
+    DetailPromptResponse viewPromptDetails(UUID promptId, UserPrincipal currentUser);
 }
