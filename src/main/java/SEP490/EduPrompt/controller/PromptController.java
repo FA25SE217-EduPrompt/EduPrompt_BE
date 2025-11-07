@@ -166,4 +166,14 @@ public class PromptController {
         return ResponseDto.success(response);
     }
 
+    @GetMapping("/get-details/{promptId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "Get a prompt by its ID with checking prompt view log and quota decrement")
+    public ResponseDto<DetailPromptResponse> viewPromptDetails(
+            @PathVariable UUID promptId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Retrieving prompt with ID: {} for user: {}", promptId, currentUser.getUserId());
+        DetailPromptResponse response = promptService.viewPromptDetails(promptId, currentUser);
+        return ResponseDto.success(response);
+    }
 }
