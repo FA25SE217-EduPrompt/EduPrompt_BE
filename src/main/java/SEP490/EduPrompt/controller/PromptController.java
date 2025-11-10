@@ -5,6 +5,7 @@ import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PromptViewLogResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.prompt.PromptService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -166,14 +167,26 @@ public class PromptController {
         return ResponseDto.success(response);
     }
 
-    @GetMapping("/get-details/{promptId}")
+    @PostMapping("/prompt-view-log/new")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    @Operation(summary = "Get a prompt by its ID with checking prompt view log and quota decrement")
-    public ResponseDto<DetailPromptResponse> viewPromptDetails(
-            @PathVariable UUID promptId,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
-        log.info("Retrieving prompt with ID: {} for user: {}", promptId, currentUser.getUserId());
-        DetailPromptResponse response = promptService.viewPromptDetails(promptId, currentUser);
+    @Operation(summary = "this endpoint for creating a new prompt view log, if prompt view log has existed then only get not create")
+    public ResponseDto<PromptViewLogResponse> logView(
+            @Valid @RequestBody CreatePromptViewLogRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        PromptViewLogResponse response = promptService.logPromptView(principal, request);
+
         return ResponseDto.success(response);
+    }
+
+    @GetMapping("/{promptId}/viewed")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "this endpoint for checking if the user has view this prompt before or not")
+    public ResponseDto<Boolean> hasViewed(
+            @PathVariable UUID promptId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        boolean viewed = promptService.hasUserViewedPrompt(principal, promptId);
+        return ResponseDto.success(viewed);
     }
 }
