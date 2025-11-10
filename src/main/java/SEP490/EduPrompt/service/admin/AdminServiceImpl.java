@@ -2,11 +2,14 @@ package SEP490.EduPrompt.service.admin;
 
 import SEP490.EduPrompt.dto.request.RegisterRequest;
 import SEP490.EduPrompt.dto.request.school.CreateSchoolRequest;
+import SEP490.EduPrompt.dto.request.school.SchoolEmailRequest;
 import SEP490.EduPrompt.dto.request.schoolAdmin.BulkAssignTeachersRequest;
 import SEP490.EduPrompt.dto.request.schoolAdmin.RemoveTeacherFromSchoolRequest;
 import SEP490.EduPrompt.dto.request.systemAdmin.CreateSchoolSubscriptionRequest;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.dto.response.school.CreateSchoolResponse;
+import SEP490.EduPrompt.dto.response.school.SchoolEmailResponse;
+import SEP490.EduPrompt.dto.response.school.SchoolWithEmailsResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.BulkAssignTeachersResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolAdminTeacherResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolSubscriptionUsageResponse;
@@ -32,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +48,7 @@ public class AdminServiceImpl implements AdminService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepo;
     private final UserAuthRepository userAuthRepo;
-    private final JwtUtil jwtUtil;
+    private final SchoolEmailRepository schoolEmailRepo;
 
     @Override
     @Transactional
@@ -81,83 +85,46 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     @Transactional
-    public BulkAssignTeachersResponse bulkAssignTeachersToSchool(UUID adminUserId, BulkAssignTeachersRequest request) {
-        User admin = userRepo.findById(adminUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
+    public SchoolWithEmailsResponse addEmailsToSchool(UserPrincipal currentUser, SchoolEmailRequest request) {
+        UUID schoolId = currentUser.getSchoolId();
 
-        Set<String> uniqueEmails = validateInput(request, admin);
-        UUID schoolId = admin.getSchoolId();
-        SchoolSubscription activeSub = schoolSubRepo.findActiveBySchoolId(schoolId).orElse(null);
-
-        Map<String, UserAuth> existingMap = userAuthRepo.findMapByEmailIn(new ArrayList<>(uniqueEmails));
-
-        List<User> usersToSave = new ArrayList<>();
-        //This list is for email that not met the requirement for adding email to school
-        List<String> skipped = new ArrayList<>();
-        int createdCount = 0;
-
-        for (String email : uniqueEmails) {
-            User user;
-            boolean isNew = false;
-
-            if (existingMap.containsKey(email)) {
-                UserAuth auth = existingMap.get(email);
-                user = auth.getUser();
-
-                // Validate role
-                if (!Role.TEACHER.name().equalsIgnoreCase(user.getRole())) {
-                    skipped.add(email + " (not a teacher)");
-                    continue;
-                }
-                // Prevent cross-school reassignment
-                if (user.getSchoolId() != null && !user.getSchoolId().equals(schoolId)) {
-                    skipped.add(email + " (already in another school)");
-                    continue;
-                }
-
-            } else {
-                // Create new teacher
-                user = User.builder()
-                        .firstName("Pending")
-                        .lastName("Teacher")
-                        .email(email)
-                        .role(Role.TEACHER.name())
-                        .schoolId(schoolId)
-                        .isActive(false)
-                        .isVerified(false)
-                        .build();
-                userRepo.save(user);
-
-                String token = jwtUtil.generateTokenWithExpiration(email, 1440);
-
-                UserAuth auth = UserAuth.builder()
-                        .user(user)
-                        .email(email)
-                        .verificationToken(token)
-                        .build();
-
-                userAuthRepo.save(auth); // cascade saves user
-                isNew = true;
-                createdCount++;
-            }
-
-            user.setSchoolId(schoolId);
-            usersToSave.add(user);
+        if(!permissionService.isSchoolAdmin(currentUser)) {
+            throw new  AccessDeniedException("Only SCHOOL_ADMIN can add school emails");
         }
 
-        userRepo.saveAll(usersToSave);
+        School school = schoolRepo.findById(schoolId)
+                .orElseThrow(() -> new ResourceNotFoundException("School not found with id: " + schoolId));
 
-        int assignedCount = usersToSave.size();
-        List<UUID> listUserIds = usersToSave.stream().map(User::getId).toList();
+        // Normalize emails (trim + lowercase for duplicate check)
+        Set<String> normalizedNewEmails = request.emails().stream()
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
 
-        return new BulkAssignTeachersResponse(
-                listUserIds,
-                uniqueEmails.size(),
-                assignedCount,
-                createdCount,
-                skipped,
-                List.of()  // why parsing an empty list ?
-        );
+        // Check for duplicates
+        List<String> duplicates = normalizedNewEmails.stream()
+                .filter(email -> schoolEmailRepo.existsBySchoolIdAndEmailIgnoreCase(schoolId, email))
+                .toList();
+
+        if (!duplicates.isEmpty()) {
+            throw new InvalidActionException("Duplicate emails: " + String.join(", ", duplicates));
+        }
+
+        // Create new email entities
+        List<SchoolEmail> newEmails = normalizedNewEmails.stream()
+                .map(email -> SchoolEmail.builder()
+                        .school(school)
+                        .email(email)
+                        .createdAt(Instant.now())
+                        .build())
+                .toList();
+
+        schoolEmailRepo.saveAll(newEmails);
+
+        // Refresh school with updated emails
+        school.getSchoolEmails().addAll(newEmails);
+
+        return mapToSchoolWithEmailsResponse(school);
     }
 
     @Override
@@ -207,7 +174,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public CreateSchoolResponse createSchool(CreateSchoolRequest request) {
         UserPrincipal principal = (UserPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (!permissionService.isAdmin(principal)) {
+        if (!permissionService.isSystemAdmin(principal)) {
             throw new AccessDeniedException("Only SYSTEM_ADMIN can create a new school");
         }
 
@@ -318,7 +285,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     //============Helper============
-    private static Set<String> validateInput(BulkAssignTeachersRequest request, User admin) {
+    private static Set<String> validateRole(BulkAssignTeachersRequest request, User admin) {
         if (!Role.SCHOOL_ADMIN.name().equals(admin.getRole())) {
             throw new AccessDeniedException("Only SCHOOL_ADMIN can assign teachers");
         }
@@ -359,5 +326,28 @@ public class AdminServiceImpl implements AdminService {
                 .isVerified(user.getIsVerified())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private boolean isValidEmail(String email) {
+        String regex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+        return email != null && email.matches(regex);
+    }
+
+    private SchoolWithEmailsResponse mapToSchoolWithEmailsResponse(School school) {
+        Set<SchoolEmailResponse> emailResponses = school.getSchoolEmails().stream()
+                .map(email -> new SchoolEmailResponse(email.getId(), email.getEmail(), email.getCreatedAt()))
+                .collect(Collectors.toSet());
+
+        return new SchoolWithEmailsResponse(
+                school.getId(),
+                school.getName(),
+                school.getAddress(),
+                school.getPhoneNumber(),
+                school.getDistrict(),
+                school.getProvince(),
+                school.getCreatedAt(),
+                school.getUpdatedAt(),
+                emailResponses
+        );
     }
 }
