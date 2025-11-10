@@ -7,10 +7,8 @@ import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.exception.BaseException;
 import SEP490.EduPrompt.exception.auth.*;
-import SEP490.EduPrompt.model.User;
-import SEP490.EduPrompt.model.UserAuth;
-import SEP490.EduPrompt.repo.UserAuthRepository;
-import SEP490.EduPrompt.repo.UserRepository;
+import SEP490.EduPrompt.model.*;
+import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.util.JwtUtil;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
@@ -43,6 +41,10 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
+    private final SchoolEmailRepository schoolEmailRepository;
+    private final SubscriptionTierRepository subscriptionTierRepository;
+    private final SchoolSubscriptionRepository schoolSubscriptionRepository;
+    private final UserQuotaRepository userQuotaRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
@@ -167,11 +169,56 @@ public class AuthServiceImpl implements AuthService {
         user.setIsActive(true);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
-        //TODO: Set free tier for new user. New and sync quota with subscription tier
 
         // clear verification token after use (just clear it, don't ask ('-') )
         userAuth.setVerificationToken(null);
         userAuthRepository.save(userAuth);
+
+        //===================================================================//
+        //================CHECK IF USER HAVE EMAIL IN A SCHOOL===============//
+
+        // Set quota based on school email check
+        Optional<SchoolEmail> schoolEmailOpt = schoolEmailRepository.findByEmailIgnoreCase(email);
+        UserQuota userQuota = UserQuota.builder()
+                .user(user)
+                .quotaResetDate(Instant.now().plusSeconds(2592000)) // Default to 30 days, adjust as needed
+                .build();
+        if (schoolEmailOpt.isPresent()) {
+            School school = schoolEmailOpt.get().getSchool();
+            user.setSchoolId(school.getId());
+            userRepository.save(user); // Save updated schoolId
+
+            Optional<SchoolSubscription> schoolSubOpt = schoolSubscriptionRepository.findActiveBySchoolId(school.getId());
+            if (schoolSubOpt.isPresent()) {
+                SchoolSubscription schoolSub = schoolSubOpt.get();
+                userQuota.setSchoolSubscription(schoolSub);
+                // For school subscriptions, individual limits are typically 0 as they use the shared pool
+                userQuota.setIndividualTokenLimit(0);
+                userQuota.setIndividualTokenRemaining(0);
+                userQuota.setTestingQuotaLimit(0);
+                userQuota.setTestingQuotaRemaining(0);
+                userQuota.setOptimizationQuotaLimit(0);
+                userQuota.setOptimizationQuotaRemaining(0);
+                userQuota.setPromptUnlockLimit(0);
+                userQuota.setPromptUnlockRemaining(0);
+                userQuota.setPromptActionLimit(0);
+                userQuota.setPromptActionRemaining(0);
+                userQuota.setCollectionActionLimit(0);
+                userQuota.setCollectionActionRemaining(0);
+                userQuota.setUpdatedAt(Instant.now());
+            } else {
+                // Fallback to free if no active school subscription
+                setFreeTierQuota(userQuota);
+            }
+        // set free tier if user not in a school
+        } else {
+            setFreeTierQuota(userQuota);
+        }
+
+        userQuotaRepository.save(userQuota);
+
+        //========================END OFF NEW CHECK==========================//
+        //===================================================================//
 
         // Send welcome email
         try {
@@ -448,6 +495,51 @@ public class AuthServiceImpl implements AuthService {
             userAuthRepository.save(auth);
 
             //TODO: Set free tier for new user. New and sync quota with subscription tier
+            //===================================================================//
+            //================CHECK IF USER HAVE EMAIL IN A SCHOOL===============//
+
+            // Set quota based on school email check
+            Optional<SchoolEmail> schoolEmailOpt = schoolEmailRepository.findByEmailIgnoreCase(email);
+            UserQuota userQuota = UserQuota.builder()
+                    .user(user)
+                    .quotaResetDate(Instant.now().plusSeconds(2592000)) // Default to 30 days, adjust as needed
+                    .build();
+            if (schoolEmailOpt.isPresent()) {
+                School school = schoolEmailOpt.get().getSchool();
+                user.setSchoolId(school.getId());
+                userRepository.save(user); // Save updated schoolId
+
+                Optional<SchoolSubscription> schoolSubOpt = schoolSubscriptionRepository.findActiveBySchoolId(school.getId());
+                if (schoolSubOpt.isPresent()) {
+                    SchoolSubscription schoolSub = schoolSubOpt.get();
+                    userQuota.setSchoolSubscription(schoolSub);
+                    // For school subscriptions, individual limits are typically 0 as they use the shared pool
+                    userQuota.setIndividualTokenLimit(0);
+                    userQuota.setIndividualTokenRemaining(0);
+                    userQuota.setTestingQuotaLimit(0);
+                    userQuota.setTestingQuotaRemaining(0);
+                    userQuota.setOptimizationQuotaLimit(0);
+                    userQuota.setOptimizationQuotaRemaining(0);
+                    userQuota.setPromptUnlockLimit(0);
+                    userQuota.setPromptUnlockRemaining(0);
+                    userQuota.setPromptActionLimit(0);
+                    userQuota.setPromptActionRemaining(0);
+                    userQuota.setCollectionActionLimit(0);
+                    userQuota.setCollectionActionRemaining(0);
+                    userQuota.setUpdatedAt(Instant.now());
+                } else {
+                    // Fallback to free if no active school subscription
+                    setFreeTierQuota(userQuota);
+                }
+                // set free tier if user not in a school
+            } else {
+                setFreeTierQuota(userQuota);
+            }
+
+            userQuotaRepository.save(userQuota);
+
+            //========================END OFF NEW CHECK==========================//
+            //===================================================================//
         }
         assert user != null;
         String token = jwtUtil.generateToken(email, user.getRole());
@@ -492,5 +584,28 @@ public class AuthServiceImpl implements AuthService {
             throw new TokenInvalidException("Authorization header missing or malformed");
         }
         return header.substring(7);
+    }
+
+    private void setFreeTierQuota(UserQuota userQuota) {
+        Optional<SubscriptionTier> freeTier = subscriptionTierRepository.findByNameIgnoreCase("Free");
+        SubscriptionTier subscriptionTier = null;
+        if (freeTier.isPresent()) {
+            subscriptionTier = freeTier.get();
+        }
+
+        userQuota.setSubscriptionTier(subscriptionTier);
+        userQuota.setIndividualTokenLimit(subscriptionTier.getIndividualTokenLimit());
+        userQuota.setIndividualTokenRemaining(subscriptionTier.getIndividualTokenLimit());
+        userQuota.setTestingQuotaLimit(subscriptionTier.getTestingQuotaLimit());
+        userQuota.setTestingQuotaRemaining(subscriptionTier.getTestingQuotaLimit());
+        userQuota.setOptimizationQuotaLimit(subscriptionTier.getOptimizationQuotaLimit());
+        userQuota.setOptimizationQuotaRemaining(subscriptionTier.getOptimizationQuotaLimit());
+        userQuota.setPromptUnlockLimit(subscriptionTier.getPromptUnlockLimit());
+        userQuota.setPromptUnlockRemaining(subscriptionTier.getPromptUnlockLimit());
+        userQuota.setPromptActionLimit(subscriptionTier.getPromptActionLimit());
+        userQuota.setPromptActionRemaining(subscriptionTier.getPromptActionLimit());
+        userQuota.setCollectionActionLimit(subscriptionTier.getCollectionActionLimit());
+        userQuota.setCollectionActionRemaining(subscriptionTier.getCollectionActionLimit());
+        userQuota.setUpdatedAt(Instant.now());
     }
 }
