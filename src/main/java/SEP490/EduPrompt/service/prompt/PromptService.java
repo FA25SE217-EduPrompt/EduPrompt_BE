@@ -4,6 +4,7 @@ import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PromptViewLogResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import org.springframework.data.domain.Pageable;
 
@@ -33,5 +34,7 @@ public interface PromptService {
 
     DetailPromptResponse getPromptById(UUID promptId, UserPrincipal currentUser);
 
-    DetailPromptResponse viewPromptDetails(UUID promptId, UserPrincipal currentUser);
+    boolean hasUserViewedPrompt(UserPrincipal currentUser, UUID promptId);
+
+    PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request);
 }
