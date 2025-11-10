@@ -5,7 +5,7 @@
 -- Free tier – very limited actions
 UPDATE subscription_tiers
 SET
-    prompt_unlock_limit      = 0,
+    prompt_unlock_limit      = 15,
     prompt_action_limit      = 50,
     collection_action_limit  = 10
 WHERE name = 'Free';
@@ -13,7 +13,7 @@ WHERE name = 'Free';
 -- Pro tier – generous but still capped
 UPDATE subscription_tiers
 SET
-    prompt_unlock_limit      = 20,
+    prompt_unlock_limit      = 100,
     prompt_action_limit      = 2_000,
     collection_action_limit  = 200
 WHERE name = 'Pro';
@@ -21,7 +21,7 @@ WHERE name = 'Pro';
 -- Premium tier – essentially unlimited for most use-cases
 UPDATE subscription_tiers
 SET
-    prompt_unlock_limit      = 100,
+    prompt_unlock_limit      = 1_000,
     prompt_action_limit      = 50_000,
     collection_action_limit  = 5_000
 WHERE name = 'Premium';

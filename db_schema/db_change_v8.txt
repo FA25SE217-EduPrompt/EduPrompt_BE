@@ -5,3 +5,22 @@ CREATE TABLE prompt_view_log (
     prompt_id         UUID NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
 );
+-- New table for school
+CREATE TABLE school_emails (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    school_id UUID NOT NULL,
+    email VARCHAR(255) NOT NULL,
+
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_school_emails_school
+        FOREIGN KEY (school_id)
+        REFERENCES schools(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_school_email
+        UNIQUE (school_id, email)
+);
+
+-- Index for faster email lookups
+CREATE INDEX idx_school_emails_email ON school_emails(email);
