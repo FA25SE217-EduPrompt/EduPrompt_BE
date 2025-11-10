@@ -4,10 +4,9 @@ import java.util.List;
 import java.util.UUID;
 
 public record BulkAssignTeachersResponse(
-        List<UUID> userIds,
         int totalRequested,
-        int assigned,
-        int created,
-        List<String> skipped,
-        List<String> errors
+        int assignedCount,                    // → emails added to list
+        int createdCount,                     // → always 0
+        List<String> skipped,                 // → with reasons
+        List<String> newlyAddedEmails         // → useful for frontend
 ) {}
