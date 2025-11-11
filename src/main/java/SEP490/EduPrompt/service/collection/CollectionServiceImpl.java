@@ -194,6 +194,7 @@ public class CollectionServiceImpl implements CollectionService {
         log.info("Collection created: {} by user: {}", saved.getId(), currentUserId);
 
         return CreateCollectionResponse.builder()
+                .id(collection.getId())
                 .name(collection.getName())
                 .description(collection.getDescription())
                 .visibility(collection.getVisibility().toUpperCase())
@@ -341,6 +342,7 @@ public class CollectionServiceImpl implements CollectionService {
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
+                        .id(collection.getId())
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
@@ -370,6 +372,7 @@ public class CollectionServiceImpl implements CollectionService {
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
+                        .id(collection.getId())
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
@@ -404,6 +407,7 @@ public class CollectionServiceImpl implements CollectionService {
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
+                        .id(collection.getId())
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
@@ -438,6 +442,7 @@ public class CollectionServiceImpl implements CollectionService {
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
+                        .id(collection.getId())
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
