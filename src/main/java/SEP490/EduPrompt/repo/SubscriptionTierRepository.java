@@ -7,5 +7,5 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface SubscriptionTierRepository extends JpaRepository<SubscriptionTier, UUID> {
-    Optional<SubscriptionTier> findByNameIgnoreCase(String free);
+    Optional<SubscriptionTier> findByNameIgnoreCase(String tier);
 }
