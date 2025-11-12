@@ -235,4 +235,37 @@ public class PermissionServiceImpl implements PermissionService {
         }
         return admin;
     }
+
+    public void validatePromptAccess(Prompt prompt, UserPrincipal currentUser) {
+        switch (Visibility.valueOf(prompt.getVisibility())) {
+            case PRIVATE:
+                if (!currentUser.getUserId().equals(prompt.getCreatedBy()) && !isAdmin(currentUser)) {
+                    throw new AccessDeniedException("You do not have permission to view this private prompt");
+                }
+                break;
+            case GROUP:
+                if (prompt.getCollection() == null || prompt.getCollection().getGroup() == null) {
+                    throw new ResourceNotFoundException("Group not found for this prompt");
+                }
+                if (!isGroupMember(currentUser, prompt.getCollection().getGroup().getId())) {
+                    throw new AccessDeniedException("You are not a member of the group associated with this prompt");
+                }
+                break;
+            case SCHOOL:
+                if (currentUser.getSchoolId() == null) {
+                    throw new AccessDeniedException("You must have a school affiliation to view this prompt");
+                }
+                User promptOwner = userRepository.findById(prompt.getCreatedBy())
+                        .orElseThrow(() -> new ResourceNotFoundException("Prompt owner not found"));
+                if (!currentUser.getSchoolId().equals(promptOwner.getSchoolId())) {
+                    throw new AccessDeniedException("You do not belong to the same school as the prompt owner");
+                }
+                break;
+            case PUBLIC:
+                // No additional checks needed for public prompts
+                break;
+            default:
+                throw new InvalidInputException("Invalid visibility value: " + prompt.getVisibility());
+        }
+    }
 }

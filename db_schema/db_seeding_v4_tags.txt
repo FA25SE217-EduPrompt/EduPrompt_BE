@@ -1,0 +1,23 @@
+-- Seed data for type = 'grade' with values 10, 11, 12
+INSERT INTO tags (id, type, value) VALUES
+(gen_random_uuid(), 'khối', '10'),
+(gen_random_uuid(), 'khối', '11'),
+(gen_random_uuid(), 'khối', '12');
+
+-- Seed data for type = 'subject' with all high school subjects (Vietnam's 2018 General Education Program)
+INSERT INTO tags (id, type, value) VALUES
+(gen_random_uuid(), 'môn', 'Toán học'),
+(gen_random_uuid(), 'môn', 'Ngữ văn'),
+(gen_random_uuid(), 'môn', 'Vật lý'),
+(gen_random_uuid(), 'môn', 'Hóa học'),
+(gen_random_uuid(), 'môn', 'Sinh học'),
+(gen_random_uuid(), 'môn', 'Lịch sử'),
+(gen_random_uuid(), 'môn', 'Địa lý'),
+(gen_random_uuid(), 'môn', 'Giáo dục công dân'),
+(gen_random_uuid(), 'môn', 'Tin học'),
+(gen_random_uuid(), 'môn', 'Công nghệ'),
+(gen_random_uuid(), 'môn', 'Tiếng Anh'),
+(gen_random_uuid(), 'môn', 'Giáo dục thể chất'),
+(gen_random_uuid(), 'môn', 'Giáo dục quốc phòng và an ninh'),
+(gen_random_uuid(), 'môn', 'Âm nhạc'),
+(gen_random_uuid(), 'môn', 'Mỹ thuật');
