@@ -1,0 +1,149 @@
+-- INSERT 10 PROMPTS FOR TOÁN 10
+WITH new_prompts AS (
+    INSERT INTO prompts (
+        id, user_id, created_by, updated_by,
+        title, description, instruction, context, input_example, output_format,
+        visibility, current_version_id, group_id, school_id
+    )
+    VALUES
+    -- 1. Mệnh đề và tập hợp
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Tạo 5 bài tập mệnh đề và tập hợp lớp 10',
+     'Hỗ trợ giáo viên tạo bài tập tư duy logic cho chương 1.',
+     'Tạo 5 bài tập trắc nghiệm hoặc tự luận về mệnh đề, phủ định, quan hệ chứa, giao, hợp tập hợp. Có đáp án và giải thích.',
+     'Chương 1: Mệnh đề và tập hợp - SGK Toán 10.',
+     'Tạo bài tập về phép phủ định của mệnh đề "Nếu x là số chẵn thì x chia hết cho 2".',
+     'Danh sách bài tập đánh số, có đáp án chi tiết.',
+     'public', NULL, NULL, NULL),
+
+    -- 2. Hàm số bậc nhất và bậc hai
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Soạn đề kiểm tra 45 phút hàm số bậc nhất và bậc hai',
+     'Tạo đề kiểm tra chương 2 với 4 câu: 2 tự luận, 2 trắc nghiệm.',
+     'Tạo đề kiểm tra 45 phút gồm: 2 câu tự luận (vẽ đồ thị, tìm giá trị), 2 câu trắc nghiệm (đồ thị, giao điểm). Có barem.',
+     'Chương 2: Hàm số bậc nhất và bậc hai.',
+     'Tạo đề kiểm tra chương hàm số.',
+     'Đề thi + đáp án + thang điểm.',
+     'public', NULL, NULL, NULL),
+
+    -- 3. Phương trình và hệ phương trình
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Hướng dẫn giải hệ phương trình bằng phương pháp cộng trừ',
+     'Tạo bài hướng dẫn chi tiết cho học sinh yếu.',
+     'Viết hướng dẫn từng bước giải hệ phương trình bậc nhất hai ẩn bằng phương pháp cộng trừ, có ví dụ minh họa.',
+     'Dành cho học sinh lớp 10 cần củng cố nền tảng.',
+     'Giải hệ: { 2x + 3y = 5; 4x - y = 3 }',
+     'Các bước giải chi tiết, có chú thích.',
+     'public', NULL, NULL, NULL),
+
+    -- 4. Bất phương trình
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Tạo 3 bài tập bất phương trình bậc hai nâng cao',
+     'Dành cho học sinh giỏi chuẩn bị thi HSG.',
+     'Tạo 3 bài tập bất phương trình bậc hai có tham số, yêu cầu xét dấu và kết luận theo m.',
+     'Chương 4: Bất phương trình - Toán 10.',
+     'Giải bất phương trình: ax² + bx + c > 0 với a, b, c cho trước.',
+     'Bài tập + lời giải chi tiết.',
+     'public', NULL, NULL, NULL),
+
+    -- 5. Góc và cung
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Thiết kế hoạt động thực hành đo góc và cung',
+     'Tạo hoạt động nhóm dùng thước đo góc.',
+     'Mô tả hoạt động thực hành: nhóm 4 học sinh, dùng thước đo góc, đo 3 góc trong tam giác, kiểm tra tổng = 180°.',
+     'Chương 5: Góc và cung lượng giác.',
+     'Thiết kế hoạt động thực hành đo góc.',
+     'Mô tả chi tiết: mục tiêu, dụng cụ, quy trình, bảng ghi kết quả.',
+     'public', NULL, NULL, NULL),
+
+    -- 6. Vectơ
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Tạo slide minh họa vectơ và phép cộng vectơ',
+     'Hỗ trợ giáo viên trình chiếu bài giảng.',
+     'Tạo nội dung 3 slide PowerPoint: định nghĩa vectơ, biểu diễn, phép cộng vectơ (hình vẽ minh họa).',
+     'Chương 6: Vectơ - Toán 10.',
+     'Tạo slide về vectơ.',
+     'Nội dung từng slide, có gợi ý hình vẽ.',
+     'public', NULL, NULL, NULL),
+
+    -- 7. Tích vô hướng
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Tạo 10 câu trắc nghiệm tích vô hướng vectơ',
+     'Dùng để ôn tập nhanh đầu giờ.',
+     'Tạo 10 câu trắc nghiệm 4 đáp án về tích vô hướng: tính giá trị, góc giữa 2 vectơ, vuông góc.',
+     'Chương 7: Tích vô hướng của hai vectơ.',
+     'Tạo câu hỏi trắc nghiệm.',
+     'Danh sách câu hỏi + đáp án đúng.',
+     'public', NULL, NULL, NULL),
+
+    -- 8. Phép dời hình
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Tạo bài tập tương tác về phép tịnh tiến và quay',
+     'Dùng trên GeoGebra hoặc giấy.',
+     'Tạo bài tập: vẽ hình, áp dụng phép tịnh tiến (3, -2), phép quay 90° tâm O, mô tả ảnh.',
+     'Chương 8: Phép dời hình.',
+     'Tạo bài tập phép biến hình.',
+     'Hướng dẫn từng bước + hình minh họa gợi ý.',
+     'public', NULL, NULL, NULL),
+
+    -- 9. Quan hệ song song
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Soạn giáo án minh họa định lý Thalès',
+     'Giáo án 1 tiết có hình vẽ và hoạt động.',
+     'Soạn giáo án: mục tiêu, hình vẽ tam giác chia tỷ lệ, chứng minh định lý Thalès, bài tập áp dụng.',
+     'Chương 9: Đường thẳng song song.',
+     'Soạn giáo án định lý Thalès.',
+     'Cấu trúc giáo án đầy đủ.',
+     'public', NULL, NULL, NULL),
+
+    -- 10. Hình học không gian
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+     'Gợi ý làm mô hình khối đa diện lớp 10',
+     'Học sinh làm mô hình bằng giấy.',
+     'Hướng dẫn làm mô hình khối hộp chữ nhật, khối lăng trụ, tính thể tích từ mô hình thực tế.',
+     'Chương 10: Hình học không gian cơ bản.',
+     'Hướng dẫn làm mô hình 3D.',
+     'Nguyên liệu, bước làm, công thức áp dụng.',
+     'public', NULL, NULL, NULL)
+
+    RETURNING id
+),
+
+-- Assign tags: grade=10 and subject=Toán học to all prompts
+inserted_prompts AS (
+    SELECT id FROM new_prompts
+),
+grade_tag AS (
+    SELECT id AS tag_id FROM tags WHERE type = 'grade' AND value = '10'
+),
+subject_tag AS (
+    SELECT id AS tag_id FROM tags WHERE type = 'subject' AND value = 'Toán học'
+)
+
+-- Insert into prompt_tags
+INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
+SELECT p.id, g.tag_id, now()
+FROM inserted_prompts p, grade_tag g
+UNION ALL
+SELECT p.id, s.tag_id, now()
+FROM inserted_prompts p, subject_tag s;
+
+WITH target_prompts AS (
+    SELECT id, title FROM prompts
+    WHERE title IN (
+        'Soạn đề kiểm tra 45 phút hàm số bậc nhất và bậc hai',
+        'Tạo 10 câu trắc nghiệm tích vô hướng vectơ',
+        'Soạn giáo án minh họa định lý Thalès'
+    )
+)
+UPDATE prompts p
+SET constraints = CASE
+    WHEN p.title = 'Soạn đề kiểm tra 45 phút hàm số bậc nhất và bậc hai'
+        THEN 'Đề kiểm tra 45 phút, tổng 10 điểm, theo ma trận đề tham khảo của Bộ GDĐT. Có 2 câu tự luận (6 điểm), 2 câu trắc nghiệm (4 điểm).'
+    WHEN p.title = 'Tạo 10 câu trắc nghiệm tích vô hướng vectơ'
+        THEN 'Mỗi câu có 4 đáp án (A, B, C, D), chỉ 1 đáp án đúng. Có giải thích ngắn gọn lý do chọn đáp án.'
+    WHEN p.title = 'Soạn giáo án minh họa định lý Thalès'
+        THEN 'Giáo án 45 phút, gồm: khởi động (5p), hình thành kiến thức (25p), luyện tập (10p), củng cố (5p). Có hoạt động nhóm và bảng phụ.'
+    ELSE p.constraints
+END
+WHERE p.id IN (SELECT id FROM target_prompts);

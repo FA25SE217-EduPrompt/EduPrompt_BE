@@ -2,10 +2,12 @@ package SEP490.EduPrompt.service.prompt;
 
 import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.prompt.*;
+import SEP490.EduPrompt.enums.QuotaType;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
+import SEP490.EduPrompt.exception.client.QuotaExceededException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
@@ -14,8 +16,10 @@ import SEP490.EduPrompt.service.permission.PermissionService;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Subquery;
+import kotlin.jvm.Throws;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -25,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -35,8 +40,10 @@ import java.util.stream.Collectors;
 public class PromptServiceImpl implements PromptService {
 
     private final PromptRepository promptRepository;
+    private final PromptViewLogRepository  promptViewLogRepository;
     private final CollectionRepository collectionRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final UserQuotaRepository userQuotaRepository;
     private final SchoolRepository schoolRepository;
     private final TagRepository tagRepository;
     private final PromptTagRepository promptTagRepository;
@@ -53,9 +60,21 @@ public class PromptServiceImpl implements PromptService {
         User user = userRepository.findById(currentUser.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
+        UserQuota userQuota = null;
+        if(userQuotaOptional.isPresent()){
+            userQuota = userQuotaOptional.get();
+        }
+        else {
+            throw new ResourceNotFoundException("User not register a subscription yet");
+        }
         // Permission check
         if (!permissionService.canCreatePrompt(currentUser)) {
             throw new AccessDeniedException("You do not have permission to create a prompt");
+        }
+
+        if (userQuota.getPromptActionRemaining() <= 0) {
+            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptActionRemaining());
         }
 
         String promptVisibility = Visibility.parseVisibility(dto.getVisibility()).name();
@@ -121,6 +140,8 @@ public class PromptServiceImpl implements PromptService {
                     .collect(Collectors.toList());
             promptTagRepository.saveAll(promptTags);
         }
+        userQuota.setPromptActionRemaining(userQuota.getPromptActionRemaining() - 1);
+        userQuotaRepository.save(userQuota);
 
         // Build response
         return buildPromptResponse(savedPrompt);
@@ -130,12 +151,24 @@ public class PromptServiceImpl implements PromptService {
     @Transactional
     public DetailPromptResponse createPromptInCollection(CreatePromptCollectionRequest dto, UserPrincipal currentUser) {
         // Fetch User entity
-        User user = userRepository.findById(currentUser.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = userRepository.getReferenceById(currentUser.getUserId());
+
+        Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
+        UserQuota userQuota = null;
+        if(userQuotaOptional.isPresent()){
+            userQuota = userQuotaOptional.get();
+        }
+        else {
+            throw new ResourceNotFoundException("User Subscription was not available");
+        }
 
         // Permission check
         if (!permissionService.canCreatePrompt(currentUser)) {
             throw new AccessDeniedException("You do not have permission to create a prompt");
+        }
+
+        if (userQuota.getPromptActionRemaining() <= 0) {
+            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptActionRemaining());
         }
 
         // Validate and default visibility
@@ -219,6 +252,9 @@ public class PromptServiceImpl implements PromptService {
                     .collect(Collectors.toList());
             promptTagRepository.saveAll(promptTags);
         }
+
+        userQuota.setPromptActionRemaining(userQuota.getPromptActionRemaining() - 1);
+        userQuotaRepository.save(userQuota);
 
         // Build response
         return buildPromptResponse(savedPrompt);
@@ -305,7 +341,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId) {
         if (userId == null) {
             throw new InvalidInputException("User ID must not be null");
@@ -319,7 +355,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId) {
         if (collectionId == null) {
             throw new InvalidInputException("Collection ID must not be null");
@@ -482,7 +518,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public DetailPromptResponse getPromptById(UUID promptId, UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
@@ -494,36 +530,7 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Check visibility and permissions
-        switch (Visibility.valueOf(prompt.getVisibility())) {
-            case PRIVATE:
-                if (!currentUser.getUserId().equals(prompt.getCreatedBy()) && !permissionService.isAdmin(currentUser)) {
-                    throw new AccessDeniedException("You do not have permission to view this private prompt");
-                }
-                break;
-            case GROUP:
-                if (prompt.getCollection() == null || prompt.getCollection().getGroup() == null) {
-                    throw new ResourceNotFoundException("Group not found for this prompt");
-                }
-                if (!permissionService.isGroupMember(currentUser, prompt.getCollection().getGroup().getId())) {
-                    throw new AccessDeniedException("You are not a member of the group associated with this prompt");
-                }
-                break;
-            case SCHOOL:
-                if (currentUser.getSchoolId() == null) {
-                    throw new AccessDeniedException("You must have a school affiliation to view this prompt");
-                }
-                User promptOwner = userRepository.findById(prompt.getCreatedBy())
-                        .orElseThrow(() -> new ResourceNotFoundException("Prompt owner not found"));
-                if (!currentUser.getSchoolId().equals(promptOwner.getSchoolId())) {
-                    throw new AccessDeniedException("You do not belong to the same school as the prompt owner");
-                }
-                break;
-            case PUBLIC:
-                // No additional checks needed for public prompts
-                break;
-            default:
-                throw new InvalidInputException("Invalid visibility value: " + prompt.getVisibility());
-        }
+        permissionService.validatePromptAccess(prompt, currentUser);
 
         // Build and return response with only requested fields
         return buildPromptResponse(prompt);
@@ -743,6 +750,56 @@ public class PromptServiceImpl implements PromptService {
         log.info("Prompt with id " + promptId + " has been successfully deleted");
     }
 
+    //======================================================================//
+    //===========================PROMPT VIEW LOG============================//
+
+    @Override
+    public boolean hasUserViewedPrompt(UserPrincipal currentUser, UUID promptId) {
+        User user = userRepository.getReferenceById(currentUser.getUserId());
+        if (user == null) {
+            throw new ResourceNotFoundException("user not found with ID: " + currentUser.getUserId());
+        }
+
+        Prompt prompt = promptRepository.getReferenceById(promptId);
+        if (prompt == null) {
+            throw new ResourceNotFoundException("Prompt not found with ID: " + promptId);
+        }
+
+        return promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, currentUser.getUserId())
+                .isPresent();
+    }
+
+    @Override
+    public PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request) {
+        User user = userRepository.getReferenceById(currentUser.getUserId());
+
+        Prompt prompt = promptRepository.getReferenceById(request.promptId());
+
+        Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
+        UserQuota userQuota;
+        if(userQuotaOptional.isPresent()){
+            userQuota = userQuotaOptional.get();
+        } else {
+            throw new ResourceNotFoundException("User not register a subscription yet");
+        }
+
+        PromptViewLog viewLog = promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, currentUser.getUserId())
+                .orElseGet(() -> {
+                    if(userQuota.getPromptUnlockRemaining() <= 0) {
+                        throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptUnlockRemaining());
+                    }
+                    PromptViewLog newLog = PromptViewLog.builder()
+                            .user(user)
+                            .prompt(prompt)
+                            .createdAt(Instant.now())
+                            .build();
+                    userQuota.setPromptUnlockRemaining(userQuota.getPromptUnlockRemaining() - 1);
+                    userQuotaRepository.save(userQuota);
+                    return promptViewLogRepository.save(newLog);
+                });
+        return toResponse(viewLog);
+    }
+
     //Helper method function
 
     private PaginatedPromptResponse mapToPaginatedResponse(Page<Prompt> promptPage, UserPrincipal currentUser) {
@@ -828,6 +885,15 @@ public class PromptServiceImpl implements PromptService {
                 .collectionName(collectionName)
                 .createdAt(prompt.getCreatedAt())
                 .updatedAt(prompt.getUpdatedAt())
+                .build();
+    }
+
+    private PromptViewLogResponse toResponse(PromptViewLog log) {
+        return PromptViewLogResponse.builder()
+                .id(log.getId())
+                .userId(log.getUser().getId())
+                .promptId(log.getPrompt().getId())
+                .createdAt(log.getCreatedAt())
                 .build();
     }
 }
