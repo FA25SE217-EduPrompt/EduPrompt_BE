@@ -199,12 +199,12 @@ public class AuthServiceImpl implements AuthService {
                 userQuota.setTestingQuotaRemaining(0);
                 userQuota.setOptimizationQuotaLimit(0);
                 userQuota.setOptimizationQuotaRemaining(0);
-                userQuota.setPromptUnlockLimit(0);
-                userQuota.setPromptUnlockRemaining(0);
-                userQuota.setPromptActionLimit(0);
-                userQuota.setPromptActionRemaining(0);
-                userQuota.setCollectionActionLimit(0);
-                userQuota.setCollectionActionRemaining(0);
+                userQuota.setPromptUnlockLimit(100); // equivalent to pro tier
+                userQuota.setPromptUnlockRemaining(100);
+                userQuota.setPromptActionLimit(100);
+                userQuota.setPromptActionRemaining(2000);
+                userQuota.setCollectionActionLimit(200);
+                userQuota.setCollectionActionRemaining(200);
                 userQuota.setUpdatedAt(Instant.now());
             } else {
                 // Fallback to free if no active school subscription
@@ -520,12 +520,12 @@ public class AuthServiceImpl implements AuthService {
                     userQuota.setTestingQuotaRemaining(0);
                     userQuota.setOptimizationQuotaLimit(0);
                     userQuota.setOptimizationQuotaRemaining(0);
-                    userQuota.setPromptUnlockLimit(0);
-                    userQuota.setPromptUnlockRemaining(0);
-                    userQuota.setPromptActionLimit(0);
-                    userQuota.setPromptActionRemaining(0);
-                    userQuota.setCollectionActionLimit(0);
-                    userQuota.setCollectionActionRemaining(0);
+                    userQuota.setPromptUnlockLimit(100);
+                    userQuota.setPromptUnlockRemaining(100);
+                    userQuota.setPromptActionLimit(100);
+                    userQuota.setPromptActionRemaining(2000);
+                    userQuota.setCollectionActionLimit(200);
+                    userQuota.setCollectionActionRemaining(200);
                     userQuota.setUpdatedAt(Instant.now());
                 } else {
                     // Fallback to free if no active school subscription
@@ -586,26 +586,30 @@ public class AuthServiceImpl implements AuthService {
         return header.substring(7);
     }
 
+    /**
+     * remember to save user quota after using this method
+     * @param userQuota
+     */
     private void setFreeTierQuota(UserQuota userQuota) {
-        Optional<SubscriptionTier> freeTier = subscriptionTierRepository.findByNameIgnoreCase("Free");
-        SubscriptionTier subscriptionTier = null;
+        Optional<SubscriptionTier> freeTier = subscriptionTierRepository.findByNameIgnoreCase("free");
+        SubscriptionTier subscriptionTier;
         if (freeTier.isPresent()) {
             subscriptionTier = freeTier.get();
+            userQuota.setSubscriptionTier(subscriptionTier);
+            userQuota.setIndividualTokenLimit(subscriptionTier.getIndividualTokenLimit());
+            userQuota.setIndividualTokenRemaining(subscriptionTier.getIndividualTokenLimit());
+            userQuota.setTestingQuotaLimit(subscriptionTier.getTestingQuotaLimit());
+            userQuota.setTestingQuotaRemaining(subscriptionTier.getTestingQuotaLimit());
+            userQuota.setOptimizationQuotaLimit(subscriptionTier.getOptimizationQuotaLimit());
+            userQuota.setOptimizationQuotaRemaining(subscriptionTier.getOptimizationQuotaLimit());
+            userQuota.setPromptUnlockLimit(subscriptionTier.getPromptUnlockLimit());
+            userQuota.setPromptUnlockRemaining(subscriptionTier.getPromptUnlockLimit());
+            userQuota.setPromptActionLimit(subscriptionTier.getPromptActionLimit());
+            userQuota.setPromptActionRemaining(subscriptionTier.getPromptActionLimit());
+            userQuota.setCollectionActionLimit(subscriptionTier.getCollectionActionLimit());
+            userQuota.setCollectionActionRemaining(subscriptionTier.getCollectionActionLimit());
+            userQuota.setUpdatedAt(Instant.now());
         }
-
-        userQuota.setSubscriptionTier(subscriptionTier);
-        userQuota.setIndividualTokenLimit(subscriptionTier.getIndividualTokenLimit());
-        userQuota.setIndividualTokenRemaining(subscriptionTier.getIndividualTokenLimit());
-        userQuota.setTestingQuotaLimit(subscriptionTier.getTestingQuotaLimit());
-        userQuota.setTestingQuotaRemaining(subscriptionTier.getTestingQuotaLimit());
-        userQuota.setOptimizationQuotaLimit(subscriptionTier.getOptimizationQuotaLimit());
-        userQuota.setOptimizationQuotaRemaining(subscriptionTier.getOptimizationQuotaLimit());
-        userQuota.setPromptUnlockLimit(subscriptionTier.getPromptUnlockLimit());
-        userQuota.setPromptUnlockRemaining(subscriptionTier.getPromptUnlockLimit());
-        userQuota.setPromptActionLimit(subscriptionTier.getPromptActionLimit());
-        userQuota.setPromptActionRemaining(subscriptionTier.getPromptActionLimit());
-        userQuota.setCollectionActionLimit(subscriptionTier.getCollectionActionLimit());
-        userQuota.setCollectionActionRemaining(subscriptionTier.getCollectionActionLimit());
-        userQuota.setUpdatedAt(Instant.now());
+        else throw new ResourceNotFoundException("No free tier found");
     }
 }
