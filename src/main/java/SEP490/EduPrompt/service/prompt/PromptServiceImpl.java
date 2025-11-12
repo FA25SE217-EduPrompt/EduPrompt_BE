@@ -880,6 +880,7 @@ public class PromptServiceImpl implements PromptService {
         return PromptResponse.builder()
                 .title(prompt.getTitle())
                 .description(prompt.getDescription())
+                .outputFormat(prompt.getOutputFormat())
                 .visibility(prompt.getVisibility())
                 .fullName(userName)
                 .collectionName(collectionName)
