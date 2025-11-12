@@ -298,8 +298,7 @@ public class AdminServiceImpl implements AdminService {
             throw new InvalidInputException("Maximum 50 emails allowed");
         }
 
-        Set<String> uniqueEmails = new HashSet<>(emails);
-        return uniqueEmails;
+        return new HashSet<>(emails);
     }
 
     private SchoolSubscriptionResponse toSubscriptionResponse(SchoolSubscription sub) {
