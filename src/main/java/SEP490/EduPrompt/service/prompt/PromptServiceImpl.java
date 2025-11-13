@@ -10,12 +10,11 @@ import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.client.QuotaExceededException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.*;
+import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.*;
 import kotlin.jvm.Throws;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,10 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -369,147 +365,27 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional
-    public PaginatedPromptResponse filterPrompts(PromptFilterRequest request, UserPrincipal currentUser, Pageable pageable) {
-// Validate inputs
-        if (request.includeDeleted() != null && request.includeDeleted() && !permissionService.isSystemAdmin(currentUser)) {
-            throw new AccessDeniedException("Only SYSTEM_ADMIN can include deleted prompts");
-        }
-        if (request.collectionName() != null && request.collectionName().length() > 1 && !collectionRepository.existsByNameIgnoreCase(request.collectionName())) {
-            throw new ResourceNotFoundException("Collection not found with name: " + request.collectionName());
-        }
-        if (request.tagTypes() != null && !request.tagTypes().isEmpty()) {
-            boolean allSingleLetter = request.tagTypes().stream().allMatch(s -> s.length() == 1);
-            if (!allSingleLetter) {
-                List<String> foundTagTypes = tagRepository.findAllByTypeIn(request.tagTypes()).stream()
-                        .map(Tag::getType)
-                        .distinct()
-                        .toList();
-                if (foundTagTypes.size() != request.tagTypes().size()) {
-                    throw new ResourceNotFoundException("One or more tag types not found");
-                }
-            }
-        }
-        if (request.tagValues() != null && !request.tagValues().isEmpty()) {
-            boolean allSingleLetter = request.tagValues().stream().allMatch(s -> s.length() == 1);
-            if (!allSingleLetter) {
-                List<String> foundTagValues = tagRepository.findAllByValueIn(request.tagValues()).stream()
-                        .map(Tag::getValue)
-                        .distinct()
-                        .toList();
-                if (foundTagValues.size() != request.tagValues().size()) {
-                    throw new ResourceNotFoundException("One or more tag values not found");
-                }
-            }
-        }
-        if (request.schoolName() != null && request.schoolName().length() > 1 && !schoolRepository.existsByNameIgnoreCase(request.schoolName())) {
-            throw new ResourceNotFoundException("School not found with name: " + request.schoolName());
-        }
-        if (request.groupName() != null && request.groupName().length() > 1 && !groupRepository.existsByNameIgnoreCase(request.groupName())) {
-            throw new ResourceNotFoundException("Group not found with name: " + request.groupName());
-        }
-// Build Specification
-        Specification<Prompt> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
+    @Transactional(readOnly = true)
+    public PaginatedPromptResponse filterPrompts(PromptFilterRequest request,
+                                                 UserPrincipal currentUser,
+                                                 Pageable pageable) {
 
-            // Ensure related entities are fetched to avoid lazy loading
-            root.fetch("user");
-            root.fetch("collection", jakarta.persistence.criteria.JoinType.LEFT);
+        // VALIDATION – runs BEFORE any DB call
+        validateFilterRequest(request, currentUser);
 
-            // OR group for all filter fields
-            List<Predicate> orPredicates = new ArrayList<>();
+        // BUILD SPECIFICATION – pure OR logic
+        Specification<Prompt> spec = buildCorrectSpecification(request, currentUser);
 
-            // Filter by createdBy
-            if (request.createdBy() != null) {
-                orPredicates.add(cb.equal(root.get("createdBy"), request.createdBy()));
-            }
-
-            // Filter by collectionName
-            if (request.collectionName() != null) {
-                String searchPattern = "%" + request.collectionName().toLowerCase() + "%";
-                orPredicates.add(cb.like(cb.lower(root.get("collection").get("name")), searchPattern));
-            }
-
-            // Filter by tagTypes
-            if (request.tagTypes() != null && !request.tagTypes().isEmpty()) {
-                assert query != null;
-                Subquery<UUID> subquery = query.subquery(UUID.class);
-                jakarta.persistence.criteria.Root<PromptTag> promptTagRoot = subquery.from(PromptTag.class);
-                if (request.tagTypes().stream().allMatch(s -> s.length() == 1)) {
-                    String searchPattern = "%" + request.tagTypes().getFirst().toLowerCase() + "%";
-                    subquery.select(promptTagRoot.get("prompt").get("id"))
-                            .where(cb.like(cb.lower(promptTagRoot.get("tag").get("type")), searchPattern));
-                } else {
-                    subquery.select(promptTagRoot.get("prompt").get("id"))
-                            .where(promptTagRoot.get("tag").get("type").in(request.tagTypes()));
-                }
-                orPredicates.add(root.get("id").in(subquery));
-            }
-
-            // Filter by tagValues
-            if (request.tagValues() != null && !request.tagValues().isEmpty()) {
-                assert query != null;
-                Subquery<UUID> subquery = query.subquery(UUID.class);
-                jakarta.persistence.criteria.Root<PromptTag> promptTagRoot = subquery.from(PromptTag.class);
-                if (request.tagValues().stream().allMatch(s -> s.length() == 1)) {
-                    String searchPattern = "%" + request.tagValues().getFirst().toLowerCase() + "%";
-                    subquery.select(promptTagRoot.get("prompt").get("id"))
-                            .where(cb.like(cb.lower(promptTagRoot.get("tag").get("value")), searchPattern));
-                } else {
-                    subquery.select(promptTagRoot.get("prompt").get("id"))
-                            .where(promptTagRoot.get("tag").get("value").in(request.tagValues()));
-                }
-                orPredicates.add(root.get("id").in(subquery));
-            }
-
-            // Filter by schoolName
-            if (request.schoolName() != null) {
-                Join<Prompt, User> userJoin = root.join("user");
-                Join<User, School> schoolJoin = userJoin.join("school");
-                String searchPattern = "%" + request.schoolName().toLowerCase() + "%";
-                orPredicates.add(cb.like(cb.lower(schoolJoin.get("name")), searchPattern));
-            }
-
-            // Filter by groupName
-            if (request.groupName() != null) {
-                Join<Prompt, Collection> collectionJoin = root.join("collection", jakarta.persistence.criteria.JoinType.LEFT);
-                Join<Collection, Group> groupJoin = collectionJoin.join("group", jakarta.persistence.criteria.JoinType.LEFT);
-                String searchPattern = "%" + request.groupName().toLowerCase() + "%";
-                orPredicates.add(cb.like(cb.lower(groupJoin.get("name")), searchPattern));
-            }
-
-            // Filter by title
-            if (request.title() != null && !request.title().isBlank()) {
-                String searchPattern = "%" + request.title().toLowerCase() + "%";
-                orPredicates.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), searchPattern),
-                        cb.like(cb.lower(root.get("description")), searchPattern)
-                ));
-            }
-
-            // Add OR condition if any filter is provided
-            if (!orPredicates.isEmpty()) {
-                predicates.add(cb.or(orPredicates.toArray(new Predicate[0])));
-            }
-
-            // Filter by isDeleted
-            if (request.includeDeleted() != null && request.includeDeleted()) {
-                predicates.add(cb.equal(root.get("isDeleted"), true));
-            } else {
-                predicates.add(cb.equal(root.get("isDeleted"), false));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-
+        // EXECUTE – single paginated query
         Page<Prompt> promptPage = promptRepository.findAll(spec, pageable);
 
-        List<PromptResponse> promptResponses = promptPage.getContent().stream()
+        // MAP
+        List<PromptResponse> responses = promptPage.getContent().stream()
                 .map(this::buildGetPromptResponse)
-                .collect(Collectors.toList());
+                .toList();
 
         return PaginatedPromptResponse.builder()
-                .content(promptResponses)
+                .content(responses)
                 .page(promptPage.getNumber())
                 .size(promptPage.getSize())
                 .totalElements(promptPage.getTotalElements())
@@ -896,5 +772,141 @@ public class PromptServiceImpl implements PromptService {
                 .promptId(log.getPrompt().getId())
                 .createdAt(log.getCreatedAt())
                 .build();
+    }
+
+    private void validateFilterRequest(PromptFilterRequest req, UserPrincipal user) {
+        if (Boolean.TRUE.equals(req.includeDeleted()) && !permissionService.isSystemAdmin(user)) {
+            throw new AccessDeniedException("Only SYSTEM_ADMIN can include deleted prompts");
+        }
+
+        if (nonBlank(req.collectionName()) && !collectionRepository.existsByNameIgnoreCase(req.collectionName())) {
+            throw new ResourceNotFoundException("Collection not found: " + req.collectionName());
+        }
+
+        if (nonBlank(req.schoolName()) && !schoolRepository.existsByNameIgnoreCase(req.schoolName())) {
+            throw new ResourceNotFoundException("School not found: " + req.schoolName());
+        }
+
+        if (nonBlank(req.groupName()) && !groupRepository.existsByNameIgnoreCase(req.groupName())) {
+            throw new ResourceNotFoundException("Group not found: " + req.groupName());
+        }
+
+        if (req.tagTypes() != null && !req.tagTypes().isEmpty() && !allSingleLetter(req.tagTypes())) {
+            Set<String> existing = tagRepository.findAllByTypeIn(req.tagTypes()).stream()
+                    .map(Tag::getType)
+                    .collect(Collectors.toSet());
+            if (!existing.containsAll(req.tagTypes())) {
+                throw new ResourceNotFoundException("One or more tag types not found");
+            }
+        }
+
+        if (req.tagValues() != null && !req.tagValues().isEmpty() && !allSingleLetter(req.tagValues())) {
+            Set<String> existing = tagRepository.findAllByValueIn(req.tagValues()).stream()
+                    .map(Tag::getValue)
+                    .collect(Collectors.toSet());
+            if (!existing.containsAll(req.tagValues())) {
+                throw new ResourceNotFoundException("One or more tag values not found");
+            }
+        }
+    }
+
+    private Specification<Prompt> buildCorrectSpecification(PromptFilterRequest req, UserPrincipal user) {
+        return (root, query, cb) -> {
+            List<Predicate> baseAnd = new ArrayList<>();
+            List<Predicate> searchOr = new ArrayList<>();
+
+            // --- Eager fetch + distinct ---
+            root.fetch("user", JoinType.LEFT);
+            root.fetch("collection", JoinType.LEFT);
+            query.distinct(true);
+
+            // === BASE FILTERS (ALWAYS APPLIED) ===
+            // Visibility: PUBLIC/SCHOOL/GROUP + PRIVATE (if owner)
+            Expression<String> visibilityUpper = cb.upper(root.get("visibility"));
+            Predicate publicVis = visibilityUpper.in(
+                    Visibility.PUBLIC.name(), Visibility.SCHOOL.name(), Visibility.GROUP.name()
+            );
+            Predicate privateVis = cb.and(
+                    visibilityUpper.in(Visibility.PRIVATE.name()),
+                    cb.equal(root.get("createdBy"), user.getUserId())
+            );
+            baseAnd.add(cb.or(publicVis, privateVis));
+
+            // isDeleted
+            boolean includeDeleted = Boolean.TRUE.equals(req.includeDeleted());
+            baseAnd.add(cb.equal(root.get("isDeleted"), includeDeleted));
+
+            // === SEARCH FILTERS (OR'd together) ===
+            if (req.createdBy() != null) {
+                searchOr.add(cb.equal(root.get("createdBy"), req.createdBy()));
+            }
+            if (nonBlank(req.title())) {
+                String pattern = "%" + req.title().toLowerCase() + "%";
+                searchOr.add(cb.or(
+                        cb.like(cb.lower(root.get("title")), pattern)
+                ));
+            }
+            if (nonBlank(req.collectionName())) {
+                searchOr.add(cb.like(
+                        cb.lower(root.get("collection").get("name")),
+                        "%" + req.collectionName().toLowerCase() + "%"
+                ));
+            }
+            if (nonBlank(req.schoolName())) {
+                Join<Prompt, User> userJoin = root.join("user", JoinType.LEFT);
+                Join<User, School> schoolJoin = userJoin.join("school", JoinType.LEFT);
+                searchOr.add(cb.like(cb.lower(schoolJoin.get("name")), "%" + req.schoolName().toLowerCase() + "%"));
+            }
+            if (nonBlank(req.groupName())) {
+                Join<Prompt, Collection> collJoin = root.join("collection", JoinType.LEFT);
+                Join<Collection, Group> groupJoin = collJoin.join("group", JoinType.LEFT);
+                searchOr.add(cb.like(cb.lower(groupJoin.get("name")), "%" + req.groupName().toLowerCase() + "%"));
+            }
+            if (req.tagTypes() != null && !req.tagTypes().isEmpty()) {
+                searchOr.add(buildTagPredicate(root, query, cb, "type", req.tagTypes()));
+            }
+            if (req.tagValues() != null && !req.tagValues().isEmpty()) {
+                searchOr.add(buildTagPredicate(root, query, cb, "value", req.tagValues()));
+            }
+
+            // === COMBINE ===
+            if (!searchOr.isEmpty()) {
+                // (base) AND (search filters OR'd)
+                baseAnd.add(cb.or(searchOr.toArray(Predicate[]::new)));
+                return cb.and(baseAnd.toArray(Predicate[]::new));
+            } else {
+                // No search → just base filters
+                return cb.and(baseAnd.toArray(Predicate[]::new));
+            }
+        };
+    }
+
+    private Predicate buildTagPredicate(Root<Prompt> root,
+                                        CriteriaQuery<?> query,
+                                        CriteriaBuilder cb,
+                                        String field, // "type" or "value"
+                                        List<String> values) {
+
+        Subquery<UUID> subquery = query.subquery(UUID.class);
+        Root<PromptTag> pt = subquery.from(PromptTag.class);
+        Path<String> tagPath = pt.get("tag").get(field);
+
+        Predicate tagCond;
+        if (allSingleLetter(values)) {
+            Predicate[] likes = values.stream()
+                    .map(v -> cb.like(cb.lower(tagPath), "%" + v.toLowerCase() + "%"))
+                    .toArray(Predicate[]::new);
+            tagCond = cb.or(likes);
+        } else {
+            tagCond = tagPath.in(values);
+        }
+
+        subquery.select(pt.get("prompt").get("id")).where(tagCond);
+        return root.get("id").in(subquery);
+    }
+
+    private boolean nonBlank(String s) { return s != null && !s.isBlank(); }
+    private boolean allSingleLetter(List<String> list) {
+        return list != null && list.stream().allMatch(s -> s.length() == 1);
     }
 }
