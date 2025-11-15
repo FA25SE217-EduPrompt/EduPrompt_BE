@@ -1,0 +1,233 @@
+-- INSERT 10 PROMPT TIN HỌC 10
+WITH grade_tag AS (SELECT id FROM tags WHERE type = 'grade' AND value = '10'),
+subject_tag AS (SELECT id FROM tags WHERE type = 'subject' AND value = 'Tin học'),
+
+inserted_prompts AS (
+    INSERT INTO prompts (
+        id, user_id, created_by, updated_by,
+        title, description, instruction, context,
+        input_example, output_format, constraints, visibility
+    )
+    VALUES
+    --------------------------------------------------------------
+    -- 1. Chương 1 – Giới thiệu Tin học
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 1 tiết: Giới thiệu Tin học – Khám phá khái niệm “Tin học là gì?”',
+     'HS tự xây dựng khái niệm Tin học từ hệ thống câu hỏi logic.',
+     'Soạn giáo án 1 tiết (45 phút):\n' ||
+     '1. Khởi động (5p): “Bạn dùng máy tính để làm gì?”\n' ||
+     '2. Khám phá (25p): GV đặt 6 câu hỏi liên tiếp (có thể thêm/bớt):\n' ||
+     '   • Câu 1: “Tin học có phải chỉ là dùng máy tính?”\n' ||
+     '   • Câu 2: “Tin học giúp giải quyết vấn đề gì?”\n' ||
+     '   • Câu 3: “Thông tin và dữ liệu khác nhau thế nào?”\n' ||
+     '   • …\n' ||
+     '   HS ghi giấy → thảo luận cặp đôi → trình bảng.\n' ||
+     '3. Khái quát (10p): HS viết định nghĩa bằng lời mình.\n' ||
+     '4. Củng cố (5p): HS viết 1 ứng dụng Tin học trong đời sống.\n' ||
+     '[CÓ THỂ THÊM: HS vẽ sơ đồ “Tin học trong cuộc sống” – 5p]',
+     'Chương 1 – Tin học 10. Năng lực: Tư duy hệ thống, khái quát.',
+     'Dạy giới thiệu Tin học lớp 10 bằng câu hỏi',
+     'Word: Trang 1 – Mục tiêu & tiến trình; Trang 2 – 6 câu hỏi + không gian trả lời; Trang 3 – Rubric + sơ đồ mẫu (nếu có).',
+     'Không đọc SGK trước. HS tự viết ≥80% định nghĩa. Có bài mức 4: phân biệt Tin học và CNTT.',
+     'public'),
+
+    --------------------------------------------------------------
+    -- 2. Chương 2 – Biểu diễn thông tin
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Biểu diễn thông tin – So sánh bit, byte, mã hóa ký tự',
+     'HS lập bảng so sánh → phân biệt bản chất.',
+     'Soạn giáo án 2 tiết:\n' ||
+     '1. Đưa ví dụ (10p): ký tự “A” trong ASCII và Unicode.\n' ||
+     '2. Lập bảng so sánh (50p): 5 tiêu chí (có thể bổ sung):\n' ||
+     '   • Đơn vị • Dung lượng • Phạm vi • Ưu/nhược • Ứng dụng\n' ||
+     '3. Tìm giống/khác (15p): dùng bút màu đánh dấu.\n' ||
+     '4. Bài tập (10p): 5 câu trắc nghiệm.\n' ||
+     '5. Tổng kết (5p): “Chìa khóa phân biệt”.\n' ||
+     '[CÓ THỂ THÊM: HS tự mã hóa một câu ngắn bằng ASCII – 10p]',
+     'Chương 2 – Năng lực: Phân tích, so sánh.',
+     'Dạy so sánh bit-byte-mã ký tự lớp 10',
+     'Word + Bảng so sánh in màu + 5 câu trắc nghiệm.',
+     'HS tự điền bảng. Có ít nhất 1 tiêu chí do HS tự sáng tạo (ví dụ: “khả năng mở rộng”).',
+     'public'),
+
+    --------------------------------------------------------------
+    -- 3. Chương 3 – Cấu trúc máy tính
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Cấu trúc máy tính – So sánh CPU, RAM, ROM',
+     'HS lập bảng → hiểu vai trò từng bộ phận.',
+     'Soạn giáo án 2 tiết:\n' ||
+     '1. Đưa ví dụ (10p): “Tắt máy, dữ liệu ở đâu?”\n' ||
+     '2. Lập bảng (50p): 6 tiêu chí (có thể bổ sung):\n' ||
+     '   • Chức năng • Lưu trữ • Tốc độ • Xóa được? • Ví dụ • Tương tác với nhau\n' ||
+     '3. Tìm giống/khác (15p).\n' ||
+     '4. Bài tập (10p): 5 câu phân biệt.\n' ||
+     '5. Tổng kết (5p): “Bộ não máy tính”.\n' ||
+     '[CÓ THỂ THÊM: HS vẽ sơ đồ von Neumann đơn giản]',
+     'Chương 3 – Năng lực: Hiểu hệ thống.',
+     'Dạy cấu trúc máy tính so sánh lớp 10',
+     'Word + Bảng + Sơ đồ von Neumann (nếu có).',
+     'HS tự điền. Có tiêu chí “tương tác với nhau”.',
+     'public'),
+
+    --------------------------------------------------------------
+    -- 4. Chương 4 – Hệ điều hành
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Hệ điều hành – Hệ thống bài tập 4 mức độ',
+     'HS tự chọn mức → tự đánh giá → tự nâng cao.',
+     'Soạn giáo án 2 tiết:\n' ||
+     '1. Ôn (5p): HS vẽ sơ đồ tư duy.\n' ||
+     '2. Bài tập (70p):\n' ||
+     '   • Mức 1: 3 câu định nghĩa\n' ||
+     '   • Mức 2: 3 câu chức năng (quản lý file, tiến trình)\n' ||
+     '   • Mức 3: 2 câu so sánh Windows vs Linux\n' ||
+     '   • Mức 4: 1 câu phân tích “Tại sao cần HĐH?”\n' ||
+     '3. Tự chọn (10p)\n' ||
+     '4. Phản hồi (5p).\n' ||
+     '[CÓ THỂ THÊM: HS viết “HĐH lý tưởng” – 5p]',
+     'Chương 4 – Năng lực: Tự học.',
+     'Dạy hệ điều hành phân mức lớp 10',
+     'Word + File bài tập 4 mức (đáp án riêng) + Biểu đồ tiến bộ.',
+     'Mỗi HS làm ≥2 mức. Mức 4 yêu cầu phản biện.',
+     'public'),
+
+    --------------------------------------------------------------
+    -- 5. Chương 5 – Mạng máy tính
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Mạng máy tính – Khám phá khái niệm “mạng” qua câu hỏi',
+     'HS tự định nghĩa mạng, LAN, WAN, Internet.',
+     'Soạn giáo án 2 tiết:\n' ||
+     '1. Khởi động (5p): “Không có mạng, bạn làm gì?”\n' ||
+     '2. Khám phá (50p): 8 câu hỏi (có thể bổ sung):\n' ||
+     '   • Câu 1: “Mạng là gì?”\n' ||
+     '   • Câu 2: “LAN và WAN khác nhau ở đâu?”\n' ||
+     '   • …\n' ||
+     '   HS vẽ sơ đồ, thảo luận.\n' ||
+     '3. Khái quát (15p): HS viết định nghĩa.\n' ||
+     '4. Luyện tập (15p): 4 bài phân biệt.\n' ||
+     '5. Củng cố (5p): HS viết 1 câu hỏi.\n' ||
+     '[CÓ THỂ THÊM: HS vẽ sơ đồ mạng trường học]',
+     'Chương 5 – Năng lực: Hình dung hệ thống.',
+     'Dạy mạng máy tính bằng câu hỏi lớp 10',
+     'Word + 8 câu hỏi + Rubric + Sơ đồ mẫu.',
+     'Không dùng hình SGK. HS tự vẽ ≥2 sơ đồ.',
+     'public'),
+
+    --------------------------------------------------------------
+    -- 6. Chương 6 – Lưu trữ và chia sẻ thông tin
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 1 tiết: Lưu trữ – Tư duy ngược: Từ “mất dữ liệu” suy ra cách bảo vệ',
+     'HS suy ra nguyên nhân → biện pháp.',
+     'Soạn giáo án 1 tiết:\n' ||
+     '1. Đưa kết quả (5p): “Dữ liệu bị mất”\n' ||
+     '2. HS đặt câu hỏi ngược (25p): “Nguyên nhân? Làm sao tránh?”\n' ||
+     '3. Thử sai (10p): Phân tích 3 trường hợp.\n' ||
+     '4. Khái quát (5p): HS viết “Quy tắc lưu trữ an toàn”.\n' ||
+     '[CÓ THỂ THÊM: HS tự viết “Quy trình backup cá nhân”]',
+     'Chương 6 – Năng lực: Phản biện.',
+     'Dạy lưu trữ tư duy ngược lớp 10',
+     'Word + Bảng “Nguyên nhân → Giải pháp” + Quy tắc.',
+     'HS thử ≥3 trường hợp. Có phản ví dụ.',
+     'public'),
+
+    --------------------------------------------------------------
+    -- 7. Chương 7 – An toàn thông tin
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: An toàn thông tin – Chứng minh “Mật khẩu mạnh” bằng 3 cách',
+     'HS tìm 3 cách: độ dài, ký tự đặc biệt, không lặp.',
+     'Soạn giáo án 2 tiết:\n' ||
+     '1. Đặt vấn đề (5p): “Mật khẩu 123456 có an toàn?”\n' ||
+     '2. Nhóm tìm cách (50p): 3 nhóm → độ phức tạp, thời gian crack, thực tế.\n' ||
+     '3. Trình bày (20p): Vẽ bảng.\n' ||
+     '4. So sánh (10p): Bầu “Cách hay nhất”.\n' ||
+     '5. Mở rộng (5p): Tạo mật khẩu mạnh.\n' ||
+     '[CÓ THỂ THÊM: HS tự tạo “công thức mật khẩu cá nhân”]',
+     'Chương 7 – Năng lực: Lập luận.',
+     'Dạy an toàn thông tin chứng minh đa cách lớp 10',
+     'Word + Bảng so sánh + Công thức mẫu.',
+     'Mỗi nhóm 1 cách mới. Có cách thực nghiệm (giấy).',
+     'public'),
+
+    --------------------------------------------------------------
+    -- 8. Chương 8 – Thuật toán và lập trình
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Thuật toán – Chứng minh “Tối ưu” bằng 3 cách',
+     'HS chứng minh thuật toán tìm max trong mảng.',
+     'Soạn giáo án 2 tiết:\n' ||
+     '1. Đặt vấn đề (5p): “Tìm số lớn nhất – cách nào nhanh?”\n' ||
+     '2. Nhóm tìm cách (50p): duyệt, chia để trị, so sánh.\n' ||
+     '3. Trình bày (20p): Vẽ flowchart.\n' ||
+     '4. So sánh (10p): Thời gian, bộ nhớ.\n' ||
+     '5. Mở rộng (5p): Mảng 100 phần tử.\n' ||
+     '[CÓ THỂ THÊM: HS tự viết flowchart bằng giấy]',
+     'Chương 8 – Năng lực: Tối ưu hóa.',
+     'Dạy thuật toán chứng minh đa cách lớp 10',
+     'Word + 3 flowchart + Bảng so sánh.',
+     'Có cách chia để trị. Không dùng code.',
+     'public'),
+
+    --------------------------------------------------------------
+    -- 9. Chương 9 – Lập trình Pascal
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 3 tiết: Pascal – Hệ thống bài tập 4 mức độ',
+     'HS tự chọn từ in ra màn hình đến hàm đệ quy.',
+     'Soạn giáo án 3 tiết:\n' ||
+     '1. Ôn (10p): Sơ đồ cú pháp.\n' ||
+     '2. Bài tập (110p):\n' ||
+     '   • Mức 1: 3 chương trình in “Hello”\n' ||
+     '   • Mức 2: 3 chương trình nhập xuất, vòng lặp\n' ||
+     '   • Mức 3: 2 chương trình mảng, hàm\n' ||
+     '   • Mức 4: 1 chương trình đệ quy (giai thừa)\n' ||
+     '3. Tự chọn (15p)\n' ||
+     '4. Phản hồi (10p).\n' ||
+     '[CÓ THỂ THÊM: HS tự sửa lỗi cú pháp (bug hunt) – 10p]',
+     'Chương 9 – Năng lực: Lập trình tư duy.',
+     'Dạy Pascal phân mức lớp 10',
+     'Word + File bài tập 4 mức + Biểu đồ tiến bộ.',
+     'Mức 4 yêu cầu giải thích đệ quy. Không chạy máy.',
+     'public'),
+
+    --------------------------------------------------------------
+    -- 10. Chương 10 – Ứng dụng Tin học
+    --------------------------------------------------------------
+    (gen_random_uuid(), NULL,
+     '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 1 tiết: Ứng dụng Tin học – Từ “vấn đề xã hội” suy ra giải pháp Tin học',
+     'HS suy ra ứng dụng từ vấn đề thực.',
+     'Soạn giáo án 1 tiết:\n' ||
+     '1. Đưa vấn đề (5p): “Ô nhiễm không khí ở Hà Nội”\n' ||
+     '2. HS suy ngược (25p): “Tin học giúp gì?”\n' ||
+     '3. Thử sai (10p): 3 giải pháp.\n' ||
+     '4. Khái quát (5p): “Mô hình ứng dụng”.\n' ||
+     '[CÓ THỂ THÊM: HS chọn 1 vấn đề địa phương để phân tích – 5p]',
+     'Chương 10 – Năng lực: Giải quyết vấn đề.',
+     'Dạy ứng dụng Tin học tư duy ngược lớp 10',
+     'Word + Bảng “Vấn đề → Giải pháp Tin học”.',
+     'HS thử ≥3 giải pháp. Có phản ví dụ.',
+     'public')
+
+    RETURNING id
+)
+
+-- GẮN TAG: grade:10 + subject:Tin học
+INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
+SELECT p.id, g.id, now() FROM inserted_prompts p, grade_tag g
+UNION ALL
+SELECT p.id, s.id, now() FROM inserted_prompts p, subject_tag s;
