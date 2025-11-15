@@ -1,0 +1,149 @@
+-- Đảm bảo đã bật pgcrypto
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Lấy ID của tag grade:10 và subject:Toán học
+WITH grade_tag AS (
+    SELECT id FROM tags WHERE type = 'grade' AND value = '10'
+),
+     subject_tag AS (
+         SELECT id FROM tags WHERE type = 'subject' AND value = 'Toán học'
+     ),
+
+-- INSERT 10 PROMPT GIÁO ÁN
+     inserted_prompts AS (
+         INSERT INTO prompts (
+                              id,
+                              user_id,
+                              created_by,
+                              updated_by,
+                              title,
+                              description,
+                              instruction,
+                              context,
+                              input_example,
+                              output_format,
+                              constraints,
+                              visibility,
+                              current_version_id
+             )
+             VALUES
+                 -- 1. Mệnh đề và Tập hợp
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 2 tiết: Mệnh đề và Tập hợp – Khám phá khái niệm qua câu hỏi',
+                  'HS tự xây dựng khái niệm mệnh đề, phủ định, giao, hợp từ hệ thống câu hỏi logic.',
+                  'Soạn giáo án 2 tiết (90 phút):\n1. Khởi động (5p): ''Câu nào là mệnh đề? Vì sao?''\n2. Khám phá (50p): GV đặt 8 câu hỏi liên tiếp:\n   - Câu 1: ''Câu mở có phải mệnh đề?''\n   - Câu 2: ''Phủ định của p ∧ q là gì?''\n   - Câu 3: ''A ∪ B có chứa phần tử nào?''\n   → HS trả lời giấy → thảo luận cặp → trình bảng.\n3. Khái quát (15p): HS viết định nghĩa bằng lời mình → so sánh SGK.\n4. Luyện tập (15p): 5 bài: nhận biết, vẽ Venn, chứng minh phủ định.\n5. Củng cố (5p): HS viết 1 mệnh đề sai → bạn sửa.\nĐánh giá: Rubric 4 mức (Hiểu – Áp dụng – Phân tích – Sáng tạo).',
+                  'Chương 1 – Toán 10. Năng lực: Tư duy logic, khái quát hóa.',
+                  'Dạy mệnh đề và tập hợp bằng câu hỏi lớp 10',
+                  'File Word: Trang 1: Mục tiêu, tiến trình. Trang 2: 8 câu hỏi + không gian trả lời. Trang 3: Rubric + 5 bài tập.',
+                  'Không đọc SGK trước. HS tự viết ≥80% định nghĩa. Mỗi HS trả lời ít nhất 1 câu. Có bài mức 4: chứng minh De Morgan.',
+                  'PUBLIC', NULL),
+
+                 -- 2. Hàm bậc nhất & bậc hai
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 3 tiết: Hàm bậc nhất & bậc hai – So sánh bản chất đồ thị và tính chất',
+                  'HS lập bảng so sánh → rút ra chìa khóa phân biệt.',
+                  'Soạn giáo án 3 tiết:\n1. Đưa ví dụ (10p): y = 2x + 1 và y = x² - 2x + 1.\n2. Lập bảng so sánh (60p): 6 tiêu chí: dạng, đồ thị, đạo hàm, cực trị, giao điểm Ox, ứng dụng.\n3. Tìm điểm giống/khác (20p): HS dùng bút màu đánh dấu.\n4. Bài tập phân biệt (30p): 6 câu – chọn đúng khái niệm.\n5. Tổng kết (15p): HS viết ''Chìa khóa phân biệt'' 1 câu.\nĐánh giá: Bảng so sánh + độ chính xác bài tập.',
+                  'Chương 2 – Năng lực: Phân tích, so sánh, khái quát.',
+                  'Dạy so sánh hàm bậc nhất và bậc hai lớp 10',
+                  'Word + Bảng so sánh in màu + 6 câu trắc nghiệm.',
+                  'HS tự điền bảng trước SGK. Có 1 tiêu chí do HS tự sáng tạo (ví dụ: ''hành vi khi x → ∞'').',
+                  'PUBLIC', NULL),
+
+                 -- 3. Phương trình & Hệ phương trình
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 2 tiết: Hệ phương trình – Hệ thống bài tập 4 mức độ',
+                  'HS tự chọn mức → tự đánh giá → tự nâng cao.',
+                  'Soạn giáo án 2 tiết:\n1. Ôn lý thuyết (5p): HS vẽ sơ đồ tư duy 3 phút.\n2. Hệ thống bài tập (70p):\n   - Mức 1: 3 câu cơ bản (thế, cộng trừ)\n   - Mức 2: 3 câu ma trận, tham số\n   - Mức 3: 2 câu đồ thị giao điểm\n   - Mức 4: 1 câu chứng minh vô nghiệm với điều kiện\n3. Tự chấm – tự chọn (10p): HS chọn mức tiếp.\n4. Phản hồi (5p): GV chữa mức 4 → HS tự sửa.\nĐánh giá: Số mức đạt + nhật ký tự học.',
+                  'Chương 3 – Năng lực: Tự học, phân hóa.',
+                  'Dạy hệ phương trình phân mức lớp 10',
+                  'Word + File bài tập 4 mức (đáp án riêng) + Biểu đồ tiến bộ.',
+                  'Mỗi HS làm ít nhất 2 mức. Mức 4 yêu cầu phản ví dụ.',
+                  'PUBLIC', NULL),
+
+                 -- 4. Bất phương trình
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 2 tiết: Bất phương trình – Tư duy ngược: Từ nghiệm suy ra dấu hệ số',
+                  'HS đi từ tập nghiệm → suy ra điều kiện a > 0, Δ ≥ 0...',
+                  'Soạn giáo án:\n1. Đưa kết quả (5p): ''BPT có nghiệm trên [0; +∞)''\n2. HS đặt câu hỏi ngược (40p): ''a phải thế nào? Δ?''\n3. Thử sai – sửa (30p): Thay số → kiểm tra → điều chỉnh.\n4. Khái quát (10p): HS viết định lý đầy đủ.\n5. Áp dụng (5p): Giải bài ngược.\nĐánh giá: Số điều kiện tìm được + mức khái quát.',
+                  'Chương 4 – Năng lực: Suy luận ngược, phản biện.',
+                  'Dạy bất phương trình tư duy ngược lớp 10',
+                  'Word + Bảng ''Từ nghiệm → hệ số'' + 3 bài tập ngược.',
+                  'Không đưa đáp án trước. HS thử ít nhất 3 giá trị. Có phản ví dụ.',
+                  'PUBLIC', NULL),
+
+                 -- 5. Góc & Cung lượng giác
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 2 tiết: Góc & Cung – Khám phá cung lượng giác qua câu hỏi',
+                  'HS tự xây dựng khái niệm cung, đo cung, góc bù.',
+                  'Soạn giáo án:\n1. Khởi động (5p): ''Góc 30° tương ứng cung dài bao nhiêu?''\n2. Khám phá (50p): 7 câu hỏi:\n   - Câu 1: ''Cung là gì?''\n   - Câu 2: ''Cung 90° có đặc điểm gì?''\n   → HS vẽ đường tròn, đo, thảo luận.\n3. Khái quát (15p): HS viết định nghĩa.\n4. Luyện tập (15p): 4 bài: tính cung, góc, bù, đồng vị.\n5. Củng cố (5p): HS viết 1 câu hỏi.\nĐánh giá: Rubric 4 mức.',
+                  'Chương 5 – Năng lực: Trực quan, khái quát.',
+                  'Dạy góc và cung bằng câu hỏi lớp 10',
+                  'Word + 7 câu hỏi + Rubric + 4 bài tập.',
+                  'Không dùng công thức trước. HS tự vẽ ≥3 cung. Có bài mức 4: chứng minh cung bù.',
+                  'PUBLIC', NULL),
+
+                 -- 6. Vectơ
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 2 tiết: Vectơ – Khám phá vectơ qua hệ thống câu hỏi',
+                  'HS tự định nghĩa vectơ, đồng quy, cộng vectơ.',
+                  'Soạn giáo án:\n1. Khởi động (5p): ''Lực và vận tốc có gì giống nhau?''\n2. Khám phá (50p): 9 câu hỏi:\n   - Câu 1: ''Vectơ là gì?''\n   - Câu 2: ''Hai vectơ bằng nhau khi nào?''\n   → HS vẽ, thảo luận, trình bảng.\n3. Khái quát (15p): HS viết định nghĩa.\n4. Luyện tập (15p): 5 bài: cộng, trừ, đồng quy.\n5. Củng cố (5p): HS viết 1 câu hỏi.\nĐánh giá: Rubric 4 mức.',
+                  'Chương 6 – Năng lực: Mô hình hóa, khái quát.',
+                  'Dạy vectơ bằng khám phá lớp 10',
+                  'Word + 9 câu hỏi + Rubric + 5 bài tập.',
+                  'Không dùng SGK. HS tự vẽ vectơ. Có bài mức 4: chứng minh quy tắc hình bình hành.',
+                  'PUBLIC', NULL),
+
+                 -- 7. Tích vô hướng
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 2 tiết: Tích vô hướng – Chứng minh cosθ = (u·v)/(|u||v|) bằng 3 cách',
+                  'HS tự tìm 3 cách chứng minh → so sánh.',
+                  'Soạn giáo án:\n1. Đặt vấn đề (5p): ''Làm sao tính góc giữa 2 vectơ?''\n2. Nhóm tìm cách (50p): 3 nhóm → đại số, hình học, định lý cosin.\n3. Trình bày (20p): Vẽ sơ đồ chứng minh.\n4. So sánh (10p): Bầu ''Cách hay nhất''.\n5. Mở rộng (5p): Chứng minh vuông góc.\nĐánh giá: Chứng minh + phản biện.',
+                  'Chương 7 – Năng lực: Lập luận, sáng tạo.',
+                  'Dạy tích vô hướng chứng minh đa cách lớp 10',
+                  'Word + Bảng so sánh 3 cách + Bài mở rộng.',
+                  'Mỗi nhóm 1 cách mới. Không dùng SGK. Có cách hình học.',
+                  'PUBLIC', NULL),
+
+                 -- 8. Phép dời hình
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 2 tiết: Phép dời hình – So sánh tịnh tiến, quay, đối xứng',
+                  'HS lập bảng so sánh → phân biệt bản chất.',
+                  'Soạn giáo án:\n1. Đưa ví dụ (10p): 3 hình biến đổi.\n2. Lập bảng (50p): 5 tiêu chí: bảo toàn, công thức, tâm, ứng dụng, ví dụ.\n3. Tìm giống/khác (15p): Đánh dấu màu.\n4. Bài tập (10p): 5 câu phân biệt.\n5. Tổng kết (5p): ''Chìa khóa phân biệt''.\nĐánh giá: Bảng + bài tập.',
+                  'Chương 8 – Năng lực: Phân tích, so sánh.',
+                  'Dạy phép dời hình so sánh lớp 10',
+                  'Word + Bảng so sánh + 5 câu trắc nghiệm.',
+                  'HS tự điền. Có 1 tiêu chí tự sáng tạo.',
+                  'PUBLIC', NULL),
+
+                 -- 9. Đường thẳng song song (Thalès)
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 2 tiết: Định lý Thalès – Chứng minh bằng 3 cách',
+                  'HS tìm cách: tam giác đồng dạng, tỷ số, vectơ.',
+                  'Soạn giáo án:\n1. Đặt vấn đề (5p): ''Tại sao đoạn thẳng bị chia tỷ lệ?''\n2. Nhóm tìm cách (50p): 3 cách.\n3. Trình bày (20p): Vẽ hình.\n4. So sánh (10p): Bầu cách hay.\n5. Mở rộng (5p): Nghịch đảo.\nĐánh giá: Chứng minh + phản biện.',
+                  'Chương 9 – Năng lực: Lập luận.',
+                  'Dạy định lý Thalès đa cách lớp 10',
+                  'Word + Bảng so sánh + Nghịch đảo.',
+                  'Mỗi nhóm 1 cách mới. Có cách vectơ.',
+                  'PUBLIC', NULL),
+
+                 -- 10. Hình học không gian
+                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                  'Giáo án 3 tiết: Hình học không gian – Hệ thống bài tập 4 mức độ',
+                  'HS tự chọn mức từ cơ bản đến chứng minh không gian.',
+                  'Soạn giáo án 3 tiết:\n1. Ôn lý thuyết (10p): Sơ đồ tư duy.\n2. Hệ thống bài tập (110p):\n   - Mức 1: 4 câu nhận biết mặt phẳng, đường thẳng\n   - Mức 2: 3 câu tính góc, khoảng cách\n   - Mức 3: 2 câu chứng minh song song\n   - Mức 4: 1 câu chứng minh 4 điểm đồng phẳng\n3. Tự chọn mức (15p)\n4. Phản hồi (10p): GV chữa mức 4.\nĐánh giá: Số mức đạt + nhật ký.',
+                  'Chương 10 – Năng lực: Tự học, không gian.',
+                  'Dạy hình học không gian phân mức lớp 10',
+                  'Word + File bài tập 4 mức + Biểu đồ tiến bộ.',
+                  'Mỗi HS làm ít nhất 2 mức. Mức 4 yêu cầu phản ví dụ.',
+                  'PUBLIC', NULL)
+
+             RETURNING id
+     )
+
+-- GẮN TAG: grade:10 và subject:Toán học
+INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
+SELECT p.id, g.id, now()
+FROM inserted_prompts p, grade_tag g
+UNION ALL
+SELECT p.id, s.id, now()
+FROM inserted_prompts p, subject_tag s;
