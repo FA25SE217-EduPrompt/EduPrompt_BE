@@ -1,0 +1,127 @@
+-- INSERT 10 PROMPT VẬT LÝ 10
+WITH grade_tag AS (SELECT id FROM tags WHERE type = 'grade' AND value = '10'),
+subject_tag AS (SELECT id FROM tags WHERE type = 'subject' AND value = 'Vật lý'),
+inserted_prompts AS (
+    INSERT INTO prompts (
+        id, user_id, created_by, updated_by,
+        title, description, instruction, context,
+        input_example, output_format, constraints, visibility
+    )
+    VALUES
+    -- 1. Chuyển động thẳng đều
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Chuyển động thẳng đều – Khám phá khái niệm “đều” qua câu hỏi',
+     'HS tự xây dựng công thức từ hệ thống câu hỏi.',
+     'Soạn giáo án 2 tiết:\n1. Khởi động (5p): “Đi xe đều là sao?”\n2. Khám phá (50p): 7 câu hỏi (có thể thêm):\n   • Câu 1: “Đều nghĩa là gì?”\n   • Câu 2: “Quãng đường tỉ lệ với gì?”\n   → HS vẽ đồ thị, thảo luận.\n3. Khái quát (15p): HS viết công thức.\n4. Luyện tập (15p): 4 bài.\n5. Củng cố (5p): HS viết 1 câu hỏi.\n[CÓ THỂ THÊM: HS vẽ đồ thị vận tốc]',
+     'Chương 1 – Vật lý 10. Năng lực: Khái quát công thức.',
+     'Dạy chuyển động thẳng đều bằng câu hỏi lớp 10',
+     'Word + 7 câu hỏi + Rubric + Đồ thị mẫu.',
+     'Không dùng công thức trước. HS tự viết công thức.',
+     'public'),
+
+    -- 2. Chuyển động thẳng biến đổi đều
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: CTĐBĐĐ – So sánh vận tốc và gia tốc',
+     'HS lập bảng → hiểu bản chất gia tốc.',
+     'Soạn giáo án:\n1. Đưa ví dụ (10p): “Xe tăng tốc”\n2. Lập bảng (50p): 5 tiêu chí (có thể bổ sung): định nghĩa, đơn vị, đồ thị, công thức, ứng dụng.\n3. Tìm giống/khác (15p)\n4. Bài tập (10p): 5 câu.\n5. Tổng kết (5p): “Chìa khóa gia tốc”.\n[CÓ THỂ THÊM: HS vẽ đồ thị v-t]',
+     'Chương 2 – Năng lực: Phân biệt đại lượng.',
+     'Dạy so sánh vận tốc và gia tốc lớp 10',
+     'Word + Bảng + Đồ thị v-t.',
+     'HS tự điền. Có tiêu chí “đồ thị”.',
+     'public'),
+
+    -- 3. Lực và tổng hợp lực
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Lực – Hệ thống bài tập 4 mức độ',
+     'HS tự chọn từ nhận biết đến phân tích lực.',
+     'Soạn giáo án:\n1. Ôn (5p): Sơ đồ lực.\n2. Bài tập (70p):\n   • Mức 1: 3 câu nhận biết\n   • Mức 2: 3 câu vẽ lực\n   • Mức 3: 2 câu phân tích lực\n   • Mức 4: 1 câu chứng minh cân bằng\n3. Tự chọn (10p)\n4. Phản hồi (5p).\n[CÓ THỂ THÊM: HS vẽ sơ đồ lực tự do]',
+     'Chương 3 – Năng lực: Phân tích lực.',
+     'Dạy lực phân mức lớp 10',
+     'Word + File bài tập 4 mức + Sơ đồ.',
+     'Mỗi HS làm ≥2 mức. Mức 4 có chứng minh.',
+     'public'),
+
+    -- 4. Định luật Newton
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Định luật Newton – Chứng minh định luật 2 bằng 3 cách',
+     'HS tìm 3 cách: thực nghiệm, toán học, vectơ.',
+     'Soạn giáo án:\n1. Đặt vấn đề (5p): “Lực và gia tốc?”\n2. Nhóm tìm cách (50p): 3 nhóm.\n3. Trình bày (20p): Vẽ sơ đồ.\n4. So sánh (10p)\n5. Mở rộng (5p): Định luật 3.\n[CÓ THỂ THÊM: HS vẽ sơ đồ lực]',
+     'Chương 4 – Năng lực: Chứng minh.',
+     'Dạy định luật Newton đa cách lớp 10',
+     'Word + Bảng + Sơ đồ lực.',
+     'Mỗi nhóm 1 cách mới. Có cách vectơ.',
+     'public'),
+
+    -- 5. Công và năng lượng
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Công – Tư duy ngược: Từ “năng lượng mất” suy ra công',
+     'HS suy từ ΔE → công.',
+     'Soạn giáo án:\n1. Đưa kết quả (5p): “Năng lượng giảm”\n2. HS suy ngược (40p): “Có công không?”\n3. Thử sai (30p): 3 trường hợp.\n4. Khái quát (10p): HS viết công thức.\n5. Áp dụng (5p): Bài tập.\n[CÓ THỂ THÊM: HS vẽ biểu đồ năng lượng]',
+     'Chương 5 – Năng lực: Suy luận ngược.',
+     'Dạy công và năng lượng tư duy ngược lớp 10',
+     'Word + Bảng “ΔE → Công” + Biểu đồ.',
+     'HS thử ≥3 trường hợp. Có phản ví dụ.',
+     'public'),
+
+    -- 6. Động lượng
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Động lượng – Khám phá khái niệm qua câu hỏi',
+     'HS tự xây dựng định nghĩa, bảo toàn.',
+     'Soạn giáo án:\n1. Khởi động (5p): “Va chạm mạnh hơn khi?”\n2. Khám phá (50p): 8 câu hỏi (có thể thêm).\n3. Khái quát (15p): HS viết công thức.\n4. Luyện tập (15p): 4 bài.\n5. Củng cố (5p): HS viết 1 câu hỏi.\n[CÓ THỂ THÊM: HS vẽ sơ đồ va chạm]',
+     'Chương 6 – Năng lực: Khái quát.',
+     'Dạy động lượng bằng câu hỏi lớp 10',
+     'Word + 8 câu hỏi + Rubric + Sơ đồ.',
+     'Không dùng công thức trước.',
+     'public'),
+
+    -- 7. Dao động cơ
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Dao động cơ – So sánh biên độ, chu kỳ, tần số',
+     'HS lập bảng → hiểu bản chất.',
+     'Soạn giáo án:\n1. Đưa ví dụ (10p): “Con lắc”\n2. Lập bảng (50p): 5 tiêu chí (có thể bổ sung).\n3. Tìm giống/khác (15p)\n4. Bài tập (10p): 5 câu.\n5. Tổng kết (5p): “Chìa khóa dao động”.\n[CÓ THỂ THÊM: HS vẽ đồ thị x-t]',
+     'Chương 7 – Năng lực: Phân biệt.',
+     'Dạy dao động cơ so sánh lớp 10',
+     'Word + Bảng + Đồ thị x-t.',
+     'HS tự điền. Có tiêu chí “đồ thị”.',
+     'public'),
+
+    -- 8. Sóng cơ
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Sóng cơ – Chứng minh v = fλ bằng 3 cách',
+     'HS tìm 3 cách: thực nghiệm, toán học, hình học.',
+     'Soạn giáo án:\n1. Đặt vấn đề (5p): “Sóng lan nhanh thế nào?”\n2. Nhóm tìm cách (50p): 3 nhóm.\n3. Trình bày (20p): Vẽ sóng.\n4. So sánh (10p)\n5. Mở rộng (5p): Sóng dừng.\n[CÓ THỂ THÊM: HS vẽ sóng dừng]',
+     'Chương 8 – Năng lực: Chứng minh.',
+     'Dạy sóng cơ đa cách lớp 10',
+     'Word + Bảng + Sóng dừng.',
+     'Mỗi nhóm 1 cách mới.',
+     'public'),
+
+    -- 9. Dòng điện không đổi
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Dòng điện – Hệ thống bài tập 4 mức độ',
+     'HS tự chọn từ định luật đến mạch phức.',
+     'Soạn giáo án:\n1. Ôn (5p): Sơ đồ mạch.\n2. Bài tập (70p):\n   • Mức 1: 3 câu định luật Ohm\n   • Mức 2: 3 câu nối tiếp/song song\n   • Mức 3: 2 câu phân tích mạch\n   • Mức 4: 1 câu thiết kế mạch\n3. Tự chọn (10p)\n4. Phản hồi (5p).\n[CÓ THỂ THÊM: HS vẽ mạch tự do]',
+     'Chương 9 – Năng lực: Tính toán mạch.',
+     'Dạy dòng điện phân mức lớp 10',
+     'Word + File bài tập 4 mức + Mạch mẫu.',
+     'Mỗi HS làm ≥2 mức. Mức 4 có sơ đồ.',
+     'public'),
+
+    -- 10. Từ trường
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 1 tiết: Từ trường – Từ “hiện tượng” suy ra định luật',
+     'HS suy từ nam châm → lực từ.',
+     'Soạn giáo án:\n1. Đưa hiện tượng (5p): “Kim nam châm quay”\n2. HS suy ngược (25p): “Nguyên nhân?”\n3. Thử sai (10p): 3 giả thuyết.\n4. Khái quát (5p): “Định luật từ trường”.\n[CÓ THỂ THÊM: HS vẽ đường sức từ]',
+     'Chương 10 – Năng lực: Suy luận.',
+     'Dạy từ trường tư duy ngược lớp 10',
+     'Word + Bảng “Hiện tượng → Định luật”.',
+     'HS thử ≥3 giả thuyết.',
+     'public')
+
+    RETURNING id
+)
+
+INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
+SELECT p.id, g.id, now() FROM inserted_prompts p, grade_tag g
+UNION ALL
+SELECT p.id, s.id, now() FROM inserted_prompts p, subject_tag s;
