@@ -72,4 +72,22 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
         WHERE p.id = :id AND p.isDeleted = false
         """)
     Optional<Prompt> findActiveById(@Param("id") UUID id);
+
+    /**
+     * Find all prompts with specific indexing status
+     */
+    List<Prompt> findByIndexingStatusAndIsDeleted(String indexingStatus, Boolean isDeleted);
+
+    /**
+     * Find all prompts that need reindexing (updated after last index)
+     */
+    @Query("SELECT p FROM Prompt p WHERE p.indexingStatus = 'indexed' " +
+            "AND p.isDeleted = false " +
+            "AND p.updatedAt > p.lastIndexedAt")
+    List<Prompt> findPromptsNeedingReindex();
+
+    /**
+     * Count indexed prompts by status
+     */
+    long countByIndexingStatus(String indexingStatus);
 }
