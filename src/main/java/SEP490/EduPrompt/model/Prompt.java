@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
@@ -82,5 +83,17 @@ public class Prompt {
     @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "current_version_id")
     private PromptVersion currentVersion;
+
+    @Size(max = 255)
+    @Column(name = "gemini_file_id")
+    private String geminiFileId;
+
+    @Column(name = "last_indexed_at")
+    private Instant lastIndexedAt;
+
+    @Size(max = 50)
+    @ColumnDefault("'pending'")
+    @Column(name = "indexing_status", length = 50)
+    private String indexingStatus;
 
 }
