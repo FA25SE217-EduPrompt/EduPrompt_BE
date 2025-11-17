@@ -1,0 +1,127 @@
+-- INSERT 10 PROMPT HÓA HỌC 10
+WITH grade_tag AS (SELECT id FROM tags WHERE type = 'môn' AND value = '10'),
+subject_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = 'hóa học'),
+inserted_prompts AS (
+    INSERT INTO prompts (
+        id, user_id, created_by, updated_by,
+        title, description, instruction, context,
+        input_example, output_format, constraints, visibility
+    )
+    VALUES
+    -- 1. Nguyên tử
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Nguyên tử – Khám phá cấu tạo qua câu hỏi',
+     'HS tự xây dựng mô hình nguyên tử từ hệ thống câu hỏi.',
+     'Soạn giáo án 2 tiết:\n1. Khởi động (5p): “Nguyên tử có nhỏ nhất không?”\n2. Khám phá (50p): 8 câu hỏi (có thể thêm):\n   • Câu 1: “Nguyên tử gồm gì?”\n   • Câu 2: “Electron ở đâu?”\n   → HS vẽ mô hình, thảo luận.\n3. Khái quát (15p): HS viết cấu tạo.\n4. Luyện tập (15p): 4 bài.\n5. Củng cố (5p): HS viết 1 câu hỏi.\n[CÓ THỂ THÊM: HS vẽ mô hình nguyên tử Bohr]',
+     'Chương 1 – Hóa 10. Năng lực: Khái quát cấu tạo.',
+     'Dạy nguyên tử bằng câu hỏi lớp 10',
+     'Word + 8 câu hỏi + Rubric + Mô hình Bohr.',
+     'Không dùng hình SGK trước. HS tự vẽ mô hình.',
+     'public'),
+
+    -- 2. Bảng tuần hoàn
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Bảng tuần hoàn – So sánh nguyên tố s và p',
+     'HS lập bảng → hiểu tính chất.',
+     'Soạn giáo án:\n1. Đưa ví dụ (10p): Na và Cl.\n2. Lập bảng (50p): 5 tiêu chí (có thể bổ sung): cấu hình e, bán kính, ái điện, tính kim loại.\n3. Tìm giống/khác (15p)\n4. Bài tập (10p): 5 câu.\n5. Tổng kết (5p): “Xu hướng tuần hoàn”.\n[CÓ THỂ THÊM: HS vẽ bảng tuần hoàn mini]',
+     'Chương 2 – Năng lực: So sánh tính chất.',
+     'Dạy bảng tuần hoàn so sánh lớp 10',
+     'Word + Bảng + Bảng mini.',
+     'HS tự điền. Có tiêu chí “bán kính”.',
+     'public'),
+
+    -- 3. Liên kết hóa học
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Liên kết – Hệ thống bài tập 4 mức độ',
+     'HS tự chọn từ nhận biết đến dự đoán.',
+     'Soạn giáo án:\n1. Ôn (5p): Sơ đồ liên kết.\n2. Bài tập (70p):\n   • Mức 1: 3 câu nhận biết\n   • Mức 2: 3 câu vẽ cấu trúc Lewis\n   • Mức 3: 2 câu so sánh độ bền\n   • Mức 4: 1 câu dự đoán liên kết\n3. Tự chọn (10p)\n4. Phản hồi (5p).\n[CÓ THỂ THÊM: HS vẽ cấu trúc 3D]',
+     'Chương 3 – Năng lực: Dự đoán liên kết.',
+     'Dạy liên kết hóa học phân mức lớp 10',
+     'Word + File bài tập 4 mức + Cấu trúc Lewis.',
+     'Mỗi HS làm ≥2 mức. Mức 4 có lập luận.',
+     'public'),
+
+    -- 4. Phản ứng hóa học
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Phản ứng – Chứng minh bảo toàn khối lượng bằng 3 cách',
+     'HS tìm 3 cách: cân bằng, mol, thực nghiệm tư duy.',
+     'Soạn giáo án:\n1. Đặt vấn đề (5p): “Phản ứng có mất chất?”\n2. Nhóm tìm cách (50p): 3 nhóm.\n3. Trình bày (20p): Vẽ sơ đồ.\n4. So sánh (10p)\n5. Mở rộng (5p): Phản ứng nhiệt.\n[CÓ THỂ THÊM: HS viết phương trình mẫu]',
+     'Chương 4 – Năng lực: Bảo toàn.',
+     'Dạy phản ứng hóa học đa cách lớp 10',
+     'Word + Bảng + Phương trình mẫu.',
+     'Mỗi nhóm 1 cách mới. Có cách mol.',
+     'public'),
+
+    -- 5. Mol và công thức
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Mol – Tư duy ngược: Từ “khối lượng” suy ra công thức',
+     'HS suy từ m → công thức thực nghiệm.',
+     'Soạn giáo án:\n1. Đưa dữ liệu (5p): “m = 58,5 g”\n2. HS suy ngược (40p): “Công thức?”\n3. Thử sai (30p): 3 giả thuyết.\n4. Khái quát (10p): HS viết công thức.\n5. Áp dụng (5p): Bài tập.\n[CÓ THỂ THÊM: HS lập bảng dữ liệu]',
+     'Chương 5 – Năng lực: Tính toán hóa học.',
+     'Dạy mol tư duy ngược lớp 10',
+     'Word + Bảng “Dữ liệu → Công thức”.',
+     'HS thử ≥3 giả thuyết. Có phản ví dụ.',
+     'public'),
+
+    -- 6. Dung dịch
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Dung dịch – Khám phá nồng độ qua câu hỏi',
+     'HS tự xây dựng công thức nồng độ.',
+     'Soạn giáo án:\n1. Khởi động (5p): “Muối trong nước”\n2. Khám phá (50p): 7 câu hỏi (có thể thêm).\n3. Khái quát (15p): HS viết công thức.\n4. Luyện tập (15p): 4 bài.\n5. Củng cố (5p): HS viết 1 câu hỏi.\n[CÓ THỂ THÊM: HS vẽ sơ đồ pha loãng]',
+     'Chương 6 – Năng lực: Khái quát nồng độ.',
+     'Dạy dung dịch bằng câu hỏi lớp 10',
+     'Word + 7 câu hỏi + Rubric + Sơ đồ.',
+     'Không dùng công thức trước.',
+     'public'),
+
+    -- 7. Phản ứng oxi hóa khử
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Oxi hóa khử – So sánh chất oxi hóa và khử',
+     'HS lập bảng → hiểu bản chất.',
+     'Soạn giáo án:\n1. Đưa ví dụ (10p): Fe + CuSO₄\n2. Lập bảng (50p): 5 tiêu chí (có thể bổ sung).\n3. Tìm giống/khác (15p)\n4. Bài tập (10p): 5 câu.\n5. Tổng kết (5p): “Chìa khóa electron”.\n[CÓ THỂ THÊM: HS vẽ sơ đồ electron]',
+     'Chương 7 – Năng lực: Phân biệt vai trò.',
+     'Dạy oxi hóa khử so sánh lớp 10',
+     'Word + Bảng + Sơ đồ electron.',
+     'HS tự điền. Có tiêu chí “electron”.',
+     'public'),
+
+    -- 8. Hidrocacbon
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Hidrocacbon – Chứng minh đồng đẳng bằng 3 cách',
+     'HS tìm 3 cách: công thức, tính chất, phản ứng.',
+     'Soạn giáo án:\n1. Đặt vấn đề (5p): “CH₄ và C₂H₆?”\n2. Nhóm tìm cách (50p): 3 nhóm.\n3. Trình bày (20p): Vẽ cấu trúc.\n4. So sánh (10p)\n5. Mở rộng (5p): Dãy đồng đẳng.\n[CÓ THỂ THÊM: HS viết tên IUPAC]',
+     'Chương 8 – Năng lực: Dãy đồng đẳng.',
+     'Dạy hidrocacbon đa cách lớp 10',
+     'Word + Bảng + Cấu trúc mẫu.',
+     'Mỗi nhóm 1 cách mới.',
+     'public'),
+
+    -- 9. Ancol – Phenol
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Ancol – Hệ thống bài tập 4 mức độ',
+     'HS tự chọn từ nhận biết đến phản ứng.',
+     'Soạn giáo án:\n1. Ôn (5p): Sơ đồ nhóm -OH.\n2. Bài tập (70p):\n   • Mức 1: 3 câu nhận biết\n   • Mức 2: 3 câu viết công thức\n   • Mức 3: 2 câu phản ứng\n   • Mức 4: 1 câu điều chế\n3. Tự chọn (10p)\n4. Phản hồi (5p).\n[CÓ THỂ THÊM: HS vẽ phản ứng]',
+     'Chương 9 – Năng lực: Phản ứng hữu cơ.',
+     'Dạy ancol phân mức lớp 10',
+     'Word + File bài tập 4 mức + Phản ứng mẫu.',
+     'Mỗi HS làm ≥2 mức. Mức 4 có sơ đồ.',
+     'public'),
+
+    -- 10. Este – Lipit
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 1 tiết: Este – Từ “mùi thơm” suy ra ứng dụng',
+     'HS suy từ mùi → công thức → ứng dụng.',
+     'Soạn giáo án:\n1. Đưa hiện tượng (5p): “Mùi hoa quả”\n2. HS suy ngược (25p): “Chất gì?”\n3. Thử sai (10p): 3 este.\n4. Khái quát (5p): “Ứng dụng este”.\n[CÓ THỂ THÊM: HS liệt kê este thực phẩm]',
+     'Chương 10 – Năng lực: Ứng dụng hữu cơ.',
+     'Dạy este tư duy ngược lớp 10',
+     'Word + Bảng “Mùi → Este”.',
+     'HS thử ≥3 este.',
+     'public')
+
+    RETURNING id
+)
+
+INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
+SELECT p.id, g.id, now() FROM inserted_prompts p, grade_tag g
+UNION ALL
+SELECT p.id, s.id, now() FROM inserted_prompts p, subject_tag s;

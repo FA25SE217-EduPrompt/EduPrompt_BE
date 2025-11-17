@@ -1,0 +1,127 @@
+-- INSERT 10 PROMPT SINH HỌC 10
+WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
+subject_tag AS (SELECT id FROM tags WHERE type = 'môn' AND value = 'sinh học'),
+inserted_prompts AS (
+    INSERT INTO prompts (
+        id, user_id, created_by, updated_by,
+        title, description, instruction, context,
+        input_example, output_format, constraints, visibility
+    )
+    VALUES
+    -- 1. Sinh học tế bào
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Tế bào – Khám phá cấu tạo qua câu hỏi',
+     'HS tự xây dựng mô hình tế bào từ câu hỏi.',
+     'Soạn giáo án 2 tiết:\n1. Khởi động (5p): “Tế bào nhỏ cỡ nào?”\n2. Khám phá (50p): 8 câu hỏi (có thể thêm):\n   • Câu 1: “Tế bào gồm gì?”\n   • Câu 2: “Màng tế bào làm gì?”\n   → HS vẽ sơ đồ, thảo luận.\n3. Khái quát (15p): HS viết cấu tạo.\n4. Luyện tập (15p): 4 bài.\n5. Củng cố (5p): HS viết 1 câu hỏi.\n[CÓ THỂ THÊM: HS vẽ tế bào thực vật và động vật]',
+     'Chương 1 – Sinh 10. Năng lực: Cấu tạo tế bào.',
+     'Dạy tế bào bằng câu hỏi lớp 10',
+     'Word + 8 câu hỏi + Rubric + Sơ đồ tế bào.',
+     'Không dùng hình SGK trước. HS tự vẽ.',
+     'public'),
+
+    -- 2. Hóa học tế bào
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Hóa học tế bào – So sánh glucid, lipid, protein',
+     'HS lập bảng → hiểu vai trò.',
+     'Soạn giáo án:\n1. Đưa ví dụ (10p): Cơm, mỡ, thịt.\n2. Lập bảng (50p): 5 tiêu chí (có thể bổ sung): công thức, chức năng, nguồn, dự trữ.\n3. Tìm giống/khác (15p)\n4. Bài tập (10p): 5 câu.\n5. Tổng kết (5p): “Nền tảng sự sống”.\n[CÓ THỂ THÊM: HS vẽ sơ đồ chuyển hóa]',
+     'Chương 2 – Năng lực: Phân biệt chất hữu cơ.',
+     'Dạy hóa học tế bào so sánh lớp 10',
+     'Word + Bảng + Sơ đồ chuyển hóa.',
+     'HS tự điền. Có tiêu chí “chuyển hóa”.',
+     'public'),
+
+    -- 3. Trao đổi chất
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Trao đổi chất – Hệ thống bài tập 4 mức độ',
+     'HS tự chọn từ đồng hóa đến dị hóa.',
+     'Soạn giáo án:\n1. Ôn (5p): Sơ đồ trao đổi.\n2. Bài tập (70p):\n   • Mức 1: 3 câu định nghĩa\n   • Mức 2: 3 câu ví dụ\n   • Mức 3: 2 câu so sánh\n   • Mức 4: 1 câu phân tích rối loạn\n3. Tự chọn (10p)\n4. Phản hồi (5p).\n[CÓ THỂ THÊM: HS vẽ chu trình trao đổi]',
+     'Chương 3 – Năng lực: Hiểu quá trình sống.',
+     'Dạy trao đổi chất phân mức lớp 10',
+     'Word + File bài tập 4 mức + Chu trình.',
+     'Mỗi HS làm ≥2 mức. Mức 4 có ví dụ bệnh.',
+     'public'),
+
+    -- 4. Quang hợp
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Quang hợp – Chứng minh C₆H₁₂O₆ từ CO₂ bằng 3 cách',
+     'HS tìm 3 cách: phương trình, chu trình, thực nghiệm tư duy.',
+     'Soạn giáo án:\n1. Đặt vấn đề (5p): “Cây lấy thức ăn ở đâu?”\n2. Nhóm tìm cách (50p): 3 nhóm.\n3. Trình bày (20p): Vẽ chu trình.\n4. So sánh (10p)\n5. Mở rộng (5p): Hô hấp.\n[CÓ THỂ THÊM: HS vẽ chu trình Calvin]',
+     'Chương 4 – Năng lực: Chu trình sinh học.',
+     'Dạy quang hợp đa cách lớp 10',
+     'Word + Bảng + Chu trình Calvin.',
+     'Mỗi nhóm 1 cách mới.',
+     'public'),
+
+    -- 5. Hô hấp tế bào
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Hô hấp – Tư duy ngược: Từ “ATP” suy ra quá trình',
+     'HS suy từ năng lượng → hô hấp.',
+     'Soạn giáo án:\n1. Đưa kết quả (5p): “Cơ thể cần ATP”\n2. HS suy ngược (40p): “Lấy từ đâu?”\n3. Thử sai (30p): 3 giai đoạn.\n4. Khái quát (10p): HS viết chu trình.\n5. Áp dụng (5p): So sánh với quang hợp.\n[CÓ THỂ THÊM: HS vẽ chu trình Krebs]',
+     'Chương 5 – Năng lực: Suy luận năng lượng.',
+     'Dạy hô hấp tư duy ngược lớp 10',
+     'Word + Bảng “ATP → Quá trình”.',
+     'HS thử ≥3 giai đoạn.',
+     'public'),
+
+    -- 6. Vi sinh vật
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Vi sinh vật – Khám phá vai trò qua câu hỏi',
+     'HS tự xây dựng vai trò từ hệ thống câu hỏi.',
+     'Soạn giáo án:\n1. Khởi động (5p): “Vi khuẩn có hại hết?”\n2. Khám phá (50p): 7 câu hỏi (có thể thêm).\n3. Khái quát (15p): HS viết vai trò.\n4. Luyện tập (15p): 4 bài.\n5. Củng cố (5p): HS viết 1 câu hỏi.\n[CÓ THỂ THÊM: HS vẽ sơ đồ vai trò]',
+     'Chương 6 – Năng lực: Vai trò vi sinh.',
+     'Dạy vi sinh vật bằng câu hỏi lớp 10',
+     'Word + 7 câu hỏi + Rubric + Sơ đồ.',
+     'Không dùng bảng trước.',
+     'public'),
+
+    -- 7. Sinh thái cá thể
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Cá thể – So sánh giới hạn sinh thái và ổ sinh thái',
+     'HS lập bảng → hiểu thích nghi.',
+     'Soạn giáo án:\n1. Đưa ví dụ (10p): Cây xương rồng.\n2. Lập bảng (50p): 5 tiêu chí (có thể bổ sung).\n3. Tìm giống/khác (15p)\n4. Bài tập (10p): 5 câu.\n5. Tổng kết (5p): “Chìa khóa sống sót”.\n[CÓ THỂ THÊM: HS vẽ đồ thị giới hạn]',
+     'Chương 7 – Năng lực: Thích nghi.',
+     'Dạy cá thể so sánh lớp 10',
+     'Word + Bảng + Đồ thị giới hạn.',
+     'HS tự điền. Có tiêu chí “đồ thị”.',
+     'public'),
+
+    -- 8. Quần thể
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Quần thể – Chứng minh tăng trưởng theo mô hình J/S bằng 3 cách',
+     'HS tìm 3 cách: toán học, đồ thị, thực tế.',
+     'Soạn giáo án:\n1. Đặt vấn đề (5p): “Dân số tăng thế nào?”\n2. Nhóm tìm cách (50p): 3 nhóm.\n3. Trình bày (20p): Vẽ đồ thị.\n4. So sánh (10p)\n5. Mở rộng (5p): Kiểm soát.\n[CÓ THỂ THÊM: HS vẽ đồ thị logistic]',
+     'Chương 8 – Năng lực: Mô hình quần thể.',
+     'Dạy quần thể đa cách lớp 10',
+     'Word + Bảng + Đồ thị logistic.',
+     'Mỗi nhóm 1 cách mới.',
+     'public'),
+
+    -- 9. Hệ sinh thái
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 2 tiết: Hệ sinh thái – Hệ thống bài tập 4 mức độ',
+     'HS tự chọn từ chuỗi đến lưới thức ăn.',
+     'Soạn giáo án:\n1. Ôn (5p): Sơ đồ hệ.\n2. Bài tập (70p):\n   • Mức 1: 3 câu nhận biết\n   • Mức 2: 3 câu vẽ chuỗi\n   • Mức 3: 2 câu phân tích lưới\n   • Mức 4: 1 câu thiết kế hệ\n3. Tự chọn (10p)\n4. Phản hồi (5p).\n[CÓ THỂ THÊM: HS vẽ lưới thức ăn]',
+     'Chương 9 – Năng lực: Mô hình hệ.',
+     'Dạy hệ sinh thái phân mức lớp 10',
+     'Word + File bài tập 4 mức + Lưới thức ăn.',
+     'Mỗi HS làm ≥2 mức. Mức 4 có thiết kế.',
+     'public'),
+
+    -- 10. Bảo vệ môi trường
+    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+     'Giáo án 1 tiết: Bảo vệ môi trường – Từ “ô nhiễm” suy ra giải pháp',
+     'HS suy từ vấn đề → hành động.',
+     'Soạn giáo án:\n1. Đưa vấn đề (5p): “Rác thải nhựa”\n2. HS suy ngược (25p): “Giải pháp?”\n3. Thử sai (10p): 3 giải pháp.\n4. Khái quát (5p): “Nguyên tắc bảo vệ”.\n[CÓ THỂ THÊM: HS viết cam kết cá nhân]',
+     'Chương 10 – Năng lực: Ý thức môi trường.',
+     'Dạy bảo vệ môi trường tư duy ngược lớp 10',
+     'Word + Bảng “Vấn đề → Giải pháp”.',
+     'HS thử ≥3 giải pháp.',
+     'public')
+
+    RETURNING id
+)
+
+INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
+SELECT p.id, g.id, now() FROM inserted_prompts p, grade_tag g
+UNION ALL
+SELECT p.id, s.id, now() FROM inserted_prompts p, subject_tag s;
