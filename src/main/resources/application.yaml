@@ -102,6 +102,7 @@ openai:
   timeout: 30s
 gemini:
   api-key: ${GEMINI_API_KEY}
+  file-search-store: "fileSearchStores/eduprompt-5fuy52dsj4vf"
 
 ## Postmark Configuration
 #postmark:
