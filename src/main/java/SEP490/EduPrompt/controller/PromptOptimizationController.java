@@ -34,9 +34,9 @@ public class PromptOptimizationController {
      * Processing happens asynchronously in the background.
      * Supports idempotency to prevent duplicate requests.
      *
-     * @param request Contains promptId, optimizationInput, temperature, maxTokens
+     * @param request        Contains promptId, optimizationInput, temperature, maxTokens
      * @param idempotencyKey Optional UUID to prevent duplicate processing on retry
-     * @param currentUser Authenticated user
+     * @param currentUser    Authenticated user
      * @return OptimizationQueueResponse with queueId and status (PENDING)
      */
     @PostMapping
@@ -50,7 +50,7 @@ public class PromptOptimizationController {
                 currentUser.getUserId(), request.promptId(), idempotencyKey);
 
         // generate idempotency key if not provided
-        String effectiveKey = idempotencyKey != null ? idempotencyKey : UUID.randomUUID().toString();
+        String effectiveKey = idempotencyKey != null ? idempotencyKey : String.valueOf(request.promptId());
 
         OptimizationQueueResponse response = promptOptimizationService.requestOptimization(
                 currentUser.getUserId(),
@@ -65,10 +65,10 @@ public class PromptOptimizationController {
      * GET /api/prompts/optimize/queue/{queueId}
      * Get optimization status and result by queue ID.
      * Poll this endpoint to check if optimization is complete.
-     *
+     * <p>
      * Status flow: PENDING → PROCESSING → COMPLETED/FAILED
      *
-     * @param queueId UUID of the optimization queue entry
+     * @param queueId     UUID of the optimization queue entry
      * @param currentUser Authenticated user (must be the requester)
      * @return OptimizationQueueResponse with current status and output (if completed)
      */
@@ -93,8 +93,8 @@ public class PromptOptimizationController {
      * Get paginated optimization history for the current user.
      * Includes all statuses (PENDING, PROCESSING, COMPLETED, FAILED).
      *
-     * @param page Page number (0-indexed)
-     * @param size Page size (default 20)
+     * @param page        Page number (0-indexed)
+     * @param size        Page size (default 20)
      * @param currentUser Authenticated user
      * @return Paginated list of user's optimization history
      */
@@ -121,9 +121,9 @@ public class PromptOptimizationController {
      * GET /api/prompts/optimize/prompt/{promptId}/history
      * Get optimization history for a specific prompt by the current user.
      *
-     * @param promptId UUID of the prompt
-     * @param page Page number (0-indexed)
-     * @param size Page size (default 20)
+     * @param promptId    UUID of the prompt
+     * @param page        Page number (0-indexed)
+     * @param size        Page size (default 20)
      * @param currentUser Authenticated user
      * @return Paginated list of optimization history for this prompt
      */
@@ -175,7 +175,7 @@ public class PromptOptimizationController {
      * Retry a failed optimization request.
      * Only works for FAILED status optimizations.
      *
-     * @param queueId UUID of the failed optimization queue entry
+     * @param queueId     UUID of the failed optimization queue entry
      * @param currentUser Authenticated user (must be the requester)
      * @return OptimizationQueueResponse with updated status (PENDING)
      */
@@ -201,7 +201,7 @@ public class PromptOptimizationController {
      * Can only cancel PENDING or FAILED requests.
      * Cannot cancel PROCESSING or COMPLETED requests.
      *
-     * @param queueId UUID of the optimization queue entry
+     * @param queueId     UUID of the optimization queue entry
      * @param currentUser Authenticated user (must be the requester)
      * @return Success message
      */
