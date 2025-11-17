@@ -27,7 +27,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
     private static final int BATCH_DELAY_MS = 1000;
     private static final int MAX_RETRIES = 3;
     private final PromptRepository promptRepository;
-    private final com.eduprompt.service.GeminiClientService geminiClientService;
+    private final GeminiClientService geminiClientService;
 
     @Value("${gemini.file-search-store}")
     private String fileSearchStoreName;
