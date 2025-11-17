@@ -144,7 +144,7 @@ public class GroupServiceImpl implements GroupService {
         groupMemberRepository.save(GroupMember.builder()
                 .group(saved)
                 .user(creator)
-                .role("admin")
+                .role(GroupRole.ADMIN.name())
                 .status("active")
                 .joinedAt(Instant.now())
                 .build());
@@ -367,7 +367,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Only group admins or system/school admins can delete
         boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                id, currentUserId, "active", List.of("admin")
+                id, currentUserId, "active", List.of(GroupRole.ADMIN.name())
         );
         if (!isGroupAdmin && !isAdmin(currentUser)) {
             throw new AccessDeniedException("Only group admins or system/school admins can delete this group");
@@ -406,6 +406,31 @@ public class GroupServiceImpl implements GroupService {
             // Non-admins see groups they are active members of
             page = groupRepository.findByUserIdAndStatusAndIsActiveTrue(currentUserId, "active", pageable);
         }
+
+        List<GroupResponse> content = page.getContent().stream()
+                .map(group -> GroupResponse.builder()
+                        .name(group.getName())
+                        .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
+                        .isActive(group.getIsActive())
+                        .createdAt(group.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        return PageGroupResponse.builder()
+                .content(content)
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .build();
+    }
+
+    @Override
+    public PageGroupResponse listAllGroups(UserPrincipal currentUser, Pageable pageable) {
+        UUID currentUserId = currentUser.getUserId();
+        Page<Group> page;
+
+        page = groupRepository.findAllByIsActiveTrue(pageable);
 
         List<GroupResponse> content = page.getContent().stream()
                 .map(group -> GroupResponse.builder()

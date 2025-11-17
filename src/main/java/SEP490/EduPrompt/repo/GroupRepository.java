@@ -28,6 +28,9 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             Pageable pageable
     );
 
+    @Query("SELECT g FROM Group g WHERE g.isActive = true")
+    Page<Group> findAllByIsActiveTrue(Pageable pageable);
+
     @Query("SELECT g FROM Group g JOIN GroupMember gm ON g.id = gm.group.id " +
             "WHERE gm.user.id = :userId AND gm.status = :status AND g.isActive = true")
     List<Group> findByUserIdAndStatusAndIsActiveTrue(

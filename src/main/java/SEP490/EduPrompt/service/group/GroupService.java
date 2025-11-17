@@ -26,6 +26,8 @@ public interface GroupService {
 
     PageGroupResponse listMyGroups(UserPrincipal currentUser, Pageable pageable);
 
+    PageGroupResponse listAllGroups(UserPrincipal currentUser, Pageable pageable);
+
     UpdateGroupResponse addMembersToGroup(UUID id, AddGroupMembersRequest req, UserPrincipal currentUser);
 
     void removeMemberFromGroup(UUID id, RemoveGroupMemberRequest req, UserPrincipal currentUser);
