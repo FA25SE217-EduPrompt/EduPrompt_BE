@@ -154,11 +154,13 @@ public class GeminiClientServiceImpl implements GeminiClientService {
 
             boolean done = importFileOperation.done().isPresent() ? importFileOperation.done().get() : false;
 
+            String documentId = importFileOperation.response().isPresent()
+                    ? String.valueOf(importFileOperation.response().get().documentName()) : null; // it wont be null, since it's optional and done mean it has value
             ImportOperationResponse response = ImportOperationResponse.builder()
                     .operationName(operationName)
                     .done(done)
                     .status("completed")
-                    .documentId(String.valueOf(importFileOperation.name()))
+                    .documentId(documentId)
                     .build();
 
             if (response.done()) {
