@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.dto.response.schoolAdmin;
 
 import lombok.Builder;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -14,4 +15,5 @@ public record SchoolAdminTeacherResponse(
         boolean isActive,
         boolean isVerified,
         Instant createdAt
-) {}
+) {
+}

@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 import java.util.List;
-import java.util.UUID;
 
 @Builder
 public record CreateTagBatchRequest(
@@ -14,7 +13,8 @@ public record CreateTagBatchRequest(
         List<CreateTagRequest> tags
 ) {
     public record CreateTagRequest(
-            @NotBlank @Size(max = 50)  String type,
+            @NotBlank @Size(max = 50) String type,
             @NotBlank @Size(max = 100) String value
-    ) {}
+    ) {
+    }
 }

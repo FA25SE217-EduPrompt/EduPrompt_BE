@@ -210,7 +210,7 @@ public class AuthServiceImpl implements AuthService {
                 // Fallback to free if no active school subscription
                 setFreeTierQuota(userQuota);
             }
-        // set free tier if user not in a school
+            // set free tier if user not in a school
         } else {
             setFreeTierQuota(userQuota);
         }
@@ -588,6 +588,7 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * remember to save user quota after using this method
+     *
      * @param userQuota
      */
     private void setFreeTierQuota(UserQuota userQuota) {
@@ -609,7 +610,6 @@ public class AuthServiceImpl implements AuthService {
             userQuota.setCollectionActionLimit(subscriptionTier.getCollectionActionLimit());
             userQuota.setCollectionActionRemaining(subscriptionTier.getCollectionActionLimit());
             userQuota.setUpdatedAt(Instant.now());
-        }
-        else throw new ResourceNotFoundException("No free tier found");
+        } else throw new ResourceNotFoundException("No free tier found");
     }
 }

@@ -1,12 +1,13 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor

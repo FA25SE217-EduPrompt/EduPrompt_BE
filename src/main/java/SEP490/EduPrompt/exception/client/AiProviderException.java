@@ -12,6 +12,7 @@ public class AiProviderException extends BaseException {
     public AiProviderException(String message) {
         super(ExceptionCode.AI_PROVIDER_ERROR.name(), message, HttpStatus.SERVICE_UNAVAILABLE);
     }
+
     public AiProviderException(String message, Exception e) {
         super(ExceptionCode.AI_PROVIDER_ERROR.name(), List.of(message, e.getMessage()), HttpStatus.SERVICE_UNAVAILABLE);
     }

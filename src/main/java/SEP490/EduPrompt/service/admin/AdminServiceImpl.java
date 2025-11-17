@@ -10,7 +10,6 @@ import SEP490.EduPrompt.dto.response.RegisterResponse;
 import SEP490.EduPrompt.dto.response.school.CreateSchoolResponse;
 import SEP490.EduPrompt.dto.response.school.SchoolEmailResponse;
 import SEP490.EduPrompt.dto.response.school.SchoolWithEmailsResponse;
-import SEP490.EduPrompt.dto.response.schoolAdmin.BulkAssignTeachersResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolAdminTeacherResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolSubscriptionUsageResponse;
 import SEP490.EduPrompt.dto.response.systemAdmin.SchoolSubscriptionResponse;
@@ -24,7 +23,6 @@ import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
-import SEP490.EduPrompt.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,7 +32,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,6 +50,23 @@ public class AdminServiceImpl implements AdminService {
     private final UserRepository userRepo;
     private final UserAuthRepository userAuthRepo;
     private final SchoolEmailRepository schoolEmailRepo;
+
+    //============Helper============
+    private static Set<String> validateRole(BulkAssignTeachersRequest request, User admin) {
+        if (!Role.SCHOOL_ADMIN.name().equals(admin.getRole())) {
+            throw new AccessDeniedException("Only SCHOOL_ADMIN can assign teachers");
+        }
+        if (admin.getSchoolId() == null) {
+            throw new InvalidInputException("School admin has no school assigned");
+        }
+
+        List<String> emails = request.emails();
+        if (emails.size() > 50) {
+            throw new InvalidInputException("Maximum 50 emails allowed");
+        }
+
+        return new HashSet<>(emails);
+    }
 
     @Override
     @Transactional
@@ -88,8 +106,8 @@ public class AdminServiceImpl implements AdminService {
     public SchoolWithEmailsResponse addEmailsToSchool(UserPrincipal currentUser, SchoolEmailRequest request) {
         UUID schoolId = currentUser.getSchoolId();
 
-        if(!permissionService.isSchoolAdmin(currentUser)) {
-            throw new  AccessDeniedException("Only SCHOOL_ADMIN can add school emails");
+        if (!permissionService.isSchoolAdmin(currentUser)) {
+            throw new AccessDeniedException("Only SCHOOL_ADMIN can add school emails");
         }
 
         School school = schoolRepo.findById(schoolId)
@@ -282,23 +300,6 @@ public class AdminServiceImpl implements AdminService {
 
         userRepo.save(teacher);
         userQuotaRepo.save(quota);
-    }
-
-    //============Helper============
-    private static Set<String> validateRole(BulkAssignTeachersRequest request, User admin) {
-        if (!Role.SCHOOL_ADMIN.name().equals(admin.getRole())) {
-            throw new AccessDeniedException("Only SCHOOL_ADMIN can assign teachers");
-        }
-        if (admin.getSchoolId() == null) {
-            throw new InvalidInputException("School admin has no school assigned");
-        }
-
-        List<String> emails = request.emails();
-        if (emails.size() > 50) {
-            throw new InvalidInputException("Maximum 50 emails allowed");
-        }
-
-        return new HashSet<>(emails);
     }
 
     private SchoolSubscriptionResponse toSubscriptionResponse(SchoolSubscription sub) {

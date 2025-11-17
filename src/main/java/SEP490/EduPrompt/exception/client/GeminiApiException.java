@@ -12,6 +12,7 @@ public class GeminiApiException extends BaseException {
     public GeminiApiException(String message) {
         super(ExceptionCode.AI_PROVIDER_ERROR.name(), message, HttpStatus.SERVICE_UNAVAILABLE);
     }
+
     public GeminiApiException(String message, Exception e) {
         super(ExceptionCode.AI_PROVIDER_ERROR.name(), List.of(message, e.getMessage()), HttpStatus.SERVICE_UNAVAILABLE);
     }
