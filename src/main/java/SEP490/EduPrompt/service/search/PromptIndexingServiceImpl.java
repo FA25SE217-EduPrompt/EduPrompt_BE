@@ -7,8 +7,10 @@ import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.client.GeminiApiException;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.repo.PromptRepository;
+import com.google.genai.errors.ClientException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +27,10 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
     private static final int BATCH_DELAY_MS = 1000;
     private static final int MAX_RETRIES = 3;
     private final PromptRepository promptRepository;
-    private final GeminiClientService geminiClientService;
+    private final com.eduprompt.service.GeminiClientService geminiClientService;
+
+    @Value("${gemini.file-search-store}")
+    private String fileSearchStoreName;
 
     @Override
     @Transactional
@@ -43,7 +48,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
 
         try {
             // Upload to Gemini
-            FileUploadResponse uploadResponse = geminiClientService.uploadPromptToFileSearch(prompt);
+            FileUploadResponse uploadResponse = geminiClientService.uploadToFileSearchStore(fileSearchStoreName, prompt);
 
             //i should create a separate method to upload file
 //            // Wait for file to be processed (with timeout)
@@ -55,18 +60,19 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
 //            }
 
             // Update prompt with file ID
-            prompt.setGeminiFileId(uploadResponse.fileId());
+            prompt.setGeminiFileId(uploadResponse.operationId()); //it should be document id, yet since the response from gemini is async, the document id within that time will be null, i've tested this
+            // check this id format to verify its status , using polling method to check
             prompt.setLastIndexedAt(Instant.now());
             prompt.setIndexingStatus("indexed");
             promptRepository.save(prompt);
 
             log.info("Successfully indexed prompt: {} with file ID: {}",
-                    promptId, uploadResponse.fileId());
+                    promptId, uploadResponse.documentId());
 
             return IndexingResult.builder()
                     .promptId(promptId)
                     .status("success")
-                    .fileId(uploadResponse.fileId())
+                    .documentId(uploadResponse.documentId())
                     .build();
 
         } catch (GeminiApiException e) {
@@ -81,7 +87,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
                     .errorMessage("Gemini API error: " + e.getMessage())
                     .build();
 
-        } catch (Exception e) {
+        } catch (ClientException e) {
             log.error("Unexpected error indexing prompt: {}", promptId, e);
 
             prompt.setIndexingStatus("failed");
@@ -105,7 +111,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
 
         if (prompt.getGeminiFileId() != null) {
             try {
-                geminiClientService.deleteFile(prompt.getGeminiFileId());
+                geminiClientService.deleteDocument(prompt.getGeminiFileId());
                 log.info("Deleted old file {} for prompt {}",
                         prompt.getGeminiFileId(), promptId);
             } catch (Exception e) {
@@ -126,7 +132,6 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
     public List<IndexingResult> indexAllPendingPrompts() {
         log.info("Starting batch indexing of pending prompts");
 
-        // Find all prompts that need indexing
         List<Prompt> pendingPrompts = promptRepository.findByIndexingStatusAndIsDeleted("pending", false);
 
         log.info("Found {} prompts to index", pendingPrompts.size());
@@ -186,7 +191,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
 
         if (prompt.getGeminiFileId() != null) {
             try {
-                geminiClientService.deleteFile(prompt.getGeminiFileId());
+                geminiClientService.deleteDocument(prompt.getGeminiFileId());
 
                 prompt.setGeminiFileId(null);
                 prompt.setIndexingStatus("pending");
