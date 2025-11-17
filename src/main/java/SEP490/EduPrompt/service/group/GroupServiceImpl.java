@@ -17,6 +17,7 @@ import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.Group;
 import SEP490.EduPrompt.model.GroupMember;
+import SEP490.EduPrompt.model.School;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.GroupMemberRepository;
 import SEP490.EduPrompt.repo.GroupRepository;
@@ -117,19 +118,19 @@ public class GroupServiceImpl implements GroupService {
         }
 
 //        // SCHOOL_ADMIN and TEACHER must belong to a school
-//        UUID schoolId = currentUser.getSchoolId();
+        UUID schoolId = currentUser.getSchoolId();
 //        if (schoolId == null && !Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
 //            throw new AccessDeniedException("You must be associated with a school to create a group");
 //        }
-//        School school = null;
-//        if (schoolId != null) {
-//            school = schoolRepository.findById(schoolId)
-//                    .orElseThrow(() -> new ResourceNotFoundException("School not found"));
-//        }
+        School school = null;
+        if (schoolId != null) {
+            school = schoolRepository.findById(schoolId)
+                    .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        }
 
         Group group = Group.builder()
                 .name(req.name())
-                .school(null)
+                .school(school)
                 .createdBy(creator)
                 .updatedBy(creator)
                 .isActive(true)
@@ -409,6 +410,7 @@ public class GroupServiceImpl implements GroupService {
 
         List<GroupResponse> content = page.getContent().stream()
                 .map(group -> GroupResponse.builder()
+                        .id(group.getId())
                         .name(group.getName())
                         .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
                         .isActive(group.getIsActive())
@@ -434,6 +436,7 @@ public class GroupServiceImpl implements GroupService {
 
         List<GroupResponse> content = page.getContent().stream()
                 .map(group -> GroupResponse.builder()
+                        .id(group.getId())
                         .name(group.getName())
                         .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
                         .isActive(group.getIsActive())
