@@ -6,18 +6,18 @@ INSERT INTO tags (id, type, value) VALUES
 
 -- Seed data for type = 'subject' with all high school subjects (Vietnam's 2018 General Education Program)
 INSERT INTO tags (id, type, value) VALUES
-(gen_random_uuid(), 'môn', 'Toán học'),
-(gen_random_uuid(), 'môn', 'Ngữ văn'),
-(gen_random_uuid(), 'môn', 'Vật lý'),
-(gen_random_uuid(), 'môn', 'Hóa học'),
-(gen_random_uuid(), 'môn', 'Sinh học'),
-(gen_random_uuid(), 'môn', 'Lịch sử'),
-(gen_random_uuid(), 'môn', 'Địa lý'),
-(gen_random_uuid(), 'môn', 'Giáo dục công dân'),
-(gen_random_uuid(), 'môn', 'Tin học'),
-(gen_random_uuid(), 'môn', 'Công nghệ'),
-(gen_random_uuid(), 'môn', 'Tiếng Anh'),
-(gen_random_uuid(), 'môn', 'Giáo dục thể chất'),
-(gen_random_uuid(), 'môn', 'Giáo dục quốc phòng và an ninh'),
-(gen_random_uuid(), 'môn', 'Âm nhạc'),
-(gen_random_uuid(), 'môn', 'Mỹ thuật');
+(gen_random_uuid(), 'môn', 'toán học'),
+(gen_random_uuid(), 'môn', 'ngữ văn'),
+(gen_random_uuid(), 'môn', 'vật lý'),
+(gen_random_uuid(), 'môn', 'hóa học'),
+(gen_random_uuid(), 'môn', 'sinh học'),
+(gen_random_uuid(), 'môn', 'lịch sử'),
+(gen_random_uuid(), 'môn', 'địa lý'),
+(gen_random_uuid(), 'môn', 'giáo dục công dân'),
+(gen_random_uuid(), 'môn', 'tin học'),
+(gen_random_uuid(), 'môn', 'công nghệ'),
+(gen_random_uuid(), 'môn', 'tiếng Anh'),
+(gen_random_uuid(), 'môn', 'giáo dục thể chất'),
+(gen_random_uuid(), 'môn', 'giáo dục quốc phòng và an ninh'),
+(gen_random_uuid(), 'môn', 'âm nhạc'),
+(gen_random_uuid(), 'môn', 'mỹ thuật');

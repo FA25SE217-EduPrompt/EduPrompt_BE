@@ -1,6 +1,6 @@
 -- INSERT 10 PROMPT VẬT LÝ 10
-WITH grade_tag AS (SELECT id FROM tags WHERE type = 'grade' AND value = '10'),
-subject_tag AS (SELECT id FROM tags WHERE type = 'subject' AND value = 'Vật lý'),
+WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
+subject_tag AS (SELECT id FROM tags WHERE type = 'môn' AND value = 'vật lý'),
 inserted_prompts AS (
     INSERT INTO prompts (
         id, user_id, created_by, updated_by,

@@ -3,10 +3,10 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Lấy ID của tag grade:10 và subject:Toán học
 WITH grade_tag AS (
-    SELECT id FROM tags WHERE type = 'grade' AND value = '10'
+    SELECT id FROM tags WHERE type = 'khối' AND value = '10'
 ),
      subject_tag AS (
-         SELECT id FROM tags WHERE type = 'subject' AND value = 'Toán học'
+         SELECT id FROM tags WHERE type = 'môn' AND value = 'toán học'
      ),
 
 -- INSERT 10 PROMPT GIÁO ÁN
