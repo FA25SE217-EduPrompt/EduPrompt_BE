@@ -85,4 +85,27 @@ public class GroupController {
         log.info("Retrieving group {} by user: {}", groupId, currentUser.getUserId());
         return ResponseDto.success(groupService.getGroupById(groupId, currentUser));
     }
+
+    @GetMapping("/my-group")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SYSTEM_ADMIN', 'TEACHER')")
+    public ResponseDto<?> getMyGroup(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Retrieving my group by user: {}", currentUser.getUserId());
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(groupService.listMyGroups(currentUser, pageable));
+    }
+
+    @GetMapping("/all-group")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SYSTEM_ADMIN', 'TEACHER')")
+    public ResponseDto<?> getAllGroups(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        log.info("Retrieving all group by user: {}", currentUser.getUserId());
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(groupService.listAllGroups(currentUser, pageable));
+    }
 }
