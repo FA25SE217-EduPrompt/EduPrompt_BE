@@ -1,5 +1,4 @@
-package com.eduprompt.service;
-
+package SEP490.EduPrompt.service.search;
 
 import SEP490.EduPrompt.dto.response.search.FileSearchStoreResponse;
 import SEP490.EduPrompt.dto.response.search.FileUploadResponse;
@@ -10,7 +9,6 @@ import com.google.genai.types.Document;
 
 /**
  * Service for interacting with Gemini File Search API
- * Using File Search Store (not the legacy Corpus API)
  */
 public interface GeminiClientService {
 

@@ -8,7 +8,6 @@ import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.PromptTag;
 import SEP490.EduPrompt.model.Tag;
 import SEP490.EduPrompt.repo.PromptTagRepository;
-import com.eduprompt.service.GeminiClientService;
 import com.google.genai.Client;
 import com.google.genai.Pager;
 import com.google.genai.errors.ClientException;
@@ -19,8 +18,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
