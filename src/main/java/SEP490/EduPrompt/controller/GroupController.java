@@ -108,4 +108,15 @@ public class GroupController {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(groupService.listAllGroups(currentUser, pageable));
     }
+
+    @DeleteMapping("/{groupId}")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SYSTEM_ADMIN', 'TEACHER')")
+    public ResponseDto<?> softDeleteGroup(
+            @PathVariable UUID groupId,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        log.info("Deleting group {} by user: {}", groupId, currentUser.getUserId());
+        groupService.softDeleteGroup(groupId, currentUser);
+        return ResponseDto.success("Group deleted successfully");
+    }
 }
