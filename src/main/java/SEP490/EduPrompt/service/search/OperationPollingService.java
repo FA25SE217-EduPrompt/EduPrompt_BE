@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -147,10 +148,10 @@ public class OperationPollingService {
      * Useful for testing or admin operations
      */
     @Transactional
-    public void pollOperationForPrompt(String promptId) {
-        Prompt prompt = promptRepository.findById(java.util.UUID.fromString(promptId))
+    public boolean pollOperationForPrompt(UUID promptId) {
+        Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
 
-        checkAndUpdateOperationStatus(prompt);
+        return checkAndUpdateOperationStatus(prompt);
     }
 }

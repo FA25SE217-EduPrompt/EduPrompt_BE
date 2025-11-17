@@ -2,6 +2,7 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.search.IndexingResult;
+import SEP490.EduPrompt.service.search.OperationPollingService;
 import SEP490.EduPrompt.service.search.PromptIndexingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class PromptIndexingController {
 
     private final PromptIndexingService promptIndexingService;
+    private final OperationPollingService operationPollingService;
 
     /**
      * Index a single prompt
@@ -80,5 +82,39 @@ public class PromptIndexingController {
         promptIndexingService.removeFromIndex(promptId);
 
         return ResponseDto.success(null);
+    }
+
+    /**
+     * Manually trigger polling for a specific prompt
+     * for immediate results
+     * POST /api/v1/admin/indexing/prompt/{promptId}/poll
+     */
+    @PostMapping("/prompt/{promptId}/poll")
+    public ResponseDto<String> pollPromptOperation(
+            @PathVariable UUID promptId) {
+
+        log.info("Received request to poll operation for prompt: {}", promptId);
+
+        boolean completed = operationPollingService.pollOperationForPrompt(promptId);
+
+        String message = completed
+                ? "Operation completed and prompt indexed successfully"
+                : "Operation still processing, check again later";
+
+        return ResponseDto.success(message);
+    }
+
+    /**
+     * Manually trigger polling for all pending operations
+     * POST /api/v1/admin/indexing/poll-all
+     */
+    @PostMapping("/poll-all")
+    public ResponseDto<String> pollAllPendingOperations() {
+
+        log.info("Received request to poll all pending operations");
+
+        operationPollingService.pollPendingOperations();
+
+        return ResponseDto.success("Polling completed. Check logs for results.");
     }
 }
