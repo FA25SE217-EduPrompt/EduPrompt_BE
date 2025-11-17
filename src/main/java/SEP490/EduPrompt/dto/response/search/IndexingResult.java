@@ -8,7 +8,7 @@ import java.util.UUID;
 public record IndexingResult(
         UUID promptId,
         String status, // success, failed, skipped
-        String fileId,
+        String documentId,
         String errorMessage
 ) {
 }
