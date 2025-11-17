@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -69,7 +70,10 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Uploading prompt {} to File Search Store {}", prompt.getId(), fileSearchStoreId);
 
             String content = buildPromptContent(prompt);
-            InputStream contentStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+            byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+            int size = bytes.length;
+            InputStream contentStream = new ByteArrayInputStream(bytes);
+
 
             String displayName = "prompt_" + prompt.getId();
 
@@ -78,7 +82,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                     .mimeType("text/plain")
                     .build();
 
-            File newFile = genAiClient.files.upload(contentStream, 0, uploadFileConfig);
+            File newFile = genAiClient.files.upload(contentStream, size, uploadFileConfig);
 
             log.info("Uploaded new file : {}", newFile);
 
