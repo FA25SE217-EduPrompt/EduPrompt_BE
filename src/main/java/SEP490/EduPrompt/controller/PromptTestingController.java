@@ -33,9 +33,9 @@ public class PromptTestingController {
      * Test a prompt with AI model and get results immediately.
      * Supports idempotency to prevent duplicate requests.
      *
-     * @param request Contains promptId, aiModel, inputText, temperature, maxTokens, topP
+     * @param request        Contains promptId, aiModel, inputText, temperature, maxTokens, topP
      * @param idempotencyKey Optional UUID to prevent duplicate processing on retry
-     * @param currentUser Authenticated user
+     * @param currentUser    Authenticated user
      * @return PromptTestResponse with output, tokens used, execution time
      */
     @PostMapping
@@ -49,7 +49,7 @@ public class PromptTestingController {
                 currentUser.getUserId(), request.promptId(), idempotencyKey);
 
         // generate idempotency key if not provided
-        String effectiveKey = idempotencyKey != null ? idempotencyKey : UUID.randomUUID().toString();
+        String effectiveKey = idempotencyKey != null ? idempotencyKey : String.valueOf(request.promptId());
 
         PromptTestResponse response = promptTestingService.testPrompt(
                 currentUser.getUserId(),
@@ -100,8 +100,8 @@ public class PromptTestingController {
      * GET /api/prompts/test/history
      * Get paginated test history for the current user.
      *
-     * @param page Page number (0-indexed)
-     * @param size Page size (default 20)
+     * @param page        Page number (0-indexed)
+     * @param size        Page size (default 20)
      * @param currentUser Authenticated user
      * @return Paginated list of user's test history
      */
@@ -128,9 +128,9 @@ public class PromptTestingController {
      * GET /api/prompts/test/prompt/{promptId}/history
      * Get paginated test history for a specific prompt by the current user.
      *
-     * @param promptId UUID of the prompt
-     * @param page Page number (0-indexed)
-     * @param size Page size (default 20)
+     * @param promptId    UUID of the prompt
+     * @param page        Page number (0-indexed)
+     * @param size        Page size (default 20)
      * @param currentUser Authenticated user
      * @return Paginated list of test history for this prompt
      */
@@ -160,7 +160,7 @@ public class PromptTestingController {
      * Delete a specific test usage record (soft delete).
      * Only the owner can delete their test results.
      *
-     * @param usageId UUID of the usage record to delete
+     * @param usageId     UUID of the usage record to delete
      * @param currentUser Authenticated user
      * @return Success message
      */
