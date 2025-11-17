@@ -41,6 +41,8 @@ public class PromptViewLog {
     private Instant createdAt;
 
     @PrePersist
-    public void onCreate() { createdAt = Instant.now(); }
+    public void onCreate() {
+        createdAt = Instant.now();
+    }
 
 }

@@ -1,5 +1,3 @@
-
-
 package SEP490.EduPrompt.service.ai;
 
 import SEP490.EduPrompt.dto.response.prompt.ClientPromptResponse;

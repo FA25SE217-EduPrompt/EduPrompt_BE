@@ -17,4 +17,5 @@ public record SchoolSubscriptionUsageResponse(
         Instant quotaResetDate,
         boolean isActive,
         int teacherCount
-) {}
+) {
+}

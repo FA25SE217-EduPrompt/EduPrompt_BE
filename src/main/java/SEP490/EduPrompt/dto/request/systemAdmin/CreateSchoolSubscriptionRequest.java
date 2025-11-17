@@ -1,8 +1,6 @@
 package SEP490.EduPrompt.dto.request.systemAdmin;
 
-import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
-import java.util.UUID;
 
 public record CreateSchoolSubscriptionRequest(
         Integer schoolTokenPool,
@@ -10,4 +8,5 @@ public record CreateSchoolSubscriptionRequest(
         Instant quotaResetDate,
         Instant startDate,
         Instant endDate
-) {}
+) {
+}

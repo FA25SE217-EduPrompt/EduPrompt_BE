@@ -4,7 +4,6 @@ import SEP490.EduPrompt.model.User;
 import lombok.Builder;
 
 import java.util.List;
-import java.util.UUID;
 
 @Builder
 public record BulkAssignTeachersResponse(
@@ -13,4 +12,5 @@ public record BulkAssignTeachersResponse(
         int createdCount,                     // → always 0
         List<String> skipped,                 // → with reasons
         List<String> newlyAddedEmails         // → useful for frontend
-) {}
+) {
+}
