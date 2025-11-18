@@ -50,15 +50,6 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
             // Upload to Gemini
             FileUploadResponse uploadResponse = geminiClientService.uploadToFileSearchStore(fileSearchStoreName, prompt);
 
-            //i should create a separate method to upload file
-//            // Wait for file to be processed (with timeout)
-//            boolean isReady = waitForFileProcessing(uploadResponse.fileId(), 30);
-//
-//            if (!isReady) {
-//                log.warn("File {} not ready after timeout, but marking as indexed",
-//                        uploadResponse.fileId());
-//            }
-
             // Update prompt with file ID
             prompt.setGeminiFileId(uploadResponse.operationId()); //it should be document id, yet since the response from gemini is async, the document id within that time will be null, i've tested this
             // check this id format to verify its status , using polling method to check
