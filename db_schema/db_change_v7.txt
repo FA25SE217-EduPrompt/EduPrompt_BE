@@ -1,0 +1,21 @@
+-- ------------------------------------------------------------
+-- 1. Add the new limit columns
+-- ------------------------------------------------------------
+ALTER TABLE subscription_tiers
+    ADD COLUMN IF NOT EXISTS prompt_unlock_limit      INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS prompt_action_limit      INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS collection_action_limit  INTEGER NOT NULL DEFAULT 0;
+
+-- ------------------------------------------------------------
+-- 2. Add the new limit/remaining columns for userQuota
+-- ------------------------------------------------------------
+
+ALTER TABLE user_quota
+    ADD COLUMN IF NOT EXISTS prompt_unlock_remaining      INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS prompt_unlock_limit          INTEGER NOT NULL DEFAULT 0,
+
+    ADD COLUMN IF NOT EXISTS prompt_action_remaining      INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS prompt_action_limit          INTEGER NOT NULL DEFAULT 0,
+
+    ADD COLUMN IF NOT EXISTS collection_action_remaining  INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS collection_action_limit      INTEGER NOT NULL DEFAULT 0;

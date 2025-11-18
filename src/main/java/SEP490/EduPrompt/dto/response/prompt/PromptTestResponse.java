@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.dto.response.prompt;
 
 import SEP490.EduPrompt.enums.AiModel;
+import SEP490.EduPrompt.enums.QueueStatus;
 import lombok.Builder;
 
 import java.time.Instant;
@@ -18,6 +19,7 @@ public record PromptTestResponse(
         Double temperature,
         Integer maxTokens,
         Double topP,
+        QueueStatus status,
         Instant createdAt
 ) {
 }

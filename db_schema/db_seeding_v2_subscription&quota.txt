@@ -1,0 +1,43 @@
+-- update all current user to free tier
+WITH free_tier AS (
+    SELECT id FROM subscription_tiers WHERE name = 'Free' LIMIT 1
+)
+
+UPDATE users
+SET subscription_tier_id = (SELECT id FROM free_tier)
+WHERE subscription_tier_id IS NULL;
+
+-- create matching user_quota following their tier
+INSERT INTO user_quota (
+    id,
+    user_id,
+    subscription_tier_id,
+    individual_token_remaining,
+    individual_token_limit,
+    testing_quota_remaining,
+    testing_quota_limit,
+    optimization_quota_remaining,
+    optimization_quota_limit,
+    quota_reset_date,
+    created_at,
+    updated_at
+)
+SELECT
+    gen_random_uuid(),
+    u.id,
+    st.id,
+    st.individual_token_limit,
+    st.individual_token_limit,
+    st.testing_quota_limit,
+    st.testing_quota_limit,
+    st.optimization_quota_limit,
+    st.optimization_quota_limit,
+    now(),
+    now(),
+    now()
+FROM users u
+JOIN subscription_tiers st ON st.name = 'Free'
+WHERE NOT EXISTS (
+    SELECT 1 FROM user_quota q WHERE q.user_id = u.id
+);
+

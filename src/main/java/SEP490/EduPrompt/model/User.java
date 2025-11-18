@@ -28,7 +28,7 @@ public class User {
     private SubscriptionTier subscriptionTier;
 
     @Column(name = "subscription_tier_id", insertable = false, updatable = false)
-    private String subscriptionTierId;
+    private UUID subscriptionTierId;
 
     @Column(name = "school_id")
     private UUID schoolId;

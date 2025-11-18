@@ -1,11 +1,12 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
-import java.util.UUID;
+import java.util.*;
 
 @Builder
 @AllArgsConstructor
@@ -42,4 +43,8 @@ public class School {
     @ColumnDefault("now()")
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @OneToMany(mappedBy = "school")
+    private Set<SchoolEmail> schoolEmails = new LinkedHashSet<>();
+
 }

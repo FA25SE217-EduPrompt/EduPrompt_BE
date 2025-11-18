@@ -2,14 +2,18 @@ package SEP490.EduPrompt.dto.request.prompt;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.UUID;
 
 @Getter
 @Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class UpdatePromptVisibilityRequest {
     @NotBlank(message = "Visibility must not be blank")

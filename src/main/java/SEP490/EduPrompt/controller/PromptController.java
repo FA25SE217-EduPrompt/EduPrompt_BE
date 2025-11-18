@@ -5,6 +5,7 @@ import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PromptViewLogResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.prompt.PromptService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -166,4 +167,26 @@ public class PromptController {
         return ResponseDto.success(response);
     }
 
+    @PostMapping("/prompt-view-log/new")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "this endpoint for creating a new prompt view log, if prompt view log has existed then only get not create")
+    public ResponseDto<PromptViewLogResponse> logView(
+            @Valid @RequestBody CreatePromptViewLogRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        PromptViewLogResponse response = promptService.logPromptView(principal, request);
+
+        return ResponseDto.success(response);
+    }
+
+    @GetMapping("/{promptId}/viewed")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "this endpoint for checking if the user has view this prompt before or not")
+    public ResponseDto<Boolean> hasViewed(
+            @PathVariable UUID promptId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        boolean viewed = promptService.hasUserViewedPrompt(principal, promptId);
+        return ResponseDto.success(viewed);
+    }
 }

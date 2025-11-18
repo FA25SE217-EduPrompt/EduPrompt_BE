@@ -25,4 +25,11 @@ public class QuotaController {
         UserQuotaResponse result = quotaService.getUserQuota(userId);
         return ResponseDto.success(result);
     }
+
+    //this endpoint should be called by system admin only, yet just leave it like this for testing
+    @GetMapping("/sync-user-quota/{userId}")
+    public ResponseDto<String> syncUserQuota(@PathVariable UUID userId) {
+        quotaService.syncUserQuotaWithSubscriptionTier(userId);
+        return ResponseDto.success("sync user quota completed");
+    }
 }

@@ -53,4 +53,6 @@ public interface PermissionService {
 
     boolean canAccessPrompt(Prompt prompt, UserPrincipal currentUser);
 
+    void validatePromptAccess(Prompt prompt, UserPrincipal currentUser);
+
 }

@@ -1,10 +1,12 @@
 package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.school.CreateSchoolRequest;
+import SEP490.EduPrompt.dto.request.school.SchoolEmailRequest;
 import SEP490.EduPrompt.dto.request.schoolAdmin.BulkAssignTeachersRequest;
 import SEP490.EduPrompt.dto.request.schoolAdmin.RemoveTeacherFromSchoolRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.school.CreateSchoolResponse;
+import SEP490.EduPrompt.dto.response.school.SchoolWithEmailsResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.BulkAssignTeachersResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolAdminTeacherResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolSubscriptionUsageResponse;
@@ -19,6 +21,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/school-admin")
@@ -27,17 +32,17 @@ public class SchoolAdminController {
 
     private final AdminService adminService;
 
-    @PostMapping("/teachers/bulk-assign")
-    @PreAuthorize("hasRole('SCHOOL_ADMIN')")
-    public ResponseDto<BulkAssignTeachersResponse> bulkAssignTeachers(
-            @AuthenticationPrincipal UserPrincipal principal,
-            @Valid @RequestBody BulkAssignTeachersRequest request) {
-
-        return ResponseDto.success(adminService.bulkAssignTeachersToSchool(principal.getUserId(), request));
+    @PostMapping("/{schoolId}/new-email")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseDto<?> addEmails(
+            @Valid @RequestBody SchoolEmailRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        adminService.addEmailsToSchool(principal, request);
+        return ResponseDto.success("Successfully added emails");
     }
 
     @PostMapping("/schools")
-    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN')")
     public ResponseDto<CreateSchoolResponse> createSchool(@Valid @RequestBody CreateSchoolRequest request) {
         CreateSchoolResponse response = adminService.createSchool(request);
         return ResponseDto.success(response);

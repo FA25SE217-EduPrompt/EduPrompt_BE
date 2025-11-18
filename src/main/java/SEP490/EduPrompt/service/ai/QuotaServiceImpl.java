@@ -57,7 +57,7 @@ public class QuotaServiceImpl implements QuotaService {
     @Override
     public void validateQuota(UUID userId, QuotaType quotaType, int estimatedTokens) {
         UserQuota userQuota = userQuotaRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User quota not found"));
 
         String schoolSubId = userQuota.getSchoolSubscriptionId();
         if (schoolSubId != null) {
@@ -80,12 +80,14 @@ public class QuotaServiceImpl implements QuotaService {
             switch (quotaType) {
                 case TEST -> {
                     int testQuota = userQuota.getTestingQuotaRemaining();
-                    if (testQuota < 1) throw new QuotaExceededException(QuotaType.TEST, userQuota.getQuotaResetDate(), testQuota);
+                    if (testQuota < 1)
+                        throw new QuotaExceededException(QuotaType.TEST, userQuota.getQuotaResetDate(), testQuota);
                 }
 
                 case OPTIMIZATION -> {
                     int optQuota = userQuota.getOptimizationQuotaRemaining();
-                    if (optQuota < 1) throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(), optQuota);
+                    if (optQuota < 1)
+                        throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(), optQuota);
                 }
 
                 default -> throw new InvalidInputException("Unknown quota type");
@@ -97,7 +99,7 @@ public class QuotaServiceImpl implements QuotaService {
     @Transactional
     public void decrementQuota(UUID userId, QuotaType quotaType, int actualTokensUsed) {
         UserQuota userQuota = userQuotaRepository.findByUserIdWithLock(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User quota not found"));
 
         if (userQuota.getSchoolSubscriptionId() != null) {
             SchoolSubscription schoolSub = userQuota.getSchoolSubscription();
@@ -117,12 +119,14 @@ public class QuotaServiceImpl implements QuotaService {
             switch (quotaType) {
                 case TEST -> {
                     int testQuota = userQuota.getTestingQuotaRemaining();
-                    if (testQuota < 1) throw new QuotaExceededException(QuotaType.TEST, userQuota.getQuotaResetDate(), testQuota);
+                    if (testQuota < 1)
+                        throw new QuotaExceededException(QuotaType.TEST, userQuota.getQuotaResetDate(), testQuota);
                     userQuota.setTestingQuotaRemaining(testQuota - 1);
                 }
                 case OPTIMIZATION -> {
                     int optQuota = userQuota.getOptimizationQuotaRemaining();
-                    if (optQuota < 1) throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(), optQuota);
+                    if (optQuota < 1)
+                        throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(), optQuota);
                     userQuota.setOptimizationQuotaRemaining(optQuota - 1);
                 }
                 default -> throw new InvalidInputException("Unknown quota type");
@@ -168,7 +172,7 @@ public class QuotaServiceImpl implements QuotaService {
                 throw new QuotaExceededException(
                         QuotaType.INDIVIDUAL,
                         userQuota.getQuotaResetDate(),
-                        userQuota.getOptimizationQuotaRemaining()
+                        userQuota.getIndividualTokenRemaining()
                 );
             }
 
@@ -226,11 +230,14 @@ public class QuotaServiceImpl implements QuotaService {
 
     @Override
     @Transactional
-    public void syncUserQuotaWithSubscriptionTier(UUID userId, UUID subscriptionTierId) {
-        log.info("Syncing quota for user: {} with subscription: {}", userId, subscriptionTierId);
+    public void syncUserQuotaWithSubscriptionTier(UUID userId) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + userId));
+
+        UUID subscriptionTierId = user.getSubscriptionTierId();
+
+        log.info("Syncing quota for user: {} with subscription: {}", userId, subscriptionTierId);
 
         SubscriptionTier tier = subscriptionTierRepository.findById(subscriptionTierId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subscription tier not found with id : " + subscriptionTierId));
@@ -246,6 +253,7 @@ public class QuotaServiceImpl implements QuotaService {
         UserQuota updatedQuota = UserQuota.builder()
                 .id(userQuota.getId())
                 .userId(userId)
+                .user(user)
                 .subscriptionTier(tier)
                 .individualTokenLimit(tier.getIndividualTokenLimit())
                 .individualTokenRemaining(tier.getIndividualTokenLimit())
@@ -268,7 +276,7 @@ public class QuotaServiceImpl implements QuotaService {
         log.info("Refunding {} tokens for user: {}", tokensToRefund, userId);
 
         UserQuota userQuota = userQuotaRepository.findByUserIdWithLock(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User quota not found"));
 
         if (userQuota.getSchoolSubscriptionId() != null) {
             SchoolSubscription schoolSub = userQuota.getSchoolSubscription();

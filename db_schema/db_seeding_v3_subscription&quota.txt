@@ -1,0 +1,62 @@
+-- ------------------------------------------------------------
+-- Seed the new limit columns for the existing tiers
+-- ------------------------------------------------------------
+
+-- Free tier – very limited actions
+UPDATE subscription_tiers
+SET
+    prompt_unlock_limit      = 15,
+    prompt_action_limit      = 50,
+    collection_action_limit  = 10
+WHERE name = 'Free';
+
+-- Pro tier – generous but still capped
+UPDATE subscription_tiers
+SET
+    prompt_unlock_limit      = 100,
+    prompt_action_limit      = 2_000,
+    collection_action_limit  = 200
+WHERE name = 'Pro';
+
+-- Premium tier – essentially unlimited for most use-cases
+UPDATE subscription_tiers
+SET
+    prompt_unlock_limit      = 1_000,
+    prompt_action_limit      = 50_000,
+    collection_action_limit  = 5_000
+WHERE name = 'Premium';
+
+-- ------------------------------------------------------------
+-- Seed ONLY the new limit/remaining fields in user_quota
+-- ------------------------------------------------------------
+
+WITH tier_limits AS (
+    SELECT
+        id AS tier_id,
+        prompt_unlock_limit,
+        prompt_action_limit,
+        collection_action_limit
+    FROM subscription_tiers
+    WHERE name IN ('Free', 'Pro', 'Premium')
+)
+
+UPDATE user_quota uq
+SET
+    -- Set limits from the tier
+    prompt_unlock_limit      = tl.prompt_unlock_limit,
+    prompt_action_limit      = tl.prompt_action_limit,
+    collection_action_limit  = tl.collection_action_limit,
+
+    -- Initialize remaining = limit (full quota at start)
+    prompt_unlock_remaining      = tl.prompt_unlock_limit,
+    prompt_action_remaining      = tl.prompt_action_limit,
+    collection_action_remaining  = tl.collection_action_limit,
+
+    updated_at = NOW()
+FROM tier_limits tl
+WHERE uq.subscription_tier_id = tl.tier_id
+  AND (
+    uq.prompt_unlock_limit IS DISTINCT FROM tl.prompt_unlock_limit OR
+    uq.prompt_action_limit IS DISTINCT FROM tl.prompt_action_limit OR
+    uq.collection_action_limit IS DISTINCT FROM tl.collection_action_limit
+  );

@@ -1,8 +1,10 @@
 package SEP490.EduPrompt.config;
 
+import SEP490.EduPrompt.service.ai.QueueEventListener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +13,9 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -19,7 +24,12 @@ import java.time.Duration;
 
 @Configuration
 @EnableCaching
+@Slf4j
 public class RedisConfig {
+
+    public static final String OPTIMIZATION_QUEUE_TOPIC = "queue:optimization";
+    public static final String TEST_QUEUE_TOPIC = "queue:test";
+
 
     @Bean
     public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory connectionFactory) {
@@ -55,4 +65,53 @@ public class RedisConfig {
                 .cacheDefaults(config)
                 .build();
     }
+
+    /**
+     * Container for Redis message listeners
+     */
+    @Bean
+    public RedisMessageListenerContainer redisMessageListenerContainer(
+            RedisConnectionFactory connectionFactory,
+            MessageListenerAdapter optimizationListenerAdapter,
+            MessageListenerAdapter testListenerAdapter) {
+
+        log.info("Initializing Redis message listener container");
+
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+
+        // Register optimization queue listener
+        container.addMessageListener(
+                optimizationListenerAdapter,
+                new ChannelTopic(OPTIMIZATION_QUEUE_TOPIC)
+        );
+
+        // Register test queue listener
+        container.addMessageListener(
+                testListenerAdapter,
+                new ChannelTopic(TEST_QUEUE_TOPIC)
+        );
+
+        log.info("Redis listeners registered for topics: {}, {}",
+                OPTIMIZATION_QUEUE_TOPIC, TEST_QUEUE_TOPIC);
+
+        return container;
+    }
+
+    /**
+     * Adapter for optimization queue messages
+     */
+    @Bean
+    public MessageListenerAdapter optimizationListenerAdapter(QueueEventListener listener) {
+        return new MessageListenerAdapter(listener, "onOptimizationQueued");
+    }
+
+    /**
+     * Adapter for test queue messages
+     */
+    @Bean
+    public MessageListenerAdapter testListenerAdapter(QueueEventListener listener) {
+        return new MessageListenerAdapter(listener, "onTestQueued");
+    }
 }
+

@@ -80,9 +80,40 @@ public class UserQuota {
     @Column(name = "individual_token_limit", nullable = false)
     private Integer individualTokenLimit;
 
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "prompt_unlock_remaining", nullable = false)
+    private Integer promptUnlockRemaining;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "prompt_unlock_limit", nullable = false)
+    private Integer promptUnlockLimit;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "prompt_action_remaining", nullable = false)
+    private Integer promptActionRemaining;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "prompt_action_limit", nullable = false)
+    private Integer promptActionLimit;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "collection_action_remaining", nullable = false)
+    private Integer collectionActionRemaining;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "collection_action_limit", nullable = false)
+    private Integer collectionActionLimit;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
+        updatedAt = Instant.now();
     }
 
     @PreUpdate
