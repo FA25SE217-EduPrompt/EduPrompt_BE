@@ -3,121 +3,653 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
 subject_tag AS (SELECT id FROM tags WHERE type = 'môn' AND value = 'vật lý'),
 inserted_prompts AS (
     INSERT INTO prompts (
-        id, user_id, created_by, updated_by,
-        title, description, instruction, context,
-        input_example, output_format, constraints, visibility
-    )
+                                  id,
+                                  user_id,
+                                  created_by,
+                                  updated_by,
+                                  title,
+                                  description,
+                                  instruction,
+                                  context,
+                                  input_example,
+                                  output_format,
+                                  constraints,
+                                  visibility,
+                                  current_version_id
+                 )
     VALUES
-    -- 1. Chuyển động thẳng đều
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 2 tiết: Chuyển động thẳng đều – Khám phá khái niệm “đều” qua câu hỏi',
-     'HS tự xây dựng công thức từ hệ thống câu hỏi.',
-     'Soạn giáo án 2 tiết:\n1. Khởi động (5p): “Đi xe đều là sao?”\n2. Khám phá (50p): 7 câu hỏi (có thể thêm):\n   • Câu 1: “Đều nghĩa là gì?”\n   • Câu 2: “Quãng đường tỉ lệ với gì?”\n   → HS vẽ đồ thị, thảo luận.\n3. Khái quát (15p): HS viết công thức.\n4. Luyện tập (15p): 4 bài.\n5. Củng cố (5p): HS viết 1 câu hỏi.\n[CÓ THỂ THÊM: HS vẽ đồ thị vận tốc]',
-     'Chương 1 – Vật lý 10. Năng lực: Khái quát công thức.',
-     'Dạy chuyển động thẳng đều bằng câu hỏi lớp 10',
-     'Word + 7 câu hỏi + Rubric + Đồ thị mẫu.',
-     'Không dùng công thức trước. HS tự viết công thức.',
-     'public'),
+    (
+                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 'Giáo án Vật lí 10 – Chương 1: Động học chất điểm (toàn chương)',
+                 'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 & CTGDPT 2018 – Chương 1 Động học chất điểm (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
 
-    -- 2. Chuyển động thẳng biến đổi đều
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 2 tiết: CTĐBĐĐ – So sánh vận tốc và gia tốc',
-     'HS lập bảng → hiểu bản chất gia tốc.',
-     'Soạn giáo án:\n1. Đưa ví dụ (10p): “Xe tăng tốc”\n2. Lập bảng (50p): 5 tiêu chí (có thể bổ sung): định nghĩa, đơn vị, đồ thị, công thức, ứng dụng.\n3. Tìm giống/khác (15p)\n4. Bài tập (10p): 5 câu.\n5. Tổng kết (5p): “Chìa khóa gia tốc”.\n[CÓ THỂ THÊM: HS vẽ đồ thị v-t]',
-     'Chương 2 – Năng lực: Phân biệt đại lượng.',
-     'Dạy so sánh vận tốc và gia tốc lớp 10',
-     'Word + Bảng + Đồ thị v-t.',
-     'HS tự điền. Có tiêu chí “đồ thị”.',
-     'public'),
+                 -- INSTRUCTION
+                 'Bạn là chuyên gia Vật lí THPT hàng đầu Việt Nam, từng tham gia biên soạn SGK Vật lí 10 chương trình 2018, bồi dưỡng HSG quốc gia và tập huấn giáo viên cốt cán toàn quốc.
 
-    -- 3. Lực và tổng hợp lực
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 2 tiết: Lực – Hệ thống bài tập 4 mức độ',
-     'HS tự chọn từ nhận biết đến phân tích lực.',
-     'Soạn giáo án:\n1. Ôn (5p): Sơ đồ lực.\n2. Bài tập (70p):\n   • Mức 1: 3 câu nhận biết\n   • Mức 2: 3 câu vẽ lực\n   • Mức 3: 2 câu phân tích lực\n   • Mức 4: 1 câu chứng minh cân bằng\n3. Tự chọn (10p)\n4. Phản hồi (5p).\n[CÓ THỂ THÊM: HS vẽ sơ đồ lực tự do]',
-     'Chương 3 – Năng lực: Phân tích lực.',
-     'Dạy lực phân mức lớp 10',
-     'Word + File bài tập 4 mức + Sơ đồ.',
-     'Mỗi HS làm ≥2 mức. Mức 4 có chứng minh.',
-     'public'),
+    Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 1 “Động học chất điểm” (từ bài 1 đến bài 8 + 1 tiết ôn tập + 1 tiết thực hành), 100% dạy học tích cực, trải nghiệm thực tế, phát triển năng lực vật lí và tư duy khoa học.
 
-    -- 4. Định luật Newton
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 2 tiết: Định luật Newton – Chứng minh định luật 2 bằng 3 cách',
-     'HS tìm 3 cách: thực nghiệm, toán học, vectơ.',
-     'Soạn giáo án:\n1. Đặt vấn đề (5p): “Lực và gia tốc?”\n2. Nhóm tìm cách (50p): 3 nhóm.\n3. Trình bày (20p): Vẽ sơ đồ.\n4. So sánh (10p)\n5. Mở rộng (5p): Định luật 3.\n[CÓ THỂ THÊM: HS vẽ sơ đồ lực]',
-     'Chương 4 – Năng lực: Chứng minh.',
-     'Dạy định luật Newton đa cách lớp 10',
-     'Word + Bảng + Sơ đồ lực.',
-     'Mỗi nhóm 1 cách mới. Có cách vectơ.',
-     'public'),
+    Nguyên tắc bắt buộc:
+    - Học sinh tự xây dựng ≥70% kiến thức (khái niệm, công thức, đồ thị) qua thí nghiệm thực hành, quan sát video chậm, đo đạc thực tế, thảo luận nhóm và sử dụng công nghệ
+    - Mỗi tiết đều có sản phẩm cụ thể: biểu đồ v–t tự vẽ, video thí nghiệm tự quay, bảng số liệu tự đo, poster “chuyển động rơi tự do”, báo cáo nhóm…
+    - Tích hợp ít nhất 2 công cụ mỗi tiết: Tracker Video Analysis, GeoGebra Physics, PhET Simulation, điện thoại cảm biến (Phyphox), máy chiếu 3D, thước dây + đồng hồ bấm giây
+    - Giáo viên không giảng liên tục quá 5 phút, chỉ tổ chức, đặt câu hỏi dẫn dắt, demo thí nghiệm
+    - Phân hóa rõ 4 mức độ nhiệm vụ, có bài tập vận dụng cao và thực tiễn (chuyển động xe máy, rơi dù, tên lửa…)
+    - Đánh giá bằng rubric 4 mức + tự đánh giá, đồng đẳng đánh giá + portfolio sản phẩm',
 
-    -- 5. Công và năng lượng
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 2 tiết: Công – Tư duy ngược: Từ “năng lượng mất” suy ra công',
-     'HS suy từ ΔE → công.',
-     'Soạn giáo án:\n1. Đưa kết quả (5p): “Năng lượng giảm”\n2. HS suy ngược (40p): “Có công không?”\n3. Thử sai (30p): 3 trường hợp.\n4. Khái quát (10p): HS viết công thức.\n5. Áp dụng (5p): Bài tập.\n[CÓ THỂ THÊM: HS vẽ biểu đồ năng lượng]',
-     'Chương 5 – Năng lực: Suy luận ngược.',
-     'Dạy công và năng lượng tư duy ngược lớp 10',
-     'Word + Bảng “ΔE → Công” + Biểu đồ.',
-     'HS thử ≥3 trường hợp. Có phản ví dụ.',
-     'public'),
+                 -- CONTEXT
+                 'Năng lực vật lí đặc thù cần hình thành:
+    - Nhận thức vật lí (chuyển động thẳng đều, thẳng nhanh dần đều, rơi tự do…)
+    - Mô hình hóa vật lí
+    - Thí nghiệm và xử lý số liệu
+    - Giải quyết vấn đề vật lí thực tiễn
+    - Sử dụng công cụ và công nghệ đo lường
 
-    -- 6. Động lượng
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 2 tiết: Động lượng – Khám phá khái niệm qua câu hỏi',
-     'HS tự xây dựng định nghĩa, bảo toàn.',
-     'Soạn giáo án:\n1. Khởi động (5p): “Va chạm mạnh hơn khi?”\n2. Khám phá (50p): 8 câu hỏi (có thể thêm).\n3. Khái quát (15p): HS viết công thức.\n4. Luyện tập (15p): 4 bài.\n5. Củng cố (5p): HS viết 1 câu hỏi.\n[CÓ THỂ THÊM: HS vẽ sơ đồ va chạm]',
-     'Chương 6 – Năng lực: Khái quát.',
-     'Dạy động lượng bằng câu hỏi lớp 10',
-     'Word + 8 câu hỏi + Rubric + Sơ đồ.',
-     'Không dùng công thức trước.',
-     'public'),
+    Năng lực chung: Tự chủ & tự học, Giao tiếp & hợp tác, Tư duy khoa học & sáng tạo
 
-    -- 7. Dao động cơ
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 2 tiết: Dao động cơ – So sánh biên độ, chu kỳ, tần số',
-     'HS lập bảng → hiểu bản chất.',
-     'Soạn giáo án:\n1. Đưa ví dụ (10p): “Con lắc”\n2. Lập bảng (50p): 5 tiêu chí (có thể bổ sung).\n3. Tìm giống/khác (15p)\n4. Bài tập (10p): 5 câu.\n5. Tổng kết (5p): “Chìa khóa dao động”.\n[CÓ THỂ THÊM: HS vẽ đồ thị x-t]',
-     'Chương 7 – Năng lực: Phân biệt.',
-     'Dạy dao động cơ so sánh lớp 10',
-     'Word + Bảng + Đồ thị x-t.',
-     'HS tự điền. Có tiêu chí “đồ thị”.',
-     'public'),
+    Phẩm chất: Chăm chỉ, Trung thực khoa học, Trách nhiệm, Cẩn thận',
 
-    -- 8. Sóng cơ
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 2 tiết: Sóng cơ – Chứng minh v = fλ bằng 3 cách',
-     'HS tìm 3 cách: thực nghiệm, toán học, hình học.',
-     'Soạn giáo án:\n1. Đặt vấn đề (5p): “Sóng lan nhanh thế nào?”\n2. Nhóm tìm cách (50p): 3 nhóm.\n3. Trình bày (20p): Vẽ sóng.\n4. So sánh (10p)\n5. Mở rộng (5p): Sóng dừng.\n[CÓ THỂ THÊM: HS vẽ sóng dừng]',
-     'Chương 8 – Năng lực: Chứng minh.',
-     'Dạy sóng cơ đa cách lớp 10',
-     'Word + Bảng + Sóng dừng.',
-     'Mỗi nhóm 1 cách mới.',
-     'public'),
+                 -- INPUT_EXAMPLE
+                 'ten_bai: "Chương 1: Động học chất điểm (toàn chương)"
+    sach_giao_khoa: "Kết nối tri thức"
+    so_tiet: "12 tiết (9 lý thuyết-thực hành + 1 ôn tập + 1 kiểm tra + 1 dự án)"
+    cap_do_lop: "Lớp chuyên Lý + lớp cơ bản"
+    yeu_cau_san_pham:
+      - "Video phân tích chuyển động rơi tự do bằng Tracker"
+      - "Biểu đồ vận tốc–thời gian tự vẽ từ số liệu đo"
+      - "Poster giải thích chuyển động parabol bằng PhET"
+      - "Báo cáo nhóm: Đo gia tốc rơi tự do tại trường"',
 
-    -- 9. Dòng điện không đổi
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 2 tiết: Dòng điện – Hệ thống bài tập 4 mức độ',
-     'HS tự chọn từ định luật đến mạch phức.',
-     'Soạn giáo án:\n1. Ôn (5p): Sơ đồ mạch.\n2. Bài tập (70p):\n   • Mức 1: 3 câu định luật Ohm\n   • Mức 2: 3 câu nối tiếp/song song\n   • Mức 3: 2 câu phân tích mạch\n   • Mức 4: 1 câu thiết kế mạch\n3. Tự chọn (10p)\n4. Phản hồi (5p).\n[CÓ THỂ THÊM: HS vẽ mạch tự do]',
-     'Chương 9 – Năng lực: Tính toán mạch.',
-     'Dạy dòng điện phân mức lớp 10',
-     'Word + File bài tập 4 mức + Mạch mẫu.',
-     'Mỗi HS làm ≥2 mức. Mức 4 có sơ đồ.',
-     'public'),
+                 -- OUTPUT_FORMAT
+                 'Cấu trúc file Word giáo án toàn chương (~45–60 trang):
 
-    -- 10. Từ trường
-    (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-     'Giáo án 1 tiết: Từ trường – Từ “hiện tượng” suy ra định luật',
-     'HS suy từ nam châm → lực từ.',
-     'Soạn giáo án:\n1. Đưa hiện tượng (5p): “Kim nam châm quay”\n2. HS suy ngược (25p): “Nguyên nhân?”\n3. Thử sai (10p): 3 giả thuyết.\n4. Khái quát (5p): “Định luật từ trường”.\n[CÓ THỂ THÊM: HS vẽ đường sức từ]',
-     'Chương 10 – Năng lực: Suy luận.',
-     'Dạy từ trường tư duy ngược lớp 10',
-     'Word + Bảng “Hiện tượng → Định luật”.',
-     'HS thử ≥3 giả thuyết.',
-     'public')
+    [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+    I. Mục tiêu chương (kiến thức – năng lực – phẩm chất)
+    II. Danh sách thiết bị & phần mềm cần chuẩn bị (Phyphox, Tracker, PhET…)
+    III. Giáo án chi tiết từng bài (Bài 1 → Bài 8 + ôn tập + kiểm tra)
+       Mỗi bài gồm:
+       a) Mục tiêu bài
+       b) Thiết bị & học liệu (link tải, video mẫu)
+       c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+       d) Sản phẩm học sinh phải nộp (video, biểu đồ, báo cáo…)
+       e) Rubric đánh giá 4 mức chi tiết
+       f) Phiếu học tập + mã QR video hướng dẫn thí nghiệm
 
+    IV. Dự án cuối chương: “Đo và phân tích chuyển động thực tế tại trường học” (nhóm 4–5 HS)
+    V. Đề kiểm tra cuối chương (trắc nghiệm + tự luận + thực hành xử lý số liệu)
+    VI. Tổng hợp link tất cả sản phẩm học sinh + video thí nghiệm',
+
+                 -- CONSTRAINTS
+                 '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+    - Mỗi tiết phải có thí nghiệm thực hành hoặc phân tích video thực tế
+    - Học sinh tự đo đạc, xử lý số liệu, vẽ đồ thị ≥70%
+    - Không copy nguyên hoạt động trong SGK
+    - Bắt buộc dùng ít nhất 1 phần mềm đo lường hiện đại/tiết
+    - Phân hóa 4 mức độ rõ ràng, có bài vận dụng thực tiễn
+    - Rubric đo lường được cả độ chính xác thí nghiệm và tư duy khoa học
+    - Giáo án kèm link tải phần mềm portable + file mẫu + video hướng dẫn',
+
+                 'PUBLIC',
+                 NULL
+             ),
+
+    (
+                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 'Giáo án Vật lí 10 – Chương 2: Động lực học chất điểm (toàn chương)',
+                 'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 – Chương 2 Động lực học chất điểm (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
+
+                 -- INSTRUCTION
+                 'Bạn là chuyên gia Vật lí THPT hàng đầu, thành viên ban biên soạn SGK Vật lí 10 CT 2018, bồi dưỡng đội tuyển HSG quốc gia và quốc tế.
+
+    Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 2 “Động lực học chất điểm” (Bài 9 → Bài 16 + 1 tiết ôn tập + 1 tiết thực hành + 1 tiết dự án), 100% dạy học trải nghiệm, thí nghiệm thực tế, phát triển năng lực mô hình hóa và giải quyết vấn đề vật lí.
+
+    Nguyên tắc bắt buộc:
+    - Học sinh tự khám phá ≥70% định luật (I, II, III Newton, lực ma sát, lực hướng tâm…) qua thí nghiệm thực hành, xe đồ chơi, xe lăn, dây nghiêng, con lắc, cảm biến lực Phyphox…
+    - Mỗi tiết đều có sản phẩm đo lường được: đồ thị lực–gia tốc, video xe lăn trên mặt nghiêng, bảng số liệu ma sát, poster “ứng dụng định luật III”, mô hình vệ tinh tự chế…
+    - Tích hợp ít nhất 2 công cụ mỗi tiết: Phyphox (cảm biến lực, gia tốc), Tracker, PhET Forces and Motion, GeoGebra Physics, xe lăn + cảm biến, máy đo lực số, cân lực kế
+    - Giáo viên không giảng liên tục quá 5 phút, chỉ tổ chức thí nghiệm và đặt câu hỏi gợi mở
+    - Phân hóa rõ 4 mức độ (từ tính lực cân bằng → bài toán vệ tinh, chuyển động hành tinh, lực ma sát trượt/lăn)
+    - Có ít nhất 2 tiết thực hành đo hệ số ma sát và kiểm chứng định luật II Newton
+    - Đánh giá bằng rubric 4 mức + portfolio thí nghiệm + thuyết trình sản phẩm nhóm',
+
+                 -- CONTEXT
+                 'Năng lực vật lí đặc thù:
+    - Mô hình hóa chuyển động có lực tác dụng
+    - Thí nghiệm và xử lý sai số
+    - Áp dụng định luật Newton giải bài toán thực tiễn
+    - Sử dụng cảm biến và công nghệ đo lường hiện đại
+    - Tư duy phản biện và dự đoán kết quả thí nghiệm
+
+    Năng lực chung: Tự học, Hợp tác, Giải quyết vấn đề thực tiễn, Sáng tạo
+
+    Phẩm chất: Trung thực khoa học, Cẩn thận, Trách nhiệm, An toàn thí nghiệm',
+
+                 -- INPUT_EXAMPLE
+                 'ten_bai: "Chương 2: Động lực học chất điểm (toàn chương)"
+    sach_giao_khoa: "Cánh Diều"
+    so_tiet: "14 tiết (10 lý thuyết-thực hành + 2 thực hành + 1 kiểm tra + 1 dự án)"
+    cap_do_lop: "Lớp chuyên Lý + lớp cơ bản"
+    yeu_cau_san_pham:
+      - "Video thí nghiệm kiểm chứng định luật II Newton bằng Phyphox"
+      - "Báo cáo đo hệ số ma sát động của gỗ trên gỗ"
+      - "Mô hình vệ tinh tự chế + tính toán chu kỳ quỹ đạo"
+      - "Infographic ứng dụng định luật III trong đời sống"
+      - "Dashboard dữ liệu thí nghiệm (Excel + biểu đồ)"',
+
+                 -- OUTPUT_FORMAT
+                 'Cấu trúc file Word giáo án toàn chương (~50–70 trang):
+
+    [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+    I. Mục tiêu chương học
+    II. Danh sách thiết bị thực hành & phần mềm (Phyphox, Tracker, PhET…)
+    III. Giáo án chi tiết từng bài (Bài 9 → Bài 16 + thực hành + ôn tập)
+       Mỗi bài gồm:
+       a) Mục tiêu bài
+       b) Thiết bị & học liệu (link tải, video mẫu)
+       c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+       d) Sản phẩm học sinh phải nộp (video, báo cáo, biểu đồ…)
+       e) Rubric đánh giá 4 mức chi tiết (bao gồm sai số thí nghiệm)
+       f) Phiếu thí nghiệm + mã QR hướng dẫn + file dữ liệu mẫu
+
+    IV. Dự án cuối chương: “Thiết kế và kiểm chứng một hiện tượng động lực học thực tế” (ví dụ: xe lăn, con lắc, lực hướng tâm…)
+    V. Đề kiểm tra cuối chương (trắc nghiệm + tự luận + xử lý số liệu thí nghiệm)
+    VI. Tổng hợp toàn bộ link sản phẩm + video thí nghiệm + portfolio học sinh',
+
+                 -- CONSTRAINTS
+                 '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+    - Mỗi tiết phải có thí nghiệm thực hành thực tế hoặc phân tích dữ liệu đo được
+    - Học sinh tự xử lý sai số, vẽ đồ thị, kết luận định luật
+    - Không copy nguyên hoạt động trong SGK
+    - Bắt buộc dùng cảm biến Phyphox ít nhất 4 tiết
+    - Phân hóa 4 mức độ, có bài vận dụng cao (vệ tinh, chuyển động hành tinh, lực Lorentz cơ bản…)
+    - Rubric phải đo được độ chính xác thí nghiệm, sai số, tư duy phản biện
+    - Giáo án kèm đầy đủ file .xlsx mẫu, link tải phần mềm, video hướng dẫn thí nghiệm',
+
+                 'PUBLIC',
+                 NULL
+             ),
+
+    (
+                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 'Giáo án Vật lí 10 – Chương 3: Năng lượng, công và công suất (toàn chương)',
+                 'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 – Chương 3 Năng lượng, công và công suất (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
+
+                 -- INSTRUCTION
+                 'Bạn là chuyên gia Vật lí THPT, thành viên ban biên soạn SGK Vật lí 10 CT 2018, chuyên gia dạy học dự án STEM và bồi dưỡng HSG quốc gia phần Cơ học.
+
+    Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 3 “Năng lượng, công và công suất” (Bài 17 → Bài 23 + 2 tiết thực hành + 1 tiết ôn tập + 1 tiết dự án), 100% dạy học tích cực, dựa trên thí nghiệm thực tế và dự án mini, phát triển năng lực bảo toàn và tư duy năng lượng.
+
+    Nguyên tắc bắt buộc:
+    - Học sinh tự xây dựng ≥70% khái niệm (công, động năng, thế năng, bảo toàn cơ năng…) qua thí nghiệm thực hành: xe lăn + cảm biến, con lắc đơn, lò xo, máy bắn bi, đường ray không ma sát, cảm biến năng lượng Phyphox…
+    - Mỗi tiết đều có sản phẩm đo lường được: biểu đồ năng lượng theo thời gian, video kiểm chứng bảo toàn cơ năng, bảng số liệu lò xo, poster “hiệu suất thực tế”, mô hình thủy điện mini…
+    - Tích hợp ít nhất 2 công cụ mỗi tiết: Phyphox (năng lượng, công suất), Tracker, PhET Energy Skate Park, GeoGebra, máy đo công suất điện, động cơ mô hình, pin mặt trời nhỏ
+    - Giáo viên không giảng quá 5 phút liên tục, chỉ tổ chức thí nghiệm và đặt câu hỏi dự đoán – kiểm chứng
+    - Phân hóa 4 mức độ rõ ràng, có bài vận dụng thực tiễn và vận dụng cao (hiệu suất máy nhiệt, thủy điện, xe điện, va chạm đàn hồi)
+    - Có ít nhất 2 tiết thực hành đo hiệu suất thực tế của động cơ hoặc máy nâng
+    - Đánh giá bằng rubric 4 mức + portfolio thí nghiệm + thuyết trình dự án nhóm',
+
+                 -- CONTEXT
+                 'Năng lực vật lí đặc thù:
+    - Hiểu và áp dụng khái niệm công, năng lượng, công suất
+    - Mô hình hóa quá trình trao đổi năng lượng
+    - Thí nghiệm bảo toàn cơ năng và định luật bảo toàn năng lượng
+    - Giải bài toán hiệu suất, công suất thực tiễn
+    - Sử dụng công nghệ đo năng lượng hiện đại
+
+    Năng lực chung: Tư duy khoa học, Giải quyết vấn đề thực tiễn, Sáng tạo, Làm việc nhóm
+
+    Phẩm chất: Tiết kiệm năng lượng, Trung thực khoa học, Trách nhiệm với môi trường',
+
+                 -- INPUT_EXAMPLE
+                 'ten_bai: "Chương 3: Năng lượng, công và công suất (toàn chương)"
+    sach_giao_khoa: "Chân Trời Sáng Tạo"
+    so_tiet: "13 tiết (9 lý thuyết-thực hành + 2 thực hành + 1 kiểm tra + 1 dự án)"
+    cap_do_lop: "Lớp chuyên Lý + lớp cơ bản"
+    yeu_cau_san_pham:
+      - "Video kiểm chứng bảo toàn cơ năng con lắc bằng Tracker"
+      - "Biểu đồ chuyển hóa năng lượng xe lăn trên đường ray"
+      - "Báo cáo đo hiệu suất thực tế của động cơ mô hình"
+      - "Mô hình thủy điện mini + tính công suất lý thuyết và thực tế"
+      - "Infographic: Tiết kiệm năng lượng trong gia đình"',
+
+                 -- OUTPUT_FORMAT
+                 'Cấu trúc file Word giáo án toàn chương (~50–70 trang):
+
+    [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+    I. Mục tiêu chương học
+    II. Danh sách thiết bị thực hành & phần mềm (Phyphox, PhET Energy Skate Park…)
+    III. Giáo án chi tiết từng bài (Bài 17 → Bài 23 + thực hành + ôn tập)
+       Mỗi bài gồm:
+       a) Mục tiêu bài
+       b) Thiết bị & học liệu (link tải, video mẫu)
+       c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+       d) Sản phẩm học sinh phải nộp (video, báo cáo, biểu đồ…)
+       e) Rubric đánh giá 4 mức (bao gồm sai số và hiệu suất thực tế)
+       f) Phiếu thí nghiệm + mã QR hướng dẫn + file dữ liệu mẫu
+
+    IV. Dự án cuối chương: “Thiết kế mô hình chuyển hóa và tiết kiệm năng lượng” (nhóm 4–6 HS)
+    V. Đề kiểm tra cuối chương (trắc nghiệm + tự luận + phân tích thí nghiệm)
+    VI. Tổng hợp link sản phẩm học sinh + video thí nghiệm + portfolio',
+
+                 -- CONSTRAINTS
+                 '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+    - Mỗi tiết phải có thí nghiệm thực hành hoặc mô hình thực tế
+    - Học sinh tự đo, vẽ biểu đồ năng lượng, tính hiệu suất thực
+    - Không copy nguyên hoạt động trong SGK
+    - Bắt buộc dùng Phyphox hoặc PhET ít nhất 5 tiết
+    - Phân hóa 4 mức độ, có bài vận dụng cao về năng lượng tái tạo
+    - Rubric phải đánh giá cả độ chính xác thí nghiệm và ý thức tiết kiệm năng lượng
+    - Giáo án kèm đầy đủ file mẫu, link phần mềm, video hướng dẫn chi tiết',
+
+                 'PUBLIC',
+                 NULL
+             ),
+
+    (
+                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 'Giáo án Vật lí 10 – Chương 4: Dao động cơ học (toàn chương)',
+                 'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 – Chương 4 Dao động cơ học (con lắc lò xo, con lắc đơn, dao động tắt dần, cộng hưởng) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
+
+                 -- INSTRUCTION
+                 'Bạn là chuyên gia dao động & sóng THPT, từng biên soạn SGK Vật lí 10 CT 2018, bồi dưỡng HSG quốc gia phần dao động và thiết kế thí nghiệm hiện đại.
+
+    Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 4 “Dao động cơ học” (Bài 24 → Bài 30 + 3 tiết thực hành + 1 tiết ôn tập + 1 tiết dự án), 100% dạy học dựa trên thí nghiệm thực tế, cảm biến và dự án STEM.
+
+    Nguyên tắc bắt buộc:
+    - Học sinh tự khám phá ≥70% công thức (chu kỳ, tần số, biên độ, năng lượng dao động, cộng hưởng…) qua thí nghiệm thực hành: con lắc lò xo + cảm biến, con lắc đơn, loa + cát, ống Ruben, Phyphox Sound & Vibration…
+    - Mỗi tiết đều có sản phẩm đo được: đồ thị dao động bằng Phyphox, video cộng hưởng cơ học, bảng đo chu kỳ con lắc đơn ở các góc khác nhau, poster “dao động trong đời sống”, mô hình cầu treo Tacoma Narrows…
+    - Tích hợp ít nhất 3 công cụ mỗi tiết: Phyphox (cảm biến gia tốc, âm thanh), Tracker, PhET Pendulum Lab & Masses and Springs, Audacity, máy hiện sóng số, loa + ống cộng hưởng, lò xo + cảm biến lực
+    - Giáo viên không giảng quá 4 phút liên tục, chỉ tổ chức thí nghiệm và đặt câu hỏi dự đoán – kiểm chứng
+    - Phân hóa 4 mức độ rõ ràng, có bài vận dụng cao và thực tiễn (đồng hồ quả lắc, giảm chấn ô tô, cầu cộng hưởng, nhạc cụ…)
+    - Có ít nhất 3 tiết thực hành đo chu kỳ, vẽ đồ thị dao động và kiểm chứng cộng hưởng
+    - Đánh giá bằng rubric 4 mức + portfolio thí nghiệm + video thuyết trình dự án nhóm',
+
+                 -- CONTEXT
+                 'Năng lực vật lí đặc thù:
+    - Hiểu bản chất dao động điều hòa, tắt dần và cưỡng bức
+    - Mô hình hóa dao động cơ học
+    - Thí nghiệm đo chu kỳ, biên độ, tần số với sai số nhỏ
+    - Phân tích hiện tượng cộng hưởng và ứng dụng/thiệt hại
+    - Sử dụng cảm biến và phần mềm hiện đại phân tích dao động
+
+    Năng lực chung: Tư duy khoa học, Giải quyết vấn đề, Sáng tạo, Làm việc nhóm
+
+    Phẩm chất: Cẩn thận, Trung thực khoa học, Ý thức an toàn kỹ thuật',
+
+                 -- INPUT_EXAMPLE
+                 'ten_bai: "Chương 4: Dao động cơ học (toàn chương)"
+    sach_giao_khoa: "Kết nối tri thức"
+    so_tiet: "15 tiết (10 lý thuyết-thực hành + 3 thực hành + 1 kiểm tra + 1 dự án)"
+    cap_do_lop: "Lớp chuyên Lý + lớp cơ bản"
+    yeu_cau_san_pham:
+      - "Đồ thị dao động điều hòa từ cảm biến Phyphox"
+      - "Video thí nghiệm cộng hưởng cơ học với ống Ruben"
+      - "Báo cáo đo chu kỳ con lắc đơn (tính g thực tế)"
+      - "Mô hình giảm chấn ô tô tự chế + đo hiệu quả"
+      - "Infographic: Ứng dụng và nguy cơ cộng hưởng trong đời sống"',
+
+                 -- OUTPUT_FORMAT
+                 'Cấu trúc file Word giáo án toàn chương (~60–80 trang):
+
+    [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+    I. Mục tiêu chương học
+    II. Danh sách thiết bị & phần mềm (Phyphox, PhET, Tracker, Audacity…)
+    III. Giáo án chi tiết từng bài (Bài 24 → Bài 30 + thực hành + ôn tập)
+       Mỗi bài gồm:
+       a) Mục tiêu bài
+       b) Thiết bị & học liệu (link tải, video mẫu)
+       c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+       d) Sản phẩm học sinh phải nộp (đồ thị, video, báo cáo…)
+       e) Rubric đánh giá 4 mức (bao gồm sai số thí nghiệm)
+       f) Phiếu thí nghiệm + mã QR hướng dẫn + file dữ liệu mẫu
+
+    IV. Dự án cuối chương: “Thiết kế và chế tạo một hệ dao động thực tế” (đồng hồ, nhạc cụ, giảm chấn…)
+    V. Đề kiểm tra cuối chương (trắc nghiệm + tự luận + phân tích đồ thị dao động)
+    VI. Tổng hợp toàn bộ link sản phẩm + video thí nghiệm + portfolio học sinh',
+
+                 -- CONSTRAINTS
+                 '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+    - Mỗi tiết phải có thí nghiệm thực hành với cảm biến hoặc mô hình thực
+    - Học sinh tự đo, vẽ đồ thị, tính sai số, rút ra công thức
+    - Không copy nguyên hoạt động trong SGK
+    - Bắt buộc dùng Phyphox ít nhất 6 tiết
+    - Phân hóa 4 mức độ, có bài vận dụng cao về cộng hưởng và giảm chấn
+    - Rubric phải đánh giá độ chính xác thí nghiệm, khả năng phân tích đồ thị, ý thức an toàn
+    - Giáo án kèm đầy đủ file mẫu, link tải phần mềm, video hướng dẫn từng bước',
+
+                 'PUBLIC',
+                 NULL
+             ),
+
+    (
+                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 'Giáo án Vật lí 10 – Chương 5: Sóng cơ học và sóng âm (toàn chương)',
+                 'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 – Chương 5 Sóng cơ học và sóng âm (sóng ngang, sóng dọc, giao thoa, sóng dừng, âm thanh, nhạc cụ…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
+
+                 -- INSTRUCTION
+                 'Bạn là chuyên gia sóng & âm học THPT, từng biên soạn SGK Vật lí 10 CT 2018, thiết kế thí nghiệm sóng hiện đại và bồi dưỡng HSG quốc gia phần sóng.
+
+    Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 5 “Sóng cơ học và sóng âm” (Bài 31 → Bài 38 + 3 tiết thực hành + 1 tiết ôn tập + 1 tiết dự án), 100% dạy học trải nghiệm, thí nghiệm thực tế và dự án âm thanh – ánh sáng.
+
+    Nguyên tắc bắt buộc:
+    - Học sinh tự khám phá ≥70% khái niệm (bước sóng, tần số, giao thoa, sóng dừng, Doppler, vang, cộng hưởng âm…) qua thí nghiệm thực hành: dây sóng, ống sóng, loa + bột cát Chladni, ống Ruben, ứng dụng Phyphox Sound, máy đo tần số, đàn guitar + cảm biến, micro + hiện sóng Audacity…
+    - Mỗi tiết đều có sản phẩm cụ thể: ảnh/video sóng dừng, đồ thị giao thoa sóng nước, bản đồ sóng âm trường nhạc cụ, video hiệu ứng Doppler xe máy, poster “giảm tiếng ồn trong trường học”, mô hình loa tự chế…
+    - Tích hợp ít nhất 3 công cụ mỗi tiết: Phyphox Sound & Spectrum Analyzer, Audacity, PhET Wave on a String & Sound, Tracker, máy tạo sóng cơ học, ống cộng hưởng, micro USB, loa Bluetooth, máy đo độ ồn
+    - Giáo viên không giảng quá 4 phút liên tục, chỉ tổ chức thí nghiệm và đặt câu hỏi dự đoán – kiểm chứng
+    - Phân hóa 4 mức độ rõ ràng, có bài vận dụng cao (tính khoảng cách bằng sóng phản xạ, thiết kế loa, giảm ồn, hiệu ứng Doppler trong y học…)
+    - Có ít nhất 3 tiết thực hành đo vận tốc truyền âm, vẽ sóng dừng và hiện tượng giao thoa
+    - Đánh giá bằng rubric 4 mức + portfolio thí nghiệm + thuyết trình dự án nhóm',
+
+                 -- CONTEXT
+                 'Năng lực vật lí đặc thù:
+    - Hiểu bản chất sóng cơ học và sóng âm
+    - Mô hình hóa hiện tượng truyền sóng, giao thoa, sóng dừng
+    - Thí nghiệm đo bước sóng, tần số bụng, vận tốc truyền âm
+    - Phân tích hiện tượng âm học thực tiễn và ứng dụng công nghệ
+    - Sử dụng phần mềm và cảm biến âm thanh hiện đại
+
+    Năng lực chung: Tư duy khoa học, Giải quyết vấn đề thực tiễn, Sáng tạo, Bảo vệ môi trường âm thanh
+
+    Phẩm chất: Trung thực khoa học, Ý thức giảm tiếng ồn, Tính thẩm mỹ âm nhạc',
+
+                 -- INPUT_EXAMPLE
+                 'ten_bai: "Chương 5: Sóng cơ học và sóng âm (toàn chương)"
+    sach_giao_khoa: "Kết nối tri thức"
+    so_tiet: "15 tiết (10 lý thuyết-thực hành + 3 thực hành + 1 kiểm tra + 1 dự án)"
+    cap_do_lop: "Lớp chuyên Lý + lớp cơ bản"
+    yeu_cau_san_pham:
+      - "Video sóng dừng trên dây + đo bước sóng bằng Phyphox"
+      - "Bản đồ sóng Chladni tự làm bằng loa + bột"
+      - "Đo vận tốc truyền âm trong không khí và kim loại"
+      - "Video hiệu ứng Doppler thực tế (xe máy + còi)"
+      - "Dự án loa tự chế hoặc ống sáo + báo cáo tần số cơ bản"',
+
+                 -- OUTPUT_FORMAT
+                 'Cấu trúc file Word giáo án toàn chương (~65–85 trang):
+
+    [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+    I. Mục tiêu chương học
+    II. Danh sách thiết bị & phần mềm (Phyphox, Audacity, PhET Wave…)
+    III. Giáo án chi tiết từng bài (Bài 31 → Bài 38 + thực hành + ôn tập)
+       Mỗi bài gồm:
+       a) Mục tiêu bài
+       b) Thiết bị & học liệu (link tải, video mẫu)
+       c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+       d) Sản phẩm học sinh phải nộp (video, ảnh sóng, đồ thị âm…)
+       e) Rubric đánh giá 4 mức (bao gồm sai số đo tần số)
+       f) Phiếu thí nghiệm + mã QR hướng dẫn + file âm thanh mẫu
+
+    IV. Dự án cuối chương: “Thiết kế nhạc cụ hoặc hệ giảm tiếng ồn cho trường học”
+    V. Đề kiểm tra cuối chương (trắc nghiệm + tự luận + phân tích đồ thị sóng âm)
+    VI. Tổng hợp toàn bộ link sản phẩm + video + portfolio học sinh',
+
+                 -- CONSTRAINTS
+                 '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+    - Mỗi tiết phải có thí nghiệm thực tế hoặc đo bằng cảm biến âm thanh
+    - Học sinh tự đo tần số, bước sóng, vẽ đồ thị sóng, tính sai số
+    - Không copy nguyên hoạt động trong SGK
+    - Bắt buộc dùng Phyphox Sound ít nhất 6 tiết
+    - Phân hóa 4 mức độ, có bài vận dụng cao về âm học kiến trúc, y học, công nghệ
+    - Rubric đánh giá độ chính xác đo lường, khả năng phân tích phổ âm, ý thức giảm ồn
+    - Giáo án kèm đầy đủ file .wav mẫu, link tải phần mềm, video hướng dẫn chi tiết',
+
+                 'PUBLIC',
+                 NULL
+             ),
+
+    (
+                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 'Đề cương ôn tập Vật lí 10 – Cả năm học (chuẩn thi học kỳ & THPT Quốc gia 2025+)',
+                 'Prompt tạo đề cương ôn tập Vật lí 10 cực chất, chuẩn kiến thức kỹ năng CTGDPT 2018, sát 100% ma trận đề minh họa THPT Quốc gia (50 câu trắc nghiệm + tự luận thực hành).',
+
+                 -- INSTRUCTION
+                 'Bạn là tổ trưởng chuyên môn Vật lí cấp tỉnh, 18+ năm ra đề thi học kỳ, đề tham khảo THPT Quốc gia và bồi dưỡng HSG quốc gia.
+
+    Nhiệm vụ: Soạn ĐỀ CƯƠNG ÔN TẬP CẢ NĂM môn Vật lí lớp 10 hoàn chỉnh, khoa học, sát nhất với đề chính thức.
+
+    Yêu cầu bắt buộc:
+    - Phân bổ tỷ lệ chính xác: Cơ học 80–85%, Nhập môn sóng 15–20%
+    - Chia rõ 4 mức độ theo ma trận đề THPTQG mới nhất (Nhận biết 25–30%, Thông hiểu 30–35%, Vận dụng 20–25%, Vận dụng cao 10–15%)
+    - Mỗi chuyên đề có: bảng tóm tắt lý thuyết trọng tâm + công thức then chốt (highlight) + phân dạng bài hay ra + ví dụ chọn lọc + 40–60 câu trắc nghiệm + 8–12 bài tự luận thực hành có đáp án chi tiết + xử lý sai số thí nghiệm
+    - Đặc biệt chú trọng các dạng vận dụng cao thường ra đề quốc gia: đồ thị v–t/a–t, bảo toàn cơ năng, dao động tắt dần, giao thoa sóng, hiệu ứng Doppler…
+    - Có phần “Mẹo giải nhanh – Bẫy thường gặp – Thủ thuật xử lý đồ thị/thí nghiệm”
+    - Độ dài 45–65 trang A4, định dạng Word đẹp, dễ in photo đen trắng',
+
+                 -- CONTEXT
+                 'Phạm vi ôn tập Vật lí 10 cả năm (CT 2018):
+    - Chương 1: Động học chất điểm
+    - Chương 2: Động lực học chất điểm
+    - Chương 3: Năng lượng, công và công suất
+    - Chương 4: Dao động cơ học
+    - Chương 5: Sóng cơ học và sóng âm
+
+    Ma trận đề thi THPT Quốc gia (50 câu trắc nghiệm 90 phút):
+    - Chương 1+2: 20–22 câu
+    - Chương 3: 8–10 câu
+    - Chương 4+5: 10–12 câu
+    - Vận dụng & vận dụng cao: ≥ 35% (đồ thị, thí nghiệm ảo, bài toán thực tiễn)',
+
+                 -- INPUT_EXAMPLE
+                 'ky: "Cả năm học"
+    nam_hoc: "2025-2026"
+    sach_giao_khoa: "Kết nối tri thức"
+    loai_de: "Đề chuẩn thi THPT Quốc gia + học kỳ (50 câu TN + tự luận nếu cần)"
+    dinh_dang: "Word đẹp, mục lục tự động, bảng biểu rõ ràng, dễ photo"',
+
+                 -- OUTPUT_FORMAT
+                 'Cấu trúc file Word đề cương ôn tập (45–65 trang):
+
+    TRANG BÌA + LỜI NÓI ĐẦU + HƯỚNG DẪN ÔN TẬP HIỆU QUẢ
+
+    I. Ma trận đề thi & tỷ lệ điểm từng chương (theo đề minh họa 2025+)
+    II. Phương pháp ôn tập Vật lí 10 đạt 9–10 điểm
+    III. Tóm tắt lý thuyết trọng tâm từng chương (bảng + sơ đồ tư duy)
+    IV. Bảng công thức Vật lí 10 cần thuộc lòng (highlight vàng)
+    V. Phân dạng bài điển hình (4 mức độ) + mẹo giải nhanh + bẫy thường gặp
+    VI. Ngân hàng 800+ câu trắc nghiệm chọn lọc (có đáp án + giải thích chi tiết)
+    VII. 120 bài tự luận + thực hành từ dễ đến khó (có lời giải mẫu + biểu điểm)
+    VIII. 12 đề thi thử cả năm:
+       - 6 đề học kỳ 1
+       - 6 đề học kỳ 2 (độ khó tăng dần, 2 đề nhỉnh hơn đề chính thức)
+       → Mỗi đề có đáp án chi tiết + biểu điểm + phân tích sai số thí nghiệm
+    IX. Phụ lục:
+       - Checklist kiến thức bắt buộc nắm
+       - 100 mẹo xử lý đồ thị & thí nghiệm trong 2 phút
+       - Bộ file Excel tính sai số thí nghiệm mẫu
+       - Link video giải các dạng vận dụng cao',
+
+                 -- CONSTRAINTS
+                 '- 100% chính xác theo SGK hiện hành và đề minh họa 2025+
+    - Có đủ dạng vận dụng cao: đồ thị nhiều đoạn, bảo toàn cơ năng + ma sát, dao động cưỡng bức, giao thoa 3 nguồn, Doppler 2 chiều…
+    - Đề thử phải sát cấu trúc, độ khó nhỉnh hơn đề chính thức 5–10%
+    - Bài thực hành phải kèm số liệu mẫu + yêu cầu xử lý sai số
+    - Bắt buộc có mục lục tự động, đánh số câu liên tục, font đẹp khi photo
+    - Định dạng đẹp, dễ in, dễ chia sẻ Zalo/Drive',
+
+                 'PUBLIC',
+                 NULL
+             ),
+    (
+                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 'Bộ đề thi Vật lí 10 – Cả năm học (20 đề chuẩn THPT Quốc gia 2025+)',
+                 'Prompt tạo bộ 20 đề thi Vật lí 10 cực chất: 8 đề học kỳ 1, 8 đề học kỳ 2, 4 đề tổng ôn cả năm – 100% sát cấu trúc, ma trận và độ khó đề minh họa THPT Quốc gia 2025+, có đáp án + biểu điểm + giải thích chi tiết.',
+
+                 -- INSTRUCTION
+                 'Bạn là trưởng ban ra đề thi Vật lí THPT Quốc gia, 20+ năm kinh nghiệm ra đề chính thức và đề tham khảo của Bộ GD&ĐT.
+
+    Nhiệm vụ: Soạn bộ 20 đề thi Vật lí 10 hoàn chỉnh:
+    - 8 đề học kỳ 1 (Chương 1→3 + một phần Chương 4)
+    - 8 đề học kỳ 2 (toàn bộ Chương 4→5 + ôn lại cơ học)
+    - 4 đề tổng ôn cả năm (độ khó nhỉnh hơn đề chính thức)
+
+    Yêu cầu bắt buộc:
+    - Đúng 100% ma trận đề minh họa 2025+ (50 câu trắc nghiệm, 90 phút)
+    - Tỷ lệ 4 mức độ chính xác: Nhận biết 25–30%, Thông hiểu 30–35%, Vận dụng 20–25%, Vận dụng cao 10–15%
+    - Có đầy đủ các dạng hot: đồ thị v–t/a–t nhiều đoạn, bảo toàn cơ năng + ma sát, dao động tắt dần/cưỡng bức, giao thoa sóng nước/âm, Doppler 2 chiều, bài toán thực tiễn (xe, vệ tinh, loa, giảm chấn…)
+    - Mỗi đề đều có:
+       • 8–10 câu vận dụng & vận dụng cao (phân hóa mạnh)
+       • 4–6 câu đọc đồ thị/excel thí nghiệm ảo
+       • 2–3 câu liên môn (toán–lý, thực tiễn đời sống)
+    - Đáp án chi tiết từng câu + biểu điểm 0.2 điểm/câu
+    - File Word + PDF + file Excel tính điểm tự động',
+
+                 -- CONTEXT
+                 'Cấu trúc đề thi THPT Quốc gia Vật lí 2025+ (50 câu):
+    - Cơ học chất điểm (Ch1–3): 28–32 câu
+    - Dao động cơ + sóng cơ & âm (Ch4–5): 18–22 câu
+    - Vận dụng cao: ≥ 7 câu (thường rơi vào đồ thị phức tạp, bảo toàn năng lượng, cộng hưởng, Doppler, thí nghiệm ảo)
+    - Có câu yêu cầu xử lý sai số, đọc bảng số liệu, biểu đồ thực nghiệm',
+
+                 -- INPUT_EXAMPLE
+                 'loai_bo_de: "20 đề đầy đủ cả năm"
+    nam_hoc: "2025-2026"
+    sach_giao_khoa: "Phù hợp mọi sách KNTT/Cánh Diều/CTST"
+    dinh_dang: "1 file Word duy nhất + 20 file đề riêng + đáp án + Excel tính điểm"
+    yeu_cau_dac_biet:
+      - "4 đề cuối phải khó hơn đề chính thức 7–10%"
+      - "Mỗi đề có mã đề riêng (VL10-HK1-01 → VL10-CN-04)"
+      - "Có ít nhất 30% câu hoàn toàn mới, chưa từng xuất hiện trên mạng"',
+
+                 -- OUTPUT_FORMAT
+                 'Cấu trúc file chính (Word ~350–450 trang):
+
+    TRANG BÌA + HƯỚNG DẪN SỬ DỤNG BỘ ĐỀ
+
+    I. Ma trận chung & phân tích độ khó từng đề
+    II. 20 đề thi chi tiết:
+       • Đề 01–08: Học kỳ 1 (tăng dần độ khó)
+       • Đề 09–16: Học kỳ 2 (tăng dần độ khó)
+       • Đề 17–20: Tổng ôn cả năm (siêu khó – dự đoán đề 2026)
+
+    Mỗi đề gồm:
+       - Trang bìa đề (mã đề, thời gian, số câu)
+       - 50 câu hỏi trắc nghiệm (4 đáp án)
+       - Đáp án nhanh (bảng)
+       - Giải thích chi tiết từng câu (công thức, cách loại đáp án, mẹo nhanh)
+       - Biểu điểm 0.2 điểm/câu
+       - Phân tích mức độ nhận thức & năng lực kiểm tra
+
+    III. Phụ lục:
+       - Tổng hợp 100 câu vận dụng cao nhất
+       - File Excel tự động chấm + thống kê điểm lớp
+       - 20 file đề riêng (Word + PDF) để in trực tiếp
+       - Link Google Drive chứa toàn bộ tài liệu',
+
+                 -- CONSTRAINTS
+                 '- 100% sát ma trận đề minh họa 2025+, không lệch dù chỉ 1 câu
+    - Không copy nguyên đề cũ, phải có ≥30% câu gốc hoàn toàn mới
+    - Các câu vận dụng cao phải có cách giải ngắn gọn dưới 90 giây
+    - Đáp án duy nhất, không gây tranh cãi
+    - Định dạng đẹp, dễ in, font rõ khi photo đen trắng
+    - File Excel chấm điểm phải tự động tô màu theo mức điểm lớp
+    - Bắt buộc kèm file riêng từng đề + đáp án để giáo viên dễ photo',
+
+                 'PUBLIC',
+                 NULL
+             ),
+
+    (
+                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 'Bộ tiêu chí chấm điểm (Rubric) chuẩn cho mọi bài kiểm tra Vật lí 10',
+                 'Prompt tạo bộ RUBRIC hoàn chỉnh, công bằng, đo lường được cho mọi dạng kiểm tra Vật lí 10 (trắc nghiệm, tự luận, thực hành thí nghiệm, dự án, đồ thị, xử lý số liệu), chuẩn Công văn 5512 & định hướng đánh giá năng lực THPT Quốc gia 2025+.',
+
+                 -- INSTRUCTION
+                 'Bạn là chuyên gia đánh giá năng lực Vật lí THPT, thành viên ban chấm thi THPT Quốc gia, trưởng ban chấm HSG quốc gia.
+
+    Nhiệm vụ: Tạo 1 bộ RUBRIC duy nhất áp dụng được cho toàn bộ các dạng kiểm tra Vật lí 10 trong cả năm học:
+    - Kiểm tra 15 phút, 45 phút
+    - Kiểm tra học kỳ (50 câu trắc nghiệm + tự luận)
+    - Thực hành thí nghiệm (đo g, bảo toàn cơ năng, dao động, sóng…)
+    - Xử lý số liệu & sai số thí nghiệm
+    - Đọc và phân tích đồ thị (v–t, a–t, năng lượng, dao động…)
+    - Dự án nhóm & sản phẩm STEM
+    - Thuyết trình & portfolio
+
+    Yêu cầu bắt buộc:
+    - Chia đúng 4 mức độ: Mức 1 (4–5đ), Mức 2 (6–7đ), Mức 3 (8–9đ), Mức 4 (9.5–10đ)
+    - Mỗi rubric có 4–7 tiêu chí con rõ ràng, định lượng được (đúng phương pháp, trình bày khoa học, xử lý sai số, tư duy phản biện, sáng tạo, thực tiễn…)
+    - Mô tả hành vi học sinh cụ thể ở từng mức → giáo viên khác chấm cùng bài không lệch quá 0.25 điểm
+    - Có rubric riêng cho:
+      • Trắc nghiệm 50 câu
+      • Tự luận cơ học chất điểm
+      • Tự luận dao động & sóng
+      • Thực hành thí nghiệm (đo, vẽ đồ thị, sai số)
+      • Phân tích đồ thị & bảng số liệu
+      • Dự án nhóm STEM
+      • Thuyết trình sản phẩm
+      • Portfolio cả năm
+    - Tổng cộng ≥18 rubric mẫu trong 1 file Word duy nhất
+    - Định dạng đẹp, bảng rõ ràng, dễ in, dễ dán vào giáo án hoặc phòng thí nghiệm',
+
+                 -- CONTEXT
+                 'Các dạng kiểm tra Vật lí 10 cần rubric:
+    1. Trắc nghiệm khách quan 50 câu
+    2. Tự luận cơ học (chuyển động, lực, năng lượng)
+    3. Tự luận dao động & sóng
+    4. Thực hành đo gia tốc rơi tự do, chu kỳ con lắc…
+    5. Xử lý số liệu & sai số thí nghiệm
+    6. Đọc và phân tích đồ thị vận động, năng lượng, dao động
+    7. Bài toán thực tiễn & mô hình hóa
+    8. Dự án nhóm (mô hình vệ tinh, loa, giảm chấn…)
+    9. Thuyết trình sản phẩm
+    10. Portfolio thí nghiệm cả năm',
+
+                 -- INPUT_EXAMPLE
+                 'lop: "10"
+    mon: "Vật lí"
+    nam_hoc: "2025-2026"
+    yeu_cau_tuy_chinh:
+      - "Có rubric riêng cho thí nghiệm đo g bằng con lắc đơn"
+      - "Có rubric cho bài phân tích đồ thị dao động tắt dần"
+      - "Có rubric cho dự án “Thiết kế mô hình tiết kiệm năng lượng”"
+      - "Có phiên bản rút gọn in A4 dán bàn chấm thi và phòng thí nghiệm"',
+
+                 -- OUTPUT_FORMAT
+                 'Cấu trúc file Word duy nhất (30–45 trang):
+
+    TRANG BÌA + HƯỚNG DẪN SỬ DỤNG BỘ RUBRIC VẬT LÍ 10
+
+    I. Nguyên tắc chung xây dựng rubric Vật lí 10
+    II. 18+ bảng rubric chi tiết:
+       1. Rubric trắc nghiệm 50 câu
+       2. Rubric tự luận cơ học chất điểm (4–6 điểm)
+       3. Rubric tự luận dao động & sóng
+       4. Rubric thực hành thí nghiệm (đo + vẽ đồ thị + sai số)
+       5. Rubric xử lý số liệu & sai số thí nghiệm
+       6. Rubric phân tích đồ thị vận động
+       7. Rubric phân tích đồ thị dao động & năng lượng
+       8. Rubric bài toán thực tiễn & mô hình hóa
+       9. Rubric bài toán bảo toàn cơ năng + ma sát
+       10. Rubric bài toán cộng hưởng & sóng dừng
+       11. Rubric dự án nhóm STEM Vật lí
+       12. Rubric thuyết trình sản phẩm
+       13. Rubric video thí nghiệm tự quay
+       14. Rubric poster/infographic Vật lí
+       15. Rubric portfolio thí nghiệm cả năm
+       16. Rubric kiểm tra 15 phút (2–3 câu tự luận)
+       17. Rubric tổng hợp (trắc nghiệm + tự luận + thực hành)
+       18. Rubric chấm dự án cuối năm
+
+    Mỗi bảng có:
+    - Tiêu chí | Mức 1 | Mức 2 | Mức 3 | Mức 4 | Điểm tối đa
+    - Dòng cuối: Tổng điểm + chỗ ghi nhận xét + chữ ký giáo viên
+
+    III. Phụ lục:
+       - File Excel tính điểm tự động từ rubric
+       - Biểu mẫu báo cáo thí nghiệm
+       - Checklist lỗi thường gặp khi làm thí nghiệm & tự luận',
+
+                 -- CONSTRAINTS
+                 '- Mô tả hành vi cụ thể, không dùng từ chung chung
+    - Tổng điểm mỗi rubric = 10.0 (hoặc 10 × số câu)
+    - Độ lệch chấm giữa các giáo viên ≤ 0.25 điểm
+    - Bảng có màu nhẹ, dễ photo đen trắng
+    - Có hướng dẫn cách cộng điểm khi kết hợp nhiều rubric
+    - Bắt buộc kèm file .docx + .pdf + .xlsx tính điểm tự động
+    - Có phiên bản rút gọn A4 để dán phòng thí nghiệm',
+
+                 'PUBLIC',
+                 NULL
+             )
     RETURNING id
 )
 

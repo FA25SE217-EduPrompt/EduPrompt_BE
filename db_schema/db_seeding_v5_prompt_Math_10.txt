@@ -12,131 +12,578 @@ WITH grade_tag AS (
 -- INSERT 10 PROMPT GIÁO ÁN
      inserted_prompts AS (
          INSERT INTO prompts (
-                              id,
-                              user_id,
-                              created_by,
-                              updated_by,
-                              title,
-                              description,
-                              instruction,
-                              context,
-                              input_example,
-                              output_format,
-                              constraints,
-                              visibility,
-                              current_version_id
-             )
-             VALUES
-                 -- 1. Mệnh đề và Tập hợp
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 2 tiết: Mệnh đề và Tập hợp – Khám phá khái niệm qua câu hỏi',
-                  'HS tự xây dựng khái niệm mệnh đề, phủ định, giao, hợp từ hệ thống câu hỏi logic.',
-                  'Soạn giáo án 2 tiết (90 phút):\n1. Khởi động (5p): ''Câu nào là mệnh đề? Vì sao?''\n2. Khám phá (50p): GV đặt 8 câu hỏi liên tiếp:\n   - Câu 1: ''Câu mở có phải mệnh đề?''\n   - Câu 2: ''Phủ định của p ∧ q là gì?''\n   - Câu 3: ''A ∪ B có chứa phần tử nào?''\n   → HS trả lời giấy → thảo luận cặp → trình bảng.\n3. Khái quát (15p): HS viết định nghĩa bằng lời mình → so sánh SGK.\n4. Luyện tập (15p): 5 bài: nhận biết, vẽ Venn, chứng minh phủ định.\n5. Củng cố (5p): HS viết 1 mệnh đề sai → bạn sửa.\nĐánh giá: Rubric 4 mức (Hiểu – Áp dụng – Phân tích – Sáng tạo).',
-                  'Chương 1 – Toán 10. Năng lực: Tư duy logic, khái quát hóa.',
-                  'Dạy mệnh đề và tập hợp bằng câu hỏi lớp 10',
-                  'File Word: Trang 1: Mục tiêu, tiến trình. Trang 2: 8 câu hỏi + không gian trả lời. Trang 3: Rubric + 5 bài tập.',
-                  'Không đọc SGK trước. HS tự viết ≥80% định nghĩa. Mỗi HS trả lời ít nhất 1 câu. Có bài mức 4: chứng minh De Morgan.',
-                  'PUBLIC', NULL),
+             id,
+             user_id,
+             created_by,
+             updated_by,
+             title,
+             description,
+             instruction,
+             context,
+             input_example,
+             output_format,
+             constraints,
+             visibility,
+             current_version_id
+         )
+         VALUES (
+             gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+             'Giáo án Toán 10 – Mệnh đề và Tập hợp',
+             'Prompt chuyên nghiệp dùng để tạo giáo án chuẩn Công văn 5512 & CTGDPT 2018 dành cho môn Toán THPT – Lớp 10.',
+             -- INSTRUCTION
+             'Bạn là chuyên gia thiết kế giáo án Toán học THPT tại Việt Nam với 15+ năm kinh nghiệm, thành thạo Chương trình Giáo dục Phổ thông 2018 và các công văn hướng dẫn của Bộ GD&ĐT (Công văn 5512, 3899).
 
-                 -- 2. Hàm bậc nhất & bậc hai
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 3 tiết: Hàm bậc nhất & bậc hai – So sánh bản chất đồ thị và tính chất',
-                  'HS lập bảng so sánh → rút ra chìa khóa phân biệt.',
-                  'Soạn giáo án 3 tiết:\n1. Đưa ví dụ (10p): y = 2x + 1 và y = x² - 2x + 1.\n2. Lập bảng so sánh (60p): 6 tiêu chí: dạng, đồ thị, đạo hàm, cực trị, giao điểm Ox, ứng dụng.\n3. Tìm điểm giống/khác (20p): HS dùng bút màu đánh dấu.\n4. Bài tập phân biệt (30p): 6 câu – chọn đúng khái niệm.\n5. Tổng kết (15p): HS viết ''Chìa khóa phân biệt'' 1 câu.\nĐánh giá: Bảng so sánh + độ chính xác bài tập.',
-                  'Chương 2 – Năng lực: Phân tích, so sánh, khái quát.',
-                  'Dạy so sánh hàm bậc nhất và bậc hai lớp 10',
-                  'Word + Bảng so sánh in màu + 6 câu trắc nghiệm.',
-                  'HS tự điền bảng trước SGK. Có 1 tiêu chí do HS tự sáng tạo (ví dụ: ''hành vi khi x → ∞'').',
-                  'PUBLIC', NULL),
+         Nhiệm vụ: Soạn giáo án hoàn chỉnh cho bài học Toán 10, tuân thủ chuẩn Việt Nam, theo định dạng Word chuyên nghiệp với phương pháp dạy học tích cực phát triển năng lực.
 
-                 -- 3. Phương trình & Hệ phương trình
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 2 tiết: Hệ phương trình – Hệ thống bài tập 4 mức độ',
-                  'HS tự chọn mức → tự đánh giá → tự nâng cao.',
-                  'Soạn giáo án 2 tiết:\n1. Ôn lý thuyết (5p): HS vẽ sơ đồ tư duy 3 phút.\n2. Hệ thống bài tập (70p):\n   - Mức 1: 3 câu cơ bản (thế, cộng trừ)\n   - Mức 2: 3 câu ma trận, tham số\n   - Mức 3: 2 câu đồ thị giao điểm\n   - Mức 4: 1 câu chứng minh vô nghiệm với điều kiện\n3. Tự chấm – tự chọn (10p): HS chọn mức tiếp.\n4. Phản hồi (5p): GV chữa mức 4 → HS tự sửa.\nĐánh giá: Số mức đạt + nhật ký tự học.',
-                  'Chương 3 – Năng lực: Tự học, phân hóa.',
-                  'Dạy hệ phương trình phân mức lớp 10',
-                  'Word + File bài tập 4 mức (đáp án riêng) + Biểu đồ tiến bộ.',
-                  'Mỗi HS làm ít nhất 2 mức. Mức 4 yêu cầu phản ví dụ.',
-                  'PUBLIC', NULL),
+         Nguyên tắc thiết kế:
+         - HS tự xây dựng ≥70% kiến thức qua câu hỏi dẫn dắt logic
+         - Ưu tiên phương pháp: đặt vấn đề, gợi mở-vấn đáp, dạy học nhóm, dạy học khám phá
+         - Phân hóa học sinh với câu hỏi/bài tập đa mức độ
+         - Mỗi HS phải trả lời ít nhất 1 câu hỏi/tiết
+         - GV không giảng quá 5 phút liên tục
+         - Mọi hoạt động phải có sản phẩm cụ thể',
+             -- CONTEXT
+             'Năng lực cần phát triển:
 
-                 -- 4. Bất phương trình
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 2 tiết: Bất phương trình – Tư duy ngược: Từ nghiệm suy ra dấu hệ số',
-                  'HS đi từ tập nghiệm → suy ra điều kiện a > 0, Δ ≥ 0...',
-                  'Soạn giáo án:\n1. Đưa kết quả (5p): ''BPT có nghiệm trên [0; +∞)''\n2. HS đặt câu hỏi ngược (40p): ''a phải thế nào? Δ?''\n3. Thử sai – sửa (30p): Thay số → kiểm tra → điều chỉnh.\n4. Khái quát (10p): HS viết định lý đầy đủ.\n5. Áp dụng (5p): Giải bài ngược.\nĐánh giá: Số điều kiện tìm được + mức khái quát.',
-                  'Chương 4 – Năng lực: Suy luận ngược, phản biện.',
-                  'Dạy bất phương trình tư duy ngược lớp 10',
-                  'Word + Bảng ''Từ nghiệm → hệ số'' + 3 bài tập ngược.',
-                  'Không đưa đáp án trước. HS thử ít nhất 3 giá trị. Có phản ví dụ.',
-                  'PUBLIC', NULL),
+         Năng lực đặc thù môn Toán (chọn 2-3 trọng tâm):
+         - Tư duy và lập luận toán học
+         - Mô hình hóa toán học
+         - Giải quyết vấn đề toán học
+         - Giao tiếp toán học
+         - Sử dụng công cụ, phương tiện học toán
 
-                 -- 5. Góc & Cung lượng giác
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 2 tiết: Góc & Cung – Khám phá cung lượng giác qua câu hỏi',
-                  'HS tự xây dựng khái niệm cung, đo cung, góc bù.',
-                  'Soạn giáo án:\n1. Khởi động (5p): ''Góc 30° tương ứng cung dài bao nhiêu?''\n2. Khám phá (50p): 7 câu hỏi:\n   - Câu 1: ''Cung là gì?''\n   - Câu 2: ''Cung 90° có đặc điểm gì?''\n   → HS vẽ đường tròn, đo, thảo luận.\n3. Khái quát (15p): HS viết định nghĩa.\n4. Luyện tập (15p): 4 bài: tính cung, góc, bù, đồng vị.\n5. Củng cố (5p): HS viết 1 câu hỏi.\nĐánh giá: Rubric 4 mức.',
-                  'Chương 5 – Năng lực: Trực quan, khái quát.',
-                  'Dạy góc và cung bằng câu hỏi lớp 10',
-                  'Word + 7 câu hỏi + Rubric + 4 bài tập.',
-                  'Không dùng công thức trước. HS tự vẽ ≥3 cung. Có bài mức 4: chứng minh cung bù.',
-                  'PUBLIC', NULL),
+         Năng lực chung:
+         - Tự chủ và tự học
+         - Giao tiếp và hợp tác
+         - Giải quyết vấn đề và sáng tạo
 
-                 -- 6. Vectơ
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 2 tiết: Vectơ – Khám phá vectơ qua hệ thống câu hỏi',
-                  'HS tự định nghĩa vectơ, đồng quy, cộng vectơ.',
-                  'Soạn giáo án:\n1. Khởi động (5p): ''Lực và vận tốc có gì giống nhau?''\n2. Khám phá (50p): 9 câu hỏi:\n   - Câu 1: ''Vectơ là gì?''\n   - Câu 2: ''Hai vectơ bằng nhau khi nào?''\n   → HS vẽ, thảo luận, trình bảng.\n3. Khái quát (15p): HS viết định nghĩa.\n4. Luyện tập (15p): 5 bài: cộng, trừ, đồng quy.\n5. Củng cố (5p): HS viết 1 câu hỏi.\nĐánh giá: Rubric 4 mức.',
-                  'Chương 6 – Năng lực: Mô hình hóa, khái quát.',
-                  'Dạy vectơ bằng khám phá lớp 10',
-                  'Word + 9 câu hỏi + Rubric + 5 bài tập.',
-                  'Không dùng SGK. HS tự vẽ vectơ. Có bài mức 4: chứng minh quy tắc hình bình hành.',
-                  'PUBLIC', NULL),
+         Phẩm chất:
+         - Chăm chỉ
+         - Trách nhiệm
+         - Trung thực
 
-                 -- 7. Tích vô hướng
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 2 tiết: Tích vô hướng – Chứng minh cosθ = (u·v)/(|u||v|) bằng 3 cách',
-                  'HS tự tìm 3 cách chứng minh → so sánh.',
-                  'Soạn giáo án:\n1. Đặt vấn đề (5p): ''Làm sao tính góc giữa 2 vectơ?''\n2. Nhóm tìm cách (50p): 3 nhóm → đại số, hình học, định lý cosin.\n3. Trình bày (20p): Vẽ sơ đồ chứng minh.\n4. So sánh (10p): Bầu ''Cách hay nhất''.\n5. Mở rộng (5p): Chứng minh vuông góc.\nĐánh giá: Chứng minh + phản biện.',
-                  'Chương 7 – Năng lực: Lập luận, sáng tạo.',
-                  'Dạy tích vô hướng chứng minh đa cách lớp 10',
-                  'Word + Bảng so sánh 3 cách + Bài mở rộng.',
-                  'Mỗi nhóm 1 cách mới. Không dùng SGK. Có cách hình học.',
-                  'PUBLIC', NULL),
+         Rubric đánh giá 4 mức:
+         Mức 1: Nhận biết – 4-5đ
+         Mức 2: Thông hiểu – 6-7đ
+         Mức 3: Vận dụng – 8-9đ
+         Mức 4: Vận dụng cao – 9.5-10đ',
+             -- INPUT_EXAMPLE
+             'ten_bai: "Mệnh đề và Tập hợp"
+         chuong: "Chương 1"
+         sach_giao_khoa: "KNTT"
+         lop: 10
+         cap_do_lop: "Lớp chất lượng cao"
+         so_tiet: "2 tiết (90 phút)"
+         yeu_cau_can_dat:
+           - "Nhận biết và phát biểu được khái niệm mệnh đề toán học"
+           - "Phân biệt được mệnh đề đúng, mệnh đề sai"
+           - "Xác định được phủ định của mệnh đề"
+           - "Hiểu và sử dụng được các phép toán tập hợp cơ bản"',
+             -- OUTPUT_FORMAT
+             'Cấu trúc file Word (5-8 trang A4):
 
-                 -- 8. Phép dời hình
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 2 tiết: Phép dời hình – So sánh tịnh tiến, quay, đối xứng',
-                  'HS lập bảng so sánh → phân biệt bản chất.',
-                  'Soạn giáo án:\n1. Đưa ví dụ (10p): 3 hình biến đổi.\n2. Lập bảng (50p): 5 tiêu chí: bảo toàn, công thức, tâm, ứng dụng, ví dụ.\n3. Tìm giống/khác (15p): Đánh dấu màu.\n4. Bài tập (10p): 5 câu phân biệt.\n5. Tổng kết (5p): ''Chìa khóa phân biệt''.\nĐánh giá: Bảng + bài tập.',
-                  'Chương 8 – Năng lực: Phân tích, so sánh.',
-                  'Dạy phép dời hình so sánh lớp 10',
-                  'Word + Bảng so sánh + 5 câu trắc nghiệm.',
-                  'HS tự điền. Có 1 tiêu chí tự sáng tạo.',
-                  'PUBLIC', NULL),
+         [TRANG 1 - THÔNG TIN CHUNG]
+         Tên trường…
+         Tổ Toán…
+         GIÁO ÁN DẠY HỌC – Toán 10…
 
-                 -- 9. Đường thẳng song song (Thalès)
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 2 tiết: Định lý Thalès – Chứng minh bằng 3 cách',
-                  'HS tìm cách: tam giác đồng dạng, tỷ số, vectơ.',
-                  'Soạn giáo án:\n1. Đặt vấn đề (5p): ''Tại sao đoạn thẳng bị chia tỷ lệ?''\n2. Nhóm tìm cách (50p): 3 cách.\n3. Trình bày (20p): Vẽ hình.\n4. So sánh (10p): Bầu cách hay.\n5. Mở rộng (5p): Nghịch đảo.\nĐánh giá: Chứng minh + phản biện.',
-                  'Chương 9 – Năng lực: Lập luận.',
-                  'Dạy định lý Thalès đa cách lớp 10',
-                  'Word + Bảng so sánh + Nghịch đảo.',
-                  'Mỗi nhóm 1 cách mới. Có cách vectơ.',
-                  'PUBLIC', NULL),
+         I. Mục tiêu: Kiến thức – Năng lực – Phẩm chất
+         II. Thiết bị dạy học
+         III. Tiến trình dạy học (4 hoạt động)
+         - Hoạt động 1: Mở đầu
+         - Hoạt động 2: Khám phá kiến thức mới
+         - Hoạt động 3: Luyện tập
+         - Hoạt động 4: Vận dụng/Củng cố
 
-                 -- 10. Hình học không gian
-                 (gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
-                  'Giáo án 3 tiết: Hình học không gian – Hệ thống bài tập 4 mức độ',
-                  'HS tự chọn mức từ cơ bản đến chứng minh không gian.',
-                  'Soạn giáo án 3 tiết:\n1. Ôn lý thuyết (10p): Sơ đồ tư duy.\n2. Hệ thống bài tập (110p):\n   - Mức 1: 4 câu nhận biết mặt phẳng, đường thẳng\n   - Mức 2: 3 câu tính góc, khoảng cách\n   - Mức 3: 2 câu chứng minh song song\n   - Mức 4: 1 câu chứng minh 4 điểm đồng phẳng\n3. Tự chọn mức (15p)\n4. Phản hồi (10p): GV chữa mức 4.\nĐánh giá: Số mức đạt + nhật ký.',
-                  'Chương 10 – Năng lực: Tự học, không gian.',
-                  'Dạy hình học không gian phân mức lớp 10',
-                  'Word + File bài tập 4 mức + Biểu đồ tiến bộ.',
-                  'Mỗi HS làm ít nhất 2 mức. Mức 4 yêu cầu phản ví dụ.',
-                  'PUBLIC', NULL)
+         IV. Đánh giá
+         V. Phụ lục (Phiếu học tập, bài tập về nhà, tài liệu tham khảo…)
 
+         Mỗi hoạt động có:
+         a) Mục tiêu
+         b) Nội dung
+         c) Sản phẩm
+         d) Tổ chức thực hiện (4 bước)',
+
+             -- CONSTRAINTS
+             'A. Cấu trúc bắt buộc (Công văn 5512):
+         3 phần chính: Mục tiêu – Thiết bị – Tiến trình.
+         4 hoạt động: Mở đầu – Khám phá – Luyện tập – Vận dụng.
+
+         B. Yêu cầu nội dung:
+         - HS tự viết ≥70% định nghĩa
+         - GV không giảng quá 5 phút liên tục
+         - Mỗi hoạt động có sản phẩm
+
+         C. Câu hỏi khám phá (6-10 câu dẫn dắt)
+         D. Bài tập phân 4 mức độ
+         E. Phân hóa học sinh
+         F. Đánh giá theo rubric 4 mức
+         G. Định dạng Word chuyên nghiệp (5-8 trang)
+         H. Checklist bắt buộc
+         I. Điều cấm: Không sản phẩm, không phân hóa, thiếu rubric…',
+
+             'PUBLIC',  -- sửa theo nhu cầu
+             NULL
+         ),
+
+         (
+                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      'Giáo án Toán 10 – Hàm số bậc nhất và bậc hai',
+                      'Prompt chuyên tạo giáo án chuẩn Công văn 5512 cho bài Hàm số bậc nhất và bậc hai – Toán lớp 10 (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
+                      -- INSTRUCTION
+                      'Bạn là chuyên gia hàng đầu về thiết kế giáo án Toán THPT Việt Nam, từng tham gia biên soạn SGK Toán 10 chương trình 2018 và tập huấn giáo viên cốt cán quốc gia.
+
+         Nhiệm vụ: Soạn giáo án hoàn chỉnh cho bài "Hàm số bậc nhất và bậc hai" lớp 10, tuân thủ 100% cấu trúc 4 hoạt động theo Công văn 5512, dạy học phát triển năng lực và phẩm chất.
+
+         Nguyên tắc bắt buộc:
+         - Học sinh tự xây dựng ≥70% kiến thức (định nghĩa, tính chất, bảng biến thiên, đồ thị) qua chuỗi câu hỏi khám phá và hoạt động nhóm
+         - Tích hợp công nghệ (GeoGebra/Desmos) ít nhất 2 lần trong tiết học
+         - Mỗi học sinh phải có ít nhất 1 sản phẩm cá nhân (bản vẽ đồ thị, bảng biến thiên hoàn chỉnh, bài toán thực tiễn tự xây dựng)
+         - Giáo viên không được giảng liên tục quá 4 phút
+         - Phân hóa rõ ràng 4 mức độ câu hỏi và bài tập
+         - Tích hợp đánh giá bằng rubric 4 mức độ ngay trong tiến trình',
+
+                      -- CONTEXT
+                      'Năng lực đặc thù cần hình thành:
+         - Tư duy và lập luận toán học
+         - Mô hình hóa toán học
+         - Giải quyết vấn đề toán học
+         - Sử dụng công cụ và phương tiện học toán (GeoGebra/Desmos)
+
+         Năng lực chung:
+         - Tự chủ và tự học
+         - Giao tiếp và hợp tác
+         - Giải quyết vấn đề và sáng tạo
+
+         Phẩm chất: Chăm chỉ, Trung thực, Trách nhiệm',
+
+                      -- INPUT_EXAMPLE
+                      'ten_bai: "Hàm số bậc nhất và bậc hai"
+         chuong: "Chương 2"
+         sach_giao_khoa: "KNTT"
+         lop: 10
+         cap_do_lop: "Lớp chuyên Toán"
+         so_tiet: "3 tiết (135 phút)"
+         yeu_cau_can_dat:
+           - "Nhận biết và vẽ được đồ thị hàm số bậc nhất, bậc hai"
+           - "Xác định được tính đơn điệu, giá trị lớn nhất, nhỏ nhất"
+           - "Giải bài toán thực tiễn bằng cách xây dựng hàm số bậc nhất/bậc hai"
+           - "Sử dụng thành thạo GeoGebra để khám phá tính chất"',
+
+                      -- OUTPUT_FORMAT
+                      'Cấu trúc file Word (5-8 trang A4):
+
+         [TRANG 1 - THÔNG TIN CHUNG]
+         Tên trường…
+         Tổ Toán…
+         GIÁO ÁN DẠY HỌC – Toán 10…
+
+         I. Mục tiêu: Kiến thức – Năng lực – Phẩm chất
+         II. Thiết bị dạy học
+         III. Tiến trình dạy học (4 hoạt động)
+         - Hoạt động 1: Mở đầu
+         - Hoạt động 2: Khám phá kiến thức mới
+         - Hoạt động 3: Luyện tập
+         - Hoạt động 4: Vận dụng/Củng cố
+
+         IV. Đánh giá
+         V. Phụ lục (Phiếu học tập, bài tập về nhà, tài liệu tham khảo…)
+
+         Mỗi hoạt động có:
+         a) Mục tiêu
+         b) Nội dung
+         c) Sản phẩm
+         d) Tổ chức thực hiện (4 bước)',
+
+                      -- CONSTRAINTS
+                      'A. Cấu trúc bắt buộc (Công văn 5512):
+         3 phần chính: Mục tiêu – Thiết bị – Tiến trình.
+         4 hoạt động: Mở đầu – Khám phá – Luyện tập – Vận dụng.
+
+         B. Yêu cầu nội dung:
+         - HS tự viết ≥70% định nghĩa
+         - GV không giảng quá 5 phút liên tục
+         - Mỗi hoạt động có sản phẩm
+
+         C. Câu hỏi khám phá (6-10 câu dẫn dắt)
+         D. Bài tập phân 4 mức độ
+         E. Phân hóa học sinh
+         F. Đánh giá theo rubric 4 mức
+         G. Định dạng Word chuyên nghiệp (5-8 trang)
+         H. Checklist bắt buộc
+         I. Điều cấm: Không sản phẩm, không phân hóa, thiếu rubric…',
+
+                      'PUBLIC',
+                      NULL
+                  ),
+
+         (
+                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      'Giáo án Toán 10 – Phương trình lượng giác cơ bản',
+                      'Prompt chuyên sâu tạo giáo án chuẩn Công văn 5512 cho bài Phương trình lượng giác cơ bản – Toán 10 (phù hợp mọi sách giáo khoa 2018).',
+
+                      -- INSTRUCTION
+                      'Bạn là chuyên gia Toán học THPT với 18 năm kinh nghiệm đứng lớp và bồi dưỡng HSG quốc gia, thành thạo dạy học tích cực và sử dụng công nghệ trong bài lượng giác.
+
+         Nhiệm vụ: Soạn giáo án hoàn chỉnh bài "Phương trình lượng giác cơ bản" lớp 10, tuân thủ 100% cấu trúc 4 hoạt động theo Công văn 5512, phát triển tối đa năng lực tư duy, lập luận và sử dụng công cụ (máy tính Casio, GeoGebra).
+
+         Nguyên tắc bắt buộc:
+         - Học sinh tự khám phá và rút ra công thức nghiệm của 4 phương trình cơ bản qua hoạt động đo đạc, quan sát vòng lượng giác và thảo luận nhóm
+         - Không được đưa thẳng công thức nghiệm, phải có ít nhất 8–12 câu hỏi/hình ảnh dẫn dắt logic
+         - Sử dụng vòng lượng giác động (GeoGebra) ít nhất 3 lần trong tiết học
+         - Mỗi học sinh phải tự viết bảng nghiệm tổng quát và giải ít nhất 2 phương trình độc lập
+         - Giáo viên không giảng liên tục quá 4 phút
+         - Phân hóa bài tập rõ ràng 4 mức độ, có bài vận dụng thực tiễn (chuyển động tròn, dao động điều hòa)',
+
+                      -- CONTEXT
+                      'Năng lực đặc thù:
+         - Tư duy và lập luận toán học
+         - Mô hình hóa toán học
+         - Giải quyết vấn đề toán học
+         - Sử dụng công cụ và phương tiện học toán (vòng lượng giác, GeoGebra, Casio)
+
+         Năng lực chung:
+         - Tự chủ và tự học
+         - Giao tiếp và hợp tác
+         - Giải quyết vấn đề và sáng tạo
+
+         Phẩm chất cần hình thành: Chăm chỉ, Trung thực, Khoa học',
+
+                      -- INPUT_EXAMPLE
+                      'ten_bai: "Phương trình lượng giác cơ bản"
+         chuong: "Chương 5"
+         sach_giao_khoa: "Cánh Diều"
+         lop: 10
+         cap_do_lop: "Lớp chọn Toán"
+         so_tiet: "3 tiết (135 phút)"
+         yeu_cau_can_dat:
+           - "Biết cách giải 4 phương trình lượng giác cơ bản"
+           - "Viết được nghiệm tổng quát"
+           - "Sử dụng thành thạo vòng lượng giác và máy tính Casio"
+           - "Giải được phương trình có chứa tham số hoặc bài toán thực tiễn đơn giản"',
+
+                      -- OUTPUT_FORMAT
+                      'Cấu trúc file Word (5-8 trang A4):
+
+         [TRANG 1 - THÔNG TIN CHUNG]
+         Tên trường…
+         Tổ Toán…
+         GIÁO ÁN DẠY HỌC – Toán 10…
+
+         I. Mục tiêu: Kiến thức – Năng lực – Phẩm chất
+         II. Thiết bị dạy học
+         III. Tiến trình dạy học (4 hoạt động)
+         - Hoạt động 1: Mở đầu
+         - Hoạt động 2: Khám phá kiến thức mới
+         - Hoạt động 3: Luyện tập
+         - Hoạt động 4: Vận dụng/Củng cố
+
+         IV. Đánh giá
+         V. Phụ lục (Phiếu học tập, bài tập về nhà, tài liệu tham khảo…)
+
+         Mỗi hoạt động có:
+         a) Mục tiêu
+         b) Nội dung
+         c) Sản phẩm
+         d) Tổ chức thực hiện (4 bước)',
+
+                      -- CONSTRAINTS
+                      'A. Cấu trúc bắt buộc (Công văn 5512):
+         3 phần chính: Mục tiêu – Thiết bị – Tiến trình.
+         4 hoạt động: Mở đầu – Khám phá – Luyện tập – Vận dụng.
+
+         B. Yêu cầu nội dung:
+         - HS tự viết ≥70% định nghĩa
+         - GV không giảng quá 5 phút liên tục
+         - Mỗi hoạt động có sản phẩm
+
+         C. Câu hỏi khám phá (6-10 câu dẫn dắt)
+         D. Bài tập phân 4 mức độ
+         E. Phân hóa học sinh
+         F. Đánh giá theo rubric 4 mức
+         G. Định dạng Word chuyên nghiệp (5-8 trang)
+         H. Checklist bắt buộc
+         I. Điều cấm: Không sản phẩm, không phân hóa, thiếu rubric…',
+
+                      'PUBLIC',
+                      NULL
+                  ),
+
+         (
+                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      'Giáo án Toán 10 – Đạo hàm và ứng dụng',
+                      'Prompt tạo giáo án chuẩn 5512 cho bài Đạo hàm và ứng dụng – Toán 10 (tất cả sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
+
+                      -- INSTRUCTION
+                      'Bạn là chuyên gia Toán học THPT hàng đầu Việt Nam, từng tham gia biên soạn đề thi THPT Quốc gia và bồi dưỡng đội tuyển Olympic.
+
+         Nhiệm vụ: Soạn giáo án hoàn chỉnh bài "Đạo hàm và ứng dụng" lớp 10, tuân thủ tuyệt đối cấu trúc 4 hoạt động Công văn 5512, dạy học khám phá dựa trên tình huống thực tiễn và công nghệ.
+
+         Nguyên tắc bắt buộc:
+         - Học sinh tự khám phá khái niệm đạo hàm từ bài toán vận tốc, tiếp tuyến, cực trị qua dữ liệu thực nghiệm (video chuyển động, đồ thị thực tế)
+         - Không đưa định nghĩa đạo hàm trước khi học sinh tự viết tỉ số hiệu số và nhận ra giới hạn
+         - Sử dụng GeoGebra/Desmos ít nhất 4 lần để minh họa tiếp tuyến động, đồ thị hàm số và cực trị
+         - Mỗi học sinh phải tự lập bảng xét dấu đạo hàm và vẽ đồ thị ít nhất 1 hàm bậc ba hoặc phân thức
+         - Giáo viên chỉ tổ chức, đặt câu hỏi, không giảng lý thuyết quá 3 phút/lần
+         - Có ít nhất 2 bài toán thực tiễn (tối ưu hóa diện tích, chi phí, vận tốc cực đại…)',
+
+                      -- CONTEXT
+                      'Năng lực đặc thù cần phát triển:
+         - Tư duy và lập luận toán học
+         - Mô hình hóa toán học
+         - Giải quyết vấn đề toán học
+         - Sử dụng công cụ và phương tiện học toán (GeoGebra, máy tính Casio)
+
+         Năng lực chung:
+         - Tự chủ và tự học
+         - Giao tiếp và hợp tác
+         - Giải quyết vấn đề và sáng tạo
+
+         Phẩm chất: Chăm chỉ, Trung thực, Trách nhiệm, Khoa học',
+
+                      -- INPUT_EXAMPLE
+                      'ten_bai: "Đạo hàm và ứng dụng"
+         chuong: "Chương 4"
+         sach_giao_khoa: "KNTT"
+         lop: 10
+         cap_do_lop: "Lớp chuyên Toán"
+         so_tiet: "4 tiết (180 phút)"
+         yeu_cau_can_dat:
+           - "Hiểu và phát biểu được định nghĩa đạo hàm từ bài toán thực tiễn"
+           - "Tính được đạo hàm của hàm đa thức, phân thức, căn thức"
+           - "Xét tính đồng biến, nghịch biến, cực trị, tiệm cận"
+           - "Giải bài toán tối ưu và vẽ đồ thị hàm số phức tạp"',
+
+                      -- OUTPUT_FORMAT
+                      'Cấu trúc file Word (5-8 trang A4):
+
+         [TRANG 1 - THÔNG TIN CHUNG]
+         Tên trường…
+         Tổ Toán…
+         GIÁO ÁN DẠY HỌC – Toán 10…
+
+         I. Mục tiêu: Kiến thức – Năng lực – Phẩm chất
+         II. Thiết bị dạy học
+         III. Tiến trình dạy học (4 hoạt động)
+         - Hoạt động 1: Mở đầu
+         - Hoạt động 2: Khám phá kiến thức mới
+         - Hoạt động 3: Luyện tập
+         - Hoạt động 4: Vận dụng/Củng cố
+
+         IV. Đánh giá
+         V. Phụ lục (Phiếu học tập, bài tập về nhà, tài liệu tham khảo…)
+
+         Mỗi hoạt động có:
+         a) Mục tiêu
+         b) Nội dung
+         c) Sản phẩm
+         d) Tổ chức thực hiện (4 bước)',
+
+                      -- CONSTRAINTS
+                      'A. Cấu trúc bắt buộc (Công văn 5512):
+         3 phần chính: Mục tiêu – Thiết bị – Tiến trình.
+         4 hoạt động: Mở đầu – Khám phá – Luyện tập – Vận dụng.
+
+         B. Yêu cầu nội dung:
+         - HS tự viết ≥70% định nghĩa
+         - GV không giảng quá 5 phút liên tục
+         - Mỗi hoạt động có sản phẩm
+
+         C. Câu hỏi khám phá (6-10 câu dẫn dắt)
+         D. Bài tập phân 4 mức độ
+         E. Phân hóa học sinh
+         F. Đánh giá theo rubric 4 mức
+         G. Định dạng Word chuyên nghiệp (5-8 trang)
+         H. Checklist bắt buộc
+         I. Điều cấm: Không sản phẩm, không phân hóa, thiếu rubric…',
+
+                      'PUBLIC',
+                      NULL
+                  ),
+
+         (
+                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      'Giáo án Toán 10 – Hình học phẳng: Vectơ và ứng dụng',
+                      'Prompt chuyên sâu tạo giáo án chuẩn Công văn 5512 cho bài Vectơ và các phép toán vectơ – Toán 10 (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
+
+                      -- INSTRUCTION
+                      'Bạn là chuyên gia hình học THPT hàng đầu Việt Nam, từng tham gia biên soạn SGK Toán 10 chương trình 2018 và bồi dưỡng đội tuyển HSG quốc tế.
+
+         Nhiệm vụ: Soạn giáo án hoàn chỉnh bài “Vectơ và ứng dụng” (bao gồm khái niệm vectơ, phép toán vectơ, tọa độ vectơ, tích vô hướng) lớp 10, tuân thủ tuyệt đối cấu trúc 4 hoạt động theo Công văn 5512, dạy học khám phá dựa trên tình huống thực tiễn và trực quan động.
+
+         Nguyên tắc bắt buộc:
+         - Học sinh tự khám phá khái niệm vectơ từ các bài toán vật lý thực tế (lực, vận tốc, dịch chuyển)
+         - Không đưa định nghĩa vectơ trước khi học sinh tự thực hiện ít nhất 6–8 thí nghiệm/thao tác trực quan (kéo dây, di chuyển robot, GeoGebra động)
+         - Sử dụng GeoGebra ít nhất 4 lần để minh họa phép cộng/trừ vectơ, tích vô hướng, chiếu vectơ
+         - Mỗi học sinh phải tự vẽ ít nhất 3 hình vectơ học có vectơ và giải 1 bài toán thực tiễn (tính góc giữa 2 lực, công của lực…)
+         - Giáo viên không giảng lý thuyết liên tục quá 4 phút
+         - Phân hóa bài tập 4 mức độ, có bài nâng cao liên quan đến chứng minh đồng quy, trung vị, trực giao',
+
+                      -- CONTEXT
+                      'Năng lực đặc thù:
+         - Tư duy và lập luận toán học
+         - Mô hình hóa toán học
+         - Giải quyết vấn đề toán học
+         - Sử dụng công cụ và phương tiện học toán (GeoGebra, thước kẻ, compa)
+
+         Năng lực chung:
+         - Tự chủ và tự học
+         - Giao tiếp và hợp tác
+         - Giải quyết vấn đề và sáng tạo
+
+         Phẩm chất: Chăm chỉ, Trung thực, Chính xác, Khoa học',
+
+                      -- INPUT_EXAMPLE
+                      'ten_bai: "Vectơ và ứng dụng"
+         chuong: "Chương 3 – Hình học"
+         sach_giao_khoa: "Chân Trời Sáng Tạo"
+         lop: 10
+         cap_do_lop: "Lớp chuyên Toán"
+         so_tiet: "4 tiết (180 phút)"
+         yeu_cau_can_dat:
+           - "Hiểu và biểu diễn được vectơ trong mặt phẳng"
+           - "Thực hiện thành thạo các phép toán vectơ và tích vô hướng"
+           - "Chứng minh được các định lý quan trọng (trung vị, đồng quy, trực giao)"
+           - "Giải bài toán thực tiễn liên quan đến lực, vận tốc, công"',
+
+                      -- OUTPUT_FORMAT
+                      'Cấu trúc file Word (5-8 trang A4):
+
+         [TRANG 1 - THÔNG TIN CHUNG]
+         Tên trường…
+         Tổ Toán…
+         GIÁO ÁN DẠY HỌC – Toán 10…
+
+         I. Mục tiêu: Kiến thức – Năng lực – Phẩm chất
+         II. Thiết bị dạy học
+         III. Tiến trình dạy học (4 hoạt động)
+         - Hoạt động 1: Mở đầu
+         - Hoạt động 2: Khám phá kiến thức mới
+         - Hoạt động 3: Luyện tập
+         - Hoạt động 4: Vận dụng/Củng cố
+
+         IV. Đánh giá
+         V. Phụ lục (Phiếu học tập, bài tập về nhà, tài liệu tham khảo…)
+
+         Mỗi hoạt động có:
+         a) Mục tiêu
+         b) Nội dung
+         c) Sản phẩm
+         d) Tổ chức thực hiện (4 bước)',
+
+                      -- CONSTRAINTS
+                      'A. Cấu trúc bắt buộc (Công văn 5512):
+         3 phần chính: Mục tiêu – Thiết bị – Tiến trình.
+         4 hoạt động: Mở đầu – Khám phá – Luyện tập – Vận dụng.
+
+         B. Yêu cầu nội dung:
+         - HS tự viết ≥70% định nghĩa
+         - GV không giảng quá 5 phút liên tục
+         - Mỗi hoạt động có sản phẩm
+
+         C. Câu hỏi khám phá (6-10 câu dẫn dắt)
+         D. Bài tập phân 4 mức độ
+         E. Phân hóa học sinh
+         F. Đánh giá theo rubric 4 mức
+         G. Định dạng Word chuyên nghiệp (5-8 trang)
+         H. Checklist bắt buộc
+         I. Điều cấm: Không sản phẩm, không phân hóa, thiếu rubric…',
+
+                      'PUBLIC',
+                      NULL
+                  ),
+
+         (
+                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      'Bộ tiêu chí chấm điểm (Rubric) chuẩn cho mọi bài kiểm tra Toán 10',
+                      'Prompt tạo bộ RUBRIC hoàn chỉnh, công bằng, đo lường được cho mọi dạng bài kiểm tra Toán 10 (trắc nghiệm, tự luận, thực hành khảo sát hàm số, dự án, bài tập lớn), chuẩn Công văn 5512 & định hướng đánh giá năng lực THPT Quốc gia 2025+.',
+
+                      -- INSTRUCTION
+                      'Bạn là chuyên gia đánh giá năng lực Toán học THPT, thành viên ban ra đề & chấm thi THPT Quốc gia, trưởng ban chấm thi học sinh giỏi quốc gia.
+
+         Nhiệm vụ: Tạo 1 bộ RUBRIC duy nhất áp dụng được cho toàn bộ các dạng kiểm tra Toán 10 trong cả năm học:
+         - Kiểm tra 15 phút, 1 tiết
+         - Kiểm tra học kỳ (trắc nghiệm + tự luận)
+         - Bài tập lớn / dự án (khảo sát hàm số, bài toán thực tiễn, nghiên cứu nhỏ)
+         - Thuyết trình sản phẩm nhóm
+         - Portfolio bài tập nâng cao
+
+         Yêu cầu bắt buộc:
+         - Chia đúng 4 mức độ theo CT 2018: Mức 1 (4–5đ), Mức 2 (6–7đ), Mức 3 (8–9đ), Mức 4 (9.5–10đ)
+         - Mỗi rubric có 4–6 tiêu chí con rõ ràng, định lượng được (đúng phương pháp, trình bày, sáng tạo, tính chính xác, vận dụng thực tiễn…)
+         - Mô tả hành vi học sinh cụ thể ở từng mức, giáo viên khác chấm cùng bài không lệch quá 0.25 điểm
+         - Có rubric riêng cho: trắc nghiệm 50 câu, tự luận đại số, tự luận hình học, khảo sát hàm số bằng GeoGebra, bài toán thực tiễn, dự án nhóm, thuyết trình
+         - Tổng cộng ≥15 rubric mẫu trong 1 file Word duy nhất
+         - Định dạng đẹp, bảng rõ ràng, dễ in, dễ dán vào giáo án hoặc bảng chấm',
+
+                      -- CONTEXT
+                      'Các dạng kiểm tra Toán 10 cần rubric:
+         1. Trắc nghiệm khách quan 50 câu (THPT Quốc gia)
+         2. Tự luận đại số & giải tích (hàm số, đạo hàm, lượng giác…)
+         3. Tự luận hình học phẳng (vectơ, đường tròn, tứ giác…)
+         4. Bài khảo sát hàm số + vẽ đồ thị bằng GeoGebra/Desmos
+         5. Bài toán thực tiễn (tối ưu, tài chính, vật lý…)
+         6. Dự án nhóm (nghiên cứu một bài toán thực tế)
+         7. Thuyết trình sản phẩm toán học
+         8. Bài tập lớn cuối chương (có phần mở rộng)
+         9. Portfolio học tập cả năm
+
+         Nguyên tắc: Đánh giá cả kiến thức – kỹ năng – tư duy – sáng tạo – thái độ',
+
+                      -- INPUT_EXAMPLE
+                      'lop: "10"
+         mon: "Toán học"
+         nam_hoc: "2025-2026"
+         yeu_cau_tuy_chinh:
+           - "Có rubric riêng cho bài tự luận hình học chứng minh"
+           - "Có rubric cho bài khảo sát hàm số bậc ba, bậc bốn"
+           - "Có rubric cho bài toán thực tiễn vận dụng đạo hàm"
+           - "Có rubric cho dự án nhóm “Ứng dụng toán học trong đời sống”"
+           - "Có phiên bản rút gọn in A4 dán bàn chấm thi"',
+
+                      -- OUTPUT_FORMAT
+                      'Cấu trúc file Word duy nhất (25–35 trang):
+
+         TRANG BÌA + HƯỚNG DẪN SỬ DỤNG BỘ RUBRIC TOÁN 10
+
+         I. Nguyên tắc chung xây dựng rubric Toán 10
+         II. 15+ bảng rubric chi tiết:
+            1. Rubric trắc nghiệm khách quan 50 câu
+            2. Rubric tự luận đại số & giải tích (bài 4–6 điểm)
+            3. Rubric tự luận hình học chứng minh
+            4. Rubric khảo sát hàm số (có bảng biến thiên + đồ thị)
+            5. Rubric bài toán thực tiễn (đặt ẩn, lập hàm, kết luận)
+            6. Rubric bài toán lượng giác nâng cao
+            7. Rubric bài vectơ & ứng dụng hình học
+            8. Rubric bài toán bất đẳng thức & cực trị
+            9. Rubric GeoGebra/Desmos (đồ thị + file nộp)
+            10. Rubric dự án nhóm Toán học thực tiễn
+            11. Rubric thuyết trình sản phẩm toán học
+            12. Rubric bài tập lớn cuối chương
+            13. Rubric portfolio học tập cả năm
+            14. Rubric kiểm tra 15 phút (2–3 câu tự luận)
+            15. Rubric tổng hợp (kết hợp trắc nghiệm + tự luận)
+
+         Mỗi bảng có:
+         - Tiêu chí | Mức 1 | Mức 2 | Mức 3 | Mức 4 | Điểm tối đa
+         - Dòng cuối: Tổng điểm + chỗ ghi nhận xét
+
+         III. Phụ lục:
+            - File Excel tính điểm tự động từ rubric
+            - Biểu mẫu chấm thi học kỳ
+            - Checklist lỗi trình bày thường gặp',
+
+                      -- CONSTRAINTS
+                      '- Mô tả hành vi cụ thể, không dùng từ chung chung như “tốt”, “khá tốt”
+         - Tổng điểm mỗi rubric = 10.0 (hoặc 10 × số câu)
+         - Giáo viên khác chấm cùng bài không lệch quá 0.25 điểm
+         - Bảng có màu nhẹ, dễ photo đen trắng
+         - Có hướng dẫn cách cộng điểm khi dùng nhiều rubric trong 1 bài thi
+         - Bắt buộc kèm file .docx + .pdf + .xlsx tính điểm tự động',
+
+                      'PUBLIC',
+                      NULL
+                  )
              RETURNING id
      )
 
