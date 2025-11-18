@@ -128,7 +128,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Started import operation: {}", response.operationName());
             return response;
 
-        } catch (ClientException e) {
+        } catch (ClientException | NoSuchElementException e) {
             log.error("Error importing file {} to store: {}", fileId, e.getMessage(), e);
             throw new GeminiApiException("Failed to import file: " + e.getMessage(), e);
         }
@@ -164,7 +164,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
 
             return response;
 
-        } catch (ClientException e) {
+        } catch (ClientException | NoSuchElementException e) {
             log.error("Error polling operation {}: {}", operationName, e.getMessage());
             throw new GeminiApiException("Failed to poll operation: " + e.getMessage(), e);
         }
@@ -233,7 +233,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                     .activeDocumentCount(store.activeDocumentsCount().orElse(0L))
                     .build();
 
-        } catch (ClientException e) {
+        } catch (ClientException | NoSuchElementException e) {
             log.error("Error getting File Search Store {}: {}", fileSearchStoreId, e.getMessage());
             throw new GeminiApiException("Failed to get File Search Store: " + e.getMessage(), e);
         }
