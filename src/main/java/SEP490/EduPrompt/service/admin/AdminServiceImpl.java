@@ -224,7 +224,7 @@ public class AdminServiceImpl implements AdminService {
 
         long teacherCount = userRepo.countBySchoolIdAndRole(schoolId, Role.TEACHER.name());
 
-        long tokenUsed = sub.getSchoolTokenPool() - sub.getSchoolTokenRemaining();
+        Integer tokenUsed = sub.getSchoolTokenPool() - sub.getSchoolTokenRemaining();
 
         return new SchoolSubscriptionUsageResponse(
                 sub.getId(),
