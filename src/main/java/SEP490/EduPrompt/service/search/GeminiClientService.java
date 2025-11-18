@@ -2,10 +2,13 @@ package SEP490.EduPrompt.service.search;
 
 import SEP490.EduPrompt.dto.response.search.FileSearchStoreResponse;
 import SEP490.EduPrompt.dto.response.search.FileUploadResponse;
+import SEP490.EduPrompt.dto.response.search.GroundingChunk;
 import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
 import SEP490.EduPrompt.model.Prompt;
 import com.google.genai.Pager;
 import com.google.genai.types.Document;
+
+import java.util.List;
 
 /**
  * Service for interacting with Gemini File Search API
@@ -87,4 +90,13 @@ public interface GeminiClientService {
      * @param force             If true, delete even if store has documents
      */
     void deleteFileSearchStore(String fileSearchStoreId, boolean force);
+
+    /**
+     * Perform semantic search using Gemini's generateContent with grounding
+     * @param fileSearchStoreId The store to search in
+     * @param query User's search query
+     * @param maxResults Maximum number of results to return
+     * @return List of grounding chunks with matched content
+     */
+    List<GroundingChunk> searchDocuments(String fileSearchStoreId, String query, int maxResults);
 }
