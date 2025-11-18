@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Slf4j
 @Service
@@ -46,8 +47,8 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             FileSearchStore store = genAiClient.fileSearchStores.create(request);
 
             FileSearchStoreResponse response = FileSearchStoreResponse.builder()
-                    .storeId(String.valueOf(store.name()))
-                    .displayName(String.valueOf(store.displayName()))
+                    .storeId(store.name().orElseThrow())
+                    .displayName(store.displayName().orElseThrow())
                     .createdAt(Instant.now())
                     .activeDocumentCount(0L)
                     .build();
@@ -55,7 +56,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Created File Search Store: {}", response.storeId());
             return response;
 
-        } catch (ClientException e) {
+        } catch (ClientException | NoSuchElementException e) {
             log.error("Error creating File Search Store: {}", e.getMessage(), e);
             throw new GeminiApiException("Failed to create File Search Store: " + e.getMessage(), e);
         }
@@ -67,34 +68,26 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Uploading prompt {} to File Search Store {}", prompt.getId(), fileSearchStoreId);
 
             String content = buildPromptContent(prompt);
+            String displayName = "prompt_" + prompt.getId();
+
             byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
             int size = bytes.length;
             InputStream contentStream = new ByteArrayInputStream(bytes);
 
-
-            String displayName = "prompt_" + prompt.getId();
-
-            UploadFileConfig uploadFileConfig = UploadFileConfig.builder()
-                    .displayName(displayName)
-                    .mimeType("text/plain")
-                    .build();
-
-            File newFile = genAiClient.files.upload(contentStream, size, uploadFileConfig);
-
-            log.info("Uploaded new file : {}", newFile);
-
-            ImportFileConfig importFileConfig = ImportFileConfig.builder()
-//                    .customMetadata(buildMetadataSection(prompt))
-                    .build();
-            ImportFileOperation operation = genAiClient.fileSearchStores.importFile(
+            UploadToFileSearchStoreOperation operation = genAiClient.fileSearchStores.uploadToFileSearchStore(
                     fileSearchStoreName,
-                    String.valueOf(newFile.name()),
-                    importFileConfig
+                    contentStream,
+                    size,
+                    UploadToFileSearchStoreConfig.builder()
+                            .displayName(displayName)
+                            .customMetadata(buildMetadataSection(prompt))
+                            .mimeType("text/plain")
+                            .build()
             );
 
             //it will return a operation object with status done=false, just get its name, i will poll it later
-            String operationId = String.valueOf(operation.name());
-            boolean done = operation.done().isPresent() ? operation.done().get() : false;
+            String operationId = operation.name().orElseThrow();
+            boolean done = operation.done().orElse(false);
             FileUploadResponse response = FileUploadResponse.builder()
                     .documentId(operationId) //just a placeholder
                     .operationId(operationId)
@@ -105,10 +98,11 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Successfully uploaded prompt {} with operation {}", prompt.getId(), operationId);
             return response;
 
-        } catch (ClientException e) {
+        } catch (ClientException | NoSuchElementException e) {
             log.error("Error uploading prompt {} to File Search Store: {}", prompt.getId(), e.getMessage(), e);
             throw new GeminiApiException("Failed to upload to File Search Store: " + e.getMessage(), e);
         }
+
     }
 
     @Override
@@ -118,12 +112,12 @@ public class GeminiClientServiceImpl implements GeminiClientService {
 
             ImportFileOperation operation = genAiClient.fileSearchStores.importFile(
                     fileSearchStoreName,
-                    String.valueOf(fileId),
+                    fileId,
                     ImportFileConfig.builder().build()
             );
 
             //it will return a operation object with status done=false, just get its name, i will poll it later
-            String operationName = String.valueOf(operation.name());
+            String operationName = operation.name().orElseThrow();
             ImportOperationResponse response = ImportOperationResponse.builder()
                     .documentId(operationName)
                     .operationName(operationName)
@@ -152,10 +146,11 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             GetOperationConfig config = GetOperationConfig.builder().build();
             ImportFileOperation importFileOperation = genAiClient.operations.get(operation, config);
 
-            boolean done = importFileOperation.done().isPresent() ? importFileOperation.done().get() : false;
+            boolean done = importFileOperation.done().orElse(false);
 
-            String documentId = importFileOperation.response().isPresent()
-                    ? String.valueOf(importFileOperation.response().get().documentName()) : null; // it wont be null, since it's optional and done mean it has value
+            String documentId = importFileOperation.response().orElseThrow()
+                    .documentName()
+                    .orElseThrow(); // it wont be null, since it's optional and done mean it has value
             ImportOperationResponse response = ImportOperationResponse.builder()
                     .operationName(operationName)
                     .done(done)
@@ -232,11 +227,10 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             GetFileSearchStoreConfig config = GetFileSearchStoreConfig.builder().build();
             FileSearchStore store = genAiClient.fileSearchStores.get(fileSearchStoreId, config);
 
-
             return FileSearchStoreResponse.builder()
-                    .storeId(String.valueOf(store.name()))
-                    .displayName(String.valueOf(store.displayName()))
-                    .activeDocumentCount(store.activeDocumentsCount().isPresent() ? store.activeDocumentsCount().get() : 0L)
+                    .storeId(store.name().orElseThrow())
+                    .displayName(store.displayName().orElse(""))
+                    .activeDocumentCount(store.activeDocumentsCount().orElse(0L))
                     .build();
 
         } catch (ClientException e) {
@@ -283,21 +277,21 @@ public class GeminiClientServiceImpl implements GeminiClientService {
         return content.toString().trim();
     }
 
-//    /**
-//     * Build custom metadata from prompt
-//     */
-//    private List<CustomMetadata> buildMetadataSection(Prompt prompt) {
-//        List<CustomMetadata> metadataList = new ArrayList<>();
-//
-//        List<PromptTag> promptTagList = promptTagRepository.findByPromptId(prompt.getId());
-//        for (PromptTag promptTag : promptTagList) {
-//            Tag tag = promptTag.getTag();
-//            CustomMetadata metadata = CustomMetadata.builder()
-//                    .key(tag.getType())
-//                    .stringValue(tag.getValue())
-//                    .build();
-//            metadataList.add(metadata);
-//        }
-//        return metadataList;
-//    }
+    /**
+     * Build custom metadata from prompt
+     */
+    private List<CustomMetadata> buildMetadataSection(Prompt prompt) {
+        List<CustomMetadata> metadataList = new ArrayList<>();
+
+        List<PromptTag> promptTagList = promptTagRepository.findByPromptId(prompt.getId());
+        for (PromptTag promptTag : promptTagList) {
+            Tag tag = promptTag.getTag();
+            CustomMetadata metadata = CustomMetadata.builder()
+                    .key(tag.getType())
+                    .stringValue(tag.getValue())
+                    .build();
+            metadataList.add(metadata);
+        }
+        return metadataList;
+    }
 }
