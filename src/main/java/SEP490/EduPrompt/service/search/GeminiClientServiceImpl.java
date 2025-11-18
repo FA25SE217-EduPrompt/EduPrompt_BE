@@ -12,6 +12,7 @@ import com.google.genai.Client;
 import com.google.genai.Pager;
 import com.google.genai.errors.ClientException;
 import com.google.genai.types.*;
+import SEP490.EduPrompt.dto.response.search.GroundingChunk;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -255,6 +256,98 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             throw new GeminiApiException("Failed to delete File Search Store: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public List<GroundingChunk> searchDocuments(String fileSearchStoreId, String query, int maxResults) {
+        try {
+            log.info("Searching in store {} with query: {}", fileSearchStoreId, query);
+
+            GenerateContentConfig config = GenerateContentConfig.builder()
+                    .tools(List.of(
+                            Tool.builder()
+                                    .fileSearch(FileSearch.builder()
+                                            .fileSearchStoreNames(fileSearchStoreId)
+                                            .build())
+                                    .build()
+                    ))
+                    .build();
+
+            // create prompt that ask for retrieval only
+            String searchPrompt = String.format(
+                    "Find the most relevant teaching prompts for: %s\n" +
+                            "Return only the matching documents without generating new content.",
+                    query
+            );
+
+            GenerateContentResponse response = genAiClient.models.generateContent(
+                    "gemini-2.5-flash",
+                    List.of(Content.builder()
+                            .parts(List.of(Part.builder().text(searchPrompt).build()))
+                            .role("user")
+                            .build()),
+                    config
+            );
+
+            // get grounding chunks from response
+            List<SEP490.EduPrompt.dto.response.search.GroundingChunk> chunks = new ArrayList<>();
+
+            if (response.candidates().isPresent()) {
+                Candidate candidate = response.candidates().get().getFirst();
+
+                if (candidate.groundingMetadata().isPresent() &&
+                        candidate.groundingMetadata().get().groundingChunks().isPresent()) {
+
+                    for (com.google.genai.types.GroundingChunk chunk :
+                            candidate.groundingMetadata().get().groundingChunks().get()) {
+
+                        if (chunk.retrievedContext().isPresent()) {
+                            String documentId = String.valueOf(chunk.retrievedContext().get().uri());
+                            String text = String.valueOf(chunk.retrievedContext().get().text());
+
+                            // confident score
+                            Double score = extractConfidenceScore(
+                                    candidate.groundingMetadata().orElseThrow(),
+                                    chunks.size()
+                            );
+
+                            chunks.add(SEP490.EduPrompt.dto.response.search.GroundingChunk.builder()
+                                    .documentId(documentId)
+                                    .text(text)
+                                    .confidenceScore(score)
+                                    .build());
+                        }
+                    }
+                }
+            }
+
+            if (chunks.size() > maxResults) {
+                chunks = chunks.subList(0, maxResults);
+            }
+
+            log.info("Found {} grounding chunks for query", chunks.size());
+            return chunks;
+
+        } catch (ClientException e) {
+            log.error("Error searching documents: {}", e.getMessage(), e);
+            throw new GeminiApiException("Failed to search documents: " + e.getMessage(), e);
+        }
+    }
+
+    private Double extractConfidenceScore(GroundingMetadata metadata, int chunkIndex) {
+        if (metadata.groundingSupports().isPresent()) {
+            for (GroundingSupport support : metadata.groundingSupports().get()) {
+                if (support.groundingChunkIndices().isPresent() &&
+                        support.groundingChunkIndices().get().contains(chunkIndex)) {
+
+                    if (support.confidenceScores().isPresent()) {
+                        return support.confidenceScores().get().getFirst().doubleValue();
+                    }
+                }
+            }
+        }
+        return 0.5; // default score if not found
+    }
+
 
     /**
      * Build searchable content from prompt
