@@ -1,18 +1,15 @@
 package SEP490.EduPrompt.service.search;
 
 import SEP490.EduPrompt.dto.request.search.SemanticSearchRequest;
-import SEP490.EduPrompt.dto.response.prompt.TagDTO;
 import SEP490.EduPrompt.dto.response.search.GroundingChunk;
 import SEP490.EduPrompt.dto.response.search.SearchResultItem;
 import SEP490.EduPrompt.dto.response.search.SemanticSearchResponse;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
-import SEP490.EduPrompt.exception.client.QuotaExceededException;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.SemanticSearchLog;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.repo.SemanticSearchLogRepository;
-import SEP490.EduPrompt.repo.TagRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,17 +51,16 @@ public class SemanticSearchServiceImpl implements SemanticSearchService {
         List<GroundingChunk> chunks = geminiClientService.searchDocuments(
                 fileSearchStoreName,
                 enrichedQuery,
-                limit * 2
-        );
+                limit * 2);
 
         Map<String, List<GroundingChunk>> chunksByDocument = chunks.stream()
                 .collect(Collectors.groupingBy(GroundingChunk::documentId));
 
         long executionTime = System.currentTimeMillis() - startTime;
-        List<SearchResultItem> results = buildSearchResults(chunksByDocument, limit, request.userId(), request.username());
+        List<SearchResultItem> results = buildSearchResults(chunksByDocument, limit, request.userId(),
+                request.username());
 
         logSearch(request, results.size(), executionTime);
-
 
         String searchId = UUID.randomUUID().toString();
 
@@ -124,8 +120,7 @@ public class SemanticSearchServiceImpl implements SemanticSearchService {
             Map<String, List<GroundingChunk>> chunksByDocument,
             int limit,
             UUID userId,
-            String userName
-    ) {
+            String userName) {
 
         List<SearchResultItem> results = new ArrayList<>();
 
@@ -134,20 +129,13 @@ public class SemanticSearchServiceImpl implements SemanticSearchService {
             List<GroundingChunk> chunks = entry.getValue();
 
             // format: fileSearchStores/{store}/documents/{doc}
-            UUID promptId = extractPromptIdFromDocument(documentId);
-            if (promptId == null) {
-                log.warn("Could not extract prompt ID from document: {}", documentId);
+            Optional<Prompt> promptOpt =promptRepository.findByGeminiFileIdStartingWith(documentId);
+            if (promptOpt.isPresent() && promptOpt.get().getIsDeleted()) {
+                log.info("Prompt {} not found or deleted, skipping", promptOpt.get().getId());
                 continue;
             }
 
-            // Fetch prompt details from database
-            Optional<Prompt> promptOpt = promptRepository.findById(promptId);
-            if (promptOpt.isEmpty() || promptOpt.get().getIsDeleted()) {
-                log.info("Prompt {} not found or deleted, skipping", promptId);
-                continue;
-            }
-
-            Prompt prompt = promptOpt.get();
+            Prompt prompt = promptOpt.orElseThrow();
 
             // Calculate aggregate score (max score from all chunks)
             Double maxScore = chunks.stream()
@@ -187,42 +175,6 @@ public class SemanticSearchServiceImpl implements SemanticSearchService {
         }
 
         return results;
-    }
-
-    /**
-     * Extract prompt ID from document ID
-     * Document name format: fileSearchStores/{store}/documents/prompt_{uuid}
-     * or just extract UUID from the document ID
-     */
-    private UUID extractPromptIdFromDocument(String documentId) {
-        try {
-            // Extract the last part after "documents/"
-            String[] parts = documentId.split("/documents/");
-            if (parts.length < 2) {
-                return null;
-            }
-
-            String docName = parts[1];
-
-            //  format: prompt_{uuid}
-            String uuidStr = docName.replace("prompt_", "");
-
-            // Find UUID pattern in string
-            String[] tokens = uuidStr.split("[_\\-]");
-            for (String token : tokens) {
-                try {
-                    return UUID.fromString(token);
-                } catch (IllegalArgumentException e) {
-                    // Continue trying
-                }
-            }
-
-            return null;
-        } catch (Exception e) {
-            log.error("Error extracting prompt ID from document {}: {}",
-                    documentId, e.getMessage());
-            return null;
-        }
     }
 
     /**
