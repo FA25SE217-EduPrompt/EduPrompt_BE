@@ -34,17 +34,6 @@ public interface GeminiClientService {
     FileUploadResponse uploadToFileSearchStore(String fileSearchStoreId, Prompt prompt);
 
     /**
-     * Import an already-uploaded file into File Search Store
-     * Use this if you've already uploaded via Files API
-     *
-     * @param fileSearchStoreId The store ID
-     * @param fileId            The file ID from Files API (format: files/xxx)
-     * @param displayName       Display name for the document
-     * @return ImportOperationResponse with operation name for polling
-     */
-    ImportOperationResponse importFileToStore(String fileSearchStoreId, String fileId, String displayName);
-
-    /**
      * Poll operation status (for import operations)
      *
      * @param operationName The operation name returned from import

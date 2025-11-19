@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.service.search;
 
 import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
+import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.repo.PromptRepository;
@@ -12,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -25,6 +28,8 @@ public class OperationPollingService {
     private final PromptRepository promptRepository;
     private final GeminiClientService geminiClientService;
 
+    private final Map<UUID, Integer> retryTracking = new ConcurrentHashMap<>();
+
     /**
      * Scheduled job to poll pending import operations
      * Runs every 3 minute since this job is not necessarily processed in real time
@@ -32,10 +37,15 @@ public class OperationPollingService {
     @Scheduled(fixedDelay = 180000, initialDelay = 60000)
     @Transactional
     public void pollPendingOperations() {
+        //public prompt only
         List<Prompt> pendingPrompts = promptRepository
-                .findByIndexingStatusAndIsDeleted("pending", false);
+                .findByIndexingStatusAndIsDeletedAndVisibility(
+                        "pending",
+                        false,
+                        Visibility.PUBLIC.name());
 
         if (pendingPrompts.isEmpty()) {
+            log.info("No pending public prompts to poll");
             return;
         }
 
@@ -44,30 +54,37 @@ public class OperationPollingService {
         int successCount = 0;
         int stillProcessingCount = 0;
         int failedCount = 0;
-        int retryCount = 0;
+
         for (Prompt prompt : pendingPrompts) {
             try {
                 boolean completed = checkAndUpdateOperationStatus(prompt);
+
                 if (completed) {
                     successCount++;
+                    retryTracking.remove(prompt.getId());
                 } else {
                     stillProcessingCount++;
                 }
 
             } catch (Exception e) {
-                log.error("Error polling operation for prompt {}: {}",
-                        prompt.getId(), e.getMessage());
+                log.error("Error polling operation for prompt {}: {}", prompt.getId(), e.getMessage());
+                int currentCount = retryTracking.getOrDefault(prompt.getId(), 0);
 
-                retryCount++;
+                currentCount++;
 
-                if (retryCount >= MAX_POLL_ATTEMPTS) {
+                if (currentCount >= MAX_POLL_ATTEMPTS) {
+                    //mark as failed
                     log.error("Max poll attempts ({}) reached for prompt {}, marking as failed",
                             MAX_POLL_ATTEMPTS, prompt.getId());
                     prompt.setIndexingStatus("failed");
-                    failedCount++;
-                }
+                    promptRepository.save(prompt);
 
-                promptRepository.save(prompt);
+                    failedCount++;
+                    retryTracking.remove(prompt.getId());
+                } else {
+                    // retry
+                    retryTracking.put(prompt.getId(), currentCount);
+                }
             }
         }
 
@@ -77,18 +94,36 @@ public class OperationPollingService {
 
     /**
      * Check operation status and update prompt accordingly
+     * @return true if operation completed, false if still processing
      */
     @Transactional
     public boolean checkAndUpdateOperationStatus(Prompt prompt) {
-        if (prompt.getGeminiFileId() == null) {
-            log.info("Prompt {} has no operation ID to poll", prompt.getId());
+        if (prompt.getGeminiFileId() == null || prompt.getGeminiFileId().isBlank()) {
+            log.warn("Prompt {} has no operation/document ID to poll", prompt.getId());
             return false;
         }
+
+        // Check if already converted to document ID
         if (prompt.getGeminiFileId().contains(DOCUMENT_NAME_FACTOR)) {
-            prompt.setIndexingStatus("indexed");
+            log.debug("Prompt {} already has document ID: {}",
+                    prompt.getId(), prompt.getGeminiFileId());
+
+            // Ensure status is correct
+            if (!"indexed".equals(prompt.getIndexingStatus())) {
+                prompt.setIndexingStatus("indexed");
+                prompt.setLastIndexedAt(Instant.now());
+                promptRepository.save(prompt);
+            }
+            return true;
+        }
+
+        // Must be an operation ID - poll it
+        if (!prompt.getGeminiFileId().contains(OPERATION_NAME_FACTOR)) {
+            log.error("Prompt {} has invalid geminiFileId format: {}",
+                    prompt.getId(), prompt.getGeminiFileId());
+            prompt.setIndexingStatus("failed");
             promptRepository.save(prompt);
-            log.info("Prompt {} has already uploaded with document name : {}", prompt.getId(), prompt.getGeminiFileId());
-            return false;
+            return true;
         }
 
         log.debug("Polling operation {} for prompt {}",
@@ -97,19 +132,42 @@ public class OperationPollingService {
         ImportOperationResponse operationResponse =
                 geminiClientService.pollOperation(prompt.getGeminiFileId());
 
-        if (operationResponse.done()) {
-            String documentId = extractDocumentId(operationResponse);
+        // Check if operation failed
+        if ("failed".equals(operationResponse.status())) {
+            log.error("Operation failed for prompt {}: {}",
+                    prompt.getId(), operationResponse.errorMessage());
+            prompt.setIndexingStatus("failed");
+            promptRepository.save(prompt);
+            return true;
+        }
 
-            if (documentId != null) {
+        // Check if operation completed
+        if (operationResponse.done()) {
+            String documentId = operationResponse.documentId();
+
+            if (documentId != null && !documentId.isBlank() &&
+                    documentId.contains(DOCUMENT_NAME_FACTOR)) {
+
                 log.info("Operation completed for prompt {}. Document ID: {}",
                         prompt.getId(), documentId);
 
+                // Replace operation ID with document ID
                 prompt.setGeminiFileId(documentId);
                 prompt.setIndexingStatus("indexed");
                 prompt.setLastIndexedAt(Instant.now());
 
+                promptRepository.save(prompt);
+
                 log.info("Successfully indexed prompt {} with document {}",
                         prompt.getId(), documentId);
+
+                return true;
+            } else {
+                log.error("Operation completed but no valid document ID for prompt {}",
+                        prompt.getId());
+                prompt.setIndexingStatus("failed");
+                promptRepository.save(prompt);
+                return true;
             }
         } else {
             // Still processing
@@ -117,35 +175,10 @@ public class OperationPollingService {
                     prompt.getGeminiFileId(), prompt.getId());
             return false;
         }
-
-        promptRepository.save(prompt);
-        return true;
     }
 
     /**
-     * Extract document ID from operation response
-     * The document ID is embedded in the operation metadata
-     */
-    private String extractDocumentId(ImportOperationResponse operationResponse) {
-        // Format: fileSearchStores/{store}/documents/{doc}
-        String documentId = operationResponse.documentId();
-
-        if (documentId != null && documentId.contains(DOCUMENT_NAME_FACTOR)) {
-            return documentId;
-        }
-
-        // maybe try to extract from operation name
-        // operation name format: fileSearchStores/{store}/operations/{op}
-        // we need to convert this to document ID
-        log.info("Could not extract document ID from operation response: {}",
-                operationResponse);
-
-        return null;
-    }
-
-    /**
-     * Manual trigger to check a specific prompt's operation
-     * Useful for testing or admin operations
+     * Manual trigger to poll a specific prompt's operation
      */
     @Transactional
     public boolean pollOperationForPrompt(UUID promptId) {

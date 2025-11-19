@@ -3,7 +3,11 @@ package SEP490.EduPrompt.service.search;
 import SEP490.EduPrompt.dto.response.search.FileSearchStoreResponse;
 import SEP490.EduPrompt.dto.response.search.FileUploadResponse;
 import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
+import SEP490.EduPrompt.dto.response.search.GroundingChunk;
+import SEP490.EduPrompt.enums.Visibility;
+import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.client.GeminiApiException;
+import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.PromptTag;
 import SEP490.EduPrompt.model.Tag;
@@ -12,7 +16,6 @@ import com.google.genai.Client;
 import com.google.genai.Pager;
 import com.google.genai.errors.ClientException;
 import com.google.genai.types.*;
-import SEP490.EduPrompt.dto.response.search.GroundingChunk;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -66,6 +69,10 @@ public class GeminiClientServiceImpl implements GeminiClientService {
     @Override
     public FileUploadResponse uploadToFileSearchStore(String fileSearchStoreId, Prompt prompt) {
         try {
+            if (!Visibility.PUBLIC.name().equalsIgnoreCase(prompt.getVisibility())) {
+                throw new InvalidActionException("Cannot upload non-public prompt!");
+            }
+
             log.info("Uploading prompt {} to File Search Store {}", prompt.getId(), fileSearchStoreId);
 
             String content = buildPromptContent(prompt);
@@ -83,55 +90,26 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                             .displayName(displayName)
                             .customMetadata(buildMetadataSection(prompt))
                             .mimeType("text/plain")
-                            .build()
-            );
+                            .build());
 
-            //it will return a operation object with status done=false, just get its name, i will poll it later
             String operationId = operation.name().orElseThrow();
             boolean done = operation.done().orElse(false);
+
             FileUploadResponse response = FileUploadResponse.builder()
-                    .documentId(operationId) //just a placeholder
+                    .documentId(null) // Will be set after polling
                     .operationId(operationId)
                     .status(done ? "active" : "processing")
                     .promptId(prompt.getId())
                     .build();
 
-            log.info("Successfully uploaded prompt {} with operation {}", prompt.getId(), operationId);
+            log.info("Successfully submitted prompt {} for upload. Operation: {}",
+                    prompt.getId(), operationId);
             return response;
 
         } catch (ClientException | NoSuchElementException e) {
-            log.error("Error uploading prompt {} to File Search Store: {}", prompt.getId(), e.getMessage(), e);
+            log.error("Error uploading prompt {} to File Search Store: {}",
+                    prompt.getId(), e.getMessage(), e);
             throw new GeminiApiException("Failed to upload to File Search Store: " + e.getMessage(), e);
-        }
-
-    }
-
-    @Override
-    public ImportOperationResponse importFileToStore(String fileSearchStoreId, String fileId, String displayName) {
-        try {
-            log.info("Importing file {} into File Search Store {}", fileId, fileSearchStoreId);
-
-            ImportFileOperation operation = genAiClient.fileSearchStores.importFile(
-                    fileSearchStoreName,
-                    fileId,
-                    ImportFileConfig.builder().build()
-            );
-
-            //it will return a operation object with status done=false, just get its name, i will poll it later
-            String operationName = operation.name().orElseThrow();
-            ImportOperationResponse response = ImportOperationResponse.builder()
-                    .documentId(operationName)
-                    .operationName(operationName)
-                    .done(false)
-                    .status("processing")
-                    .build();
-
-            log.info("Started import operation: {}", response.operationName());
-            return response;
-
-        } catch (ClientException | NoSuchElementException e) {
-            log.error("Error importing file {} to store: {}", fileId, e.getMessage(), e);
-            throw new GeminiApiException("Failed to import file: " + e.getMessage(), e);
         }
     }
 
@@ -140,34 +118,47 @@ public class GeminiClientServiceImpl implements GeminiClientService {
         try {
             log.debug("Polling operation: {}", operationName);
 
-            ImportFileOperation operation = ImportFileOperation.builder()
+            UploadToFileSearchStoreOperation operation = UploadToFileSearchStoreOperation.builder()
                     .name(operationName)
                     .build();
 
             GetOperationConfig config = GetOperationConfig.builder().build();
-            ImportFileOperation importFileOperation = genAiClient.operations.get(operation, config);
+            UploadToFileSearchStoreOperation uploadOperation = genAiClient.operations.get(operation, config);
 
-            boolean done = importFileOperation.done().orElse(false);
+            boolean done = uploadOperation.done().orElse(false);
 
-            String documentId = importFileOperation.response().orElseThrow()
-                    .documentName()
-                    .orElseThrow(); // it wont be null, since it's optional and done mean it has value
-            ImportOperationResponse response = ImportOperationResponse.builder()
+            String documentId = null;
+            String status = "processing";
+
+            if (done) {
+                // Extract document ID when operation completes
+                if (uploadOperation.response().isPresent() &&
+                        uploadOperation.response().get().documentName().isPresent()) {
+                    documentId = uploadOperation.response().get().documentName().get();
+                    status = "completed";
+                    log.info("Operation {} completed with document ID: {}", operationName, documentId);
+                } else {
+                    status = "failed";
+                    log.error("Operation {} completed but no document ID found", operationName);
+                }
+            }
+
+            return ImportOperationResponse.builder()
                     .operationName(operationName)
                     .done(done)
-                    .status("completed")
+                    .status(status)
                     .documentId(documentId)
                     .build();
 
-            if (response.done()) {
-                log.info("Operation {} completed", operationName);
-            }
-
-            return response;
-
         } catch (ClientException | NoSuchElementException e) {
             log.error("Error polling operation {}: {}", operationName, e.getMessage());
-            throw new GeminiApiException("Failed to poll operation: " + e.getMessage(), e);
+
+            return ImportOperationResponse.builder()
+                    .operationName(operationName)
+                    .done(true)
+                    .status("failed")
+                    .errorMessage(e.getMessage())
+                    .build();
         }
     }
 
@@ -177,7 +168,6 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Getting document: {}", documentName);
 
             GetDocumentConfig documentsConfig = GetDocumentConfig.builder().build();
-
             return genAiClient.fileSearchStores.documents.get(documentName, documentsConfig);
 
         } catch (ClientException e) {
@@ -198,7 +188,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
 
         } catch (ClientException e) {
             log.error("Error deleting document {}: {}", documentName, e.getMessage());
-            // don't throw - deletion failure shouldn't break flow
+            // Don't throw - deletion failure shouldn't break flow
         }
     }
 
@@ -208,8 +198,10 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Listing documents in store: {}", fileSearchStoreId);
 
             ListDocumentsConfig documentsConfig = ListDocumentsConfig.builder()
-                    .pageSize(10).build();
-            Pager<Document> documents = genAiClient.fileSearchStores.documents.list(fileSearchStoreId, documentsConfig);
+                    .pageSize(100)
+                    .build();
+            Pager<Document> documents = genAiClient.fileSearchStores.documents
+                    .list(fileSearchStoreId, documentsConfig);
 
             log.info("Found {} documents in store {}", documents.size(), fileSearchStoreId);
             return documents;
@@ -230,7 +222,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
 
             return FileSearchStoreResponse.builder()
                     .storeId(store.name().orElseThrow())
-                    .displayName(store.displayName().orElse(""))
+                    .displayName(store.displayName().orElse("Unnamed Store"))
                     .activeDocumentCount(store.activeDocumentsCount().orElse(0L))
                     .build();
 
@@ -246,9 +238,10 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Deleting File Search Store: {} (force: {})", fileSearchStoreId, force);
 
             DeleteFileSearchStoreConfig config = DeleteFileSearchStoreConfig.builder()
-                    .force(force) // this is dangerous
+                    .force(force)
                     .build();
             genAiClient.fileSearchStores.delete(fileSearchStoreId, config);
+
             log.info("Successfully deleted File Search Store: {}", fileSearchStoreId);
 
         } catch (ClientException e) {
@@ -263,58 +256,54 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Searching in store {} with query: {}", fileSearchStoreId, query);
 
             GenerateContentConfig config = GenerateContentConfig.builder()
-                    .tools(List.of(
-                            Tool.builder()
-                                    .fileSearch(FileSearch.builder()
-                                            .fileSearchStoreNames(fileSearchStoreId)
-                                            .build())
-                                    .build()
-                    ))
+                    .tools(Tool.builder()
+                            .fileSearch(FileSearch.builder()
+                                    .fileSearchStoreNames(fileSearchStoreId)
+                                    .build())
+                            .build())
+                    .candidateCount(maxResults)
                     .build();
 
-            // create prompt that ask for retrieval only
             String searchPrompt = String.format(
                     "Find the most relevant teaching prompts for: %s\n" +
                             "Return only the matching documents without generating new content.",
-                    query
-            );
+                    query);
 
             GenerateContentResponse response = genAiClient.models.generateContent(
                     "gemini-2.5-flash",
-                    List.of(Content.builder()
-                            .parts(List.of(Part.builder().text(searchPrompt).build()))
-                            .role("user")
-                            .build()),
-                    config
-            );
+                    searchPrompt,
+                    config);
 
-            // get grounding chunks from response
-            List<SEP490.EduPrompt.dto.response.search.GroundingChunk> chunks = new ArrayList<>();
+            List<GroundingChunk> chunks = new ArrayList<>();
 
-            if (response.candidates().isPresent()) {
+            if (response.candidates().isPresent() && !response.candidates().get().isEmpty()) {
                 Candidate candidate = response.candidates().get().getFirst();
 
                 if (candidate.groundingMetadata().isPresent() &&
                         candidate.groundingMetadata().get().groundingChunks().isPresent()) {
 
-                    for (com.google.genai.types.GroundingChunk chunk :
-                            candidate.groundingMetadata().get().groundingChunks().get()) {
+                    for (com.google.genai.types.GroundingChunk chunk : candidate.groundingMetadata().get()
+                            .groundingChunks().get()) {
 
                         if (chunk.retrievedContext().isPresent()) {
-                            String documentId = String.valueOf(chunk.retrievedContext().get().uri());
-                            String text = String.valueOf(chunk.retrievedContext().get().text());
+                            String documentId = chunk.retrievedContext().get().title().orElse(null);
+                            String text = chunk.retrievedContext().get().text().orElse(null);
 
-                            // confident score
-                            Double score = extractConfidenceScore(
-                                    candidate.groundingMetadata().orElseThrow(),
-                                    chunks.size()
-                            );
+                            if (documentId != null && text != null) {
+                                Double score = extractConfidenceScore(
+                                        candidate.groundingMetadata().get(),
+                                        chunks.size());
 
-                            chunks.add(SEP490.EduPrompt.dto.response.search.GroundingChunk.builder()
-                                    .documentId(documentId)
-                                    .text(text)
-                                    .confidenceScore(score)
-                                    .build());
+                                chunks.add(GroundingChunk.builder()
+                                        .documentId(documentId)
+                                        .text(text)
+                                        .confidenceScore(score)
+                                        .build());
+                            } else {
+                                log.warn(
+                                        "Skipping chunk with missing documentId or text. DocumentId: {}, Text present: {}",
+                                        documentId, text != null);
+                            }
                         }
                     }
                 }
@@ -330,6 +319,9 @@ public class GeminiClientServiceImpl implements GeminiClientService {
         } catch (ClientException e) {
             log.error("Error searching documents: {}", e.getMessage(), e);
             throw new GeminiApiException("Failed to search documents: " + e.getMessage(), e);
+        } catch (NoSuchElementException e) {
+            log.error("Error searching documents: {}", e.getMessage(), e);
+            throw new InvalidInputException("No such element: " + e.getMessage());
         }
     }
 
@@ -339,19 +331,16 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                 if (support.groundingChunkIndices().isPresent() &&
                         support.groundingChunkIndices().get().contains(chunkIndex)) {
 
-                    if (support.confidenceScores().isPresent()) {
+                    if (support.confidenceScores().isPresent() &&
+                            !support.confidenceScores().get().isEmpty()) {
                         return support.confidenceScores().get().getFirst().doubleValue();
                     }
                 }
             }
         }
-        return 0.5; // default score if not found
+        return 0.5; // Default score if not found
     }
 
-
-    /**
-     * Build searchable content from prompt
-     */
     private String buildPromptContent(Prompt prompt) {
         StringBuilder content = new StringBuilder();
 
@@ -367,12 +356,17 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             content.append("Instruction: ").append(prompt.getInstruction()).append("\n\n");
         }
 
+        if (prompt.getContext() != null && !prompt.getContext().isBlank()) {
+            content.append("Context: ").append(prompt.getContext()).append("\n\n");
+        }
+
+        if (prompt.getOutputFormat() != null && !prompt.getOutputFormat().isBlank()) {
+            content.append("Output Format: ").append(prompt.getOutputFormat()).append("\n\n");
+        }
+
         return content.toString().trim();
     }
 
-    /**
-     * Build custom metadata from prompt
-     */
     private List<CustomMetadata> buildMetadataSection(Prompt prompt) {
         List<CustomMetadata> metadataList = new ArrayList<>();
 
@@ -385,6 +379,13 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                     .build();
             metadataList.add(metadata);
         }
+
+        // Add visibility metadata
+        metadataList.add(CustomMetadata.builder()
+                .key("visibility")
+                .stringValue(prompt.getVisibility())
+                .build());
+
         return metadataList;
     }
 }
