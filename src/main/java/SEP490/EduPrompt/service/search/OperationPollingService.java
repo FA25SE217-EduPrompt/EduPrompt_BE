@@ -25,19 +25,20 @@ public class OperationPollingService {
     private static final int MAX_POLL_ATTEMPTS = 3;
     private static final String OPERATION_NAME_FACTOR = "operations/";
     private static final String DOCUMENT_NAME_FACTOR = "documents/";
+
     private final PromptRepository promptRepository;
     private final GeminiClientService geminiClientService;
 
+    // Track retry count per prompt (in-memory, not persisted)
     private final Map<UUID, Integer> retryTracking = new ConcurrentHashMap<>();
 
     /**
-     * Scheduled job to poll pending import operations
-     * Runs every 3 minute since this job is not necessarily processed in real time
+     * Scheduled job to poll pending upload operations
+     * Runs every 3 minutes - only for PUBLIC prompts
      */
     @Scheduled(fixedDelay = 180000, initialDelay = 60000)
     @Transactional
     public void pollPendingOperations() {
-        //public prompt only
         List<Prompt> pendingPrompts = promptRepository
                 .findByIndexingStatusAndIsDeletedAndVisibility(
                         "pending",
@@ -49,7 +50,8 @@ public class OperationPollingService {
             return;
         }
 
-        log.info("Found {} prompts with pending operations to poll", pendingPrompts.size());
+        log.info("Found {} public prompts with pending operations to poll",
+                pendingPrompts.size());
 
         int successCount = 0;
         int stillProcessingCount = 0;
@@ -61,19 +63,20 @@ public class OperationPollingService {
 
                 if (completed) {
                     successCount++;
-                    retryTracking.remove(prompt.getId());
+                    retryTracking.remove(prompt.getId()); // Clear retry count on success
                 } else {
                     stillProcessingCount++;
                 }
 
             } catch (Exception e) {
-                log.error("Error polling operation for prompt {}: {}", prompt.getId(), e.getMessage());
-                int currentCount = retryTracking.getOrDefault(prompt.getId(), 0);
+                log.error("Error polling operation for prompt {}: {}",
+                        prompt.getId(), e.getMessage(), e);
 
-                currentCount++;
+                // Increment retry counter
+                int currentRetries = retryTracking.getOrDefault(prompt.getId(), 0);
+                currentRetries++;
 
-                if (currentCount >= MAX_POLL_ATTEMPTS) {
-                    //mark as failed
+                if (currentRetries >= MAX_POLL_ATTEMPTS) {
                     log.error("Max poll attempts ({}) reached for prompt {}, marking as failed",
                             MAX_POLL_ATTEMPTS, prompt.getId());
                     prompt.setIndexingStatus("failed");
@@ -82,8 +85,9 @@ public class OperationPollingService {
                     failedCount++;
                     retryTracking.remove(prompt.getId());
                 } else {
-                    // retry
-                    retryTracking.put(prompt.getId(), currentCount);
+                    log.warn("Polling attempt {}/{} failed for prompt {}, will retry",
+                            currentRetries, MAX_POLL_ATTEMPTS, prompt.getId());
+                    retryTracking.put(prompt.getId(), currentRetries);
                 }
             }
         }
@@ -117,13 +121,13 @@ public class OperationPollingService {
             return true;
         }
 
-        // Must be an operation ID - poll it
+        // Must be an operation ID - validate format
         if (!prompt.getGeminiFileId().contains(OPERATION_NAME_FACTOR)) {
-            log.error("Prompt {} has invalid geminiFileId format: {}",
+            log.error("Prompt {} has invalid geminiFileId format (not operation or document): {}",
                     prompt.getId(), prompt.getGeminiFileId());
             prompt.setIndexingStatus("failed");
             promptRepository.save(prompt);
-            return true;
+            return true; // Consider it done (failed)
         }
 
         log.debug("Polling operation {} for prompt {}",
@@ -155,7 +159,6 @@ public class OperationPollingService {
                 prompt.setGeminiFileId(documentId);
                 prompt.setIndexingStatus("indexed");
                 prompt.setLastIndexedAt(Instant.now());
-
                 promptRepository.save(prompt);
 
                 log.info("Successfully indexed prompt {} with document {}",

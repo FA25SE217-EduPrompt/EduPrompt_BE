@@ -5,12 +5,12 @@ import SEP490.EduPrompt.dto.response.search.FileUploadResponse;
 import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
 import SEP490.EduPrompt.dto.response.search.GroundingChunk;
 import SEP490.EduPrompt.enums.Visibility;
-import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.client.GeminiApiException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.PromptTag;
 import SEP490.EduPrompt.model.Tag;
+import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.repo.PromptTagRepository;
 import com.google.genai.Client;
 import com.google.genai.Pager;
@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -36,6 +37,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
 
     private final Client genAiClient;
     private final PromptTagRepository promptTagRepository;
+    private final PromptRepository promptRepository;
 
     @Value("${gemini.file-search-store}")
     private String fileSearchStoreName;
@@ -93,10 +95,12 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                             .build());
 
             String operationId = operation.name().orElseThrow();
+            // as i observe, i found that operationId and documentId (after operation is done) is similar to each other, just have different prefix
+            String documentId = operationId.replace("operations/", "documents/");
             boolean done = operation.done().orElse(false);
 
             FileUploadResponse response = FileUploadResponse.builder()
-                    .documentId(null) // Will be set after polling
+                    .documentId(documentId)
                     .operationId(operationId)
                     .status(done ? "active" : "processing")
                     .promptId(prompt.getId())
@@ -256,17 +260,15 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Searching in store {} with query: {}", fileSearchStoreId, query);
 
             GenerateContentConfig config = GenerateContentConfig.builder()
-                    .tools(Tool.builder()
+                    .tools(Collections.singletonList(Tool.builder()
                             .fileSearch(FileSearch.builder()
                                     .fileSearchStoreNames(fileSearchStoreId)
                                     .build())
-                            .build())
-                    .candidateCount(maxResults)
+                            .build()))
                     .build();
 
             String searchPrompt = String.format(
-                    "Find the most relevant teaching prompts for: %s\n" +
-                            "Return only the matching documents without generating new content.",
+                    "Find the most relevant teaching prompts for: %s",
                     query);
 
             GenerateContentResponse response = genAiClient.models.generateContent(
@@ -282,28 +284,47 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                 if (candidate.groundingMetadata().isPresent() &&
                         candidate.groundingMetadata().get().groundingChunks().isPresent()) {
 
+                    int rank = 0; // Track relevance rank
+
                     for (com.google.genai.types.GroundingChunk chunk : candidate.groundingMetadata().get()
                             .groundingChunks().get()) {
 
                         if (chunk.retrievedContext().isPresent()) {
-                            String documentId = chunk.retrievedContext().get().title().orElse(null);
+                            String documentTitle = chunk.retrievedContext().get().title().orElse(null);
                             String text = chunk.retrievedContext().get().text().orElse(null);
 
-                            if (documentId != null && text != null) {
-                                Double score = extractConfidenceScore(
-                                        candidate.groundingMetadata().get(),
-                                        chunks.size());
+                            if (documentTitle != null && text != null) {
+                                //document name or displayName is different from file name or displayName
+                                //format of a document name : fileSearchStores/eduprompt-5fuy52dsj4vf/documents/upgs8mhhg64a-p1u11mg22tf8
+                                //this documentNameWithTitle is : fileSearchStores/eduprompt-5fuy52dsj4vf/documents/upgs8mhhg64a
+                                //upgs8mhhg64a : document title, which is its filename before import to FileSearchStore and become a document
+                                //p1u11mg22tf8 : document displayName
+                                String documentNameWithTitle = fileSearchStoreId + "/documents/" + documentTitle;
 
-                                chunks.add(GroundingChunk.builder()
-                                        .documentId(documentId)
-                                        .text(text)
-                                        .confidenceScore(score)
-                                        .build());
+                                var promptOpt = promptRepository.findByGeminiFileIdStartingWith(documentNameWithTitle);
+                                if (promptOpt.isPresent()) {
+                                    Prompt prompt = promptOpt.get();
+
+                                    // New Strategy: Calculate synthetic confidence score based on Rank.
+                                    // The API returns chunks sorted by relevance (index 0 is best).
+                                    // 1st result = 0.99, 2nd = 0.98, etc.
+                                    Double score = Math.max(0.1, 0.99 - (rank * 0.01));
+
+                                    chunks.add(GroundingChunk.builder()
+                                            .documentId(prompt.getGeminiFileId())
+                                            .text(text)
+                                            .confidenceScore(score)
+                                            .build());
+                                } else {
+                                    log.warn("No prompt found with geminiFileId starting with: {}",
+                                            documentNameWithTitle);
+                                }
                             } else {
                                 log.warn(
                                         "Skipping chunk with missing documentId or text. DocumentId: {}, Text present: {}",
-                                        documentId, text != null);
+                                        documentTitle, text != null);
                             }
+                            rank++;
                         }
                     }
                 }
@@ -316,29 +337,10 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Found {} grounding chunks for query", chunks.size());
             return chunks;
 
-        } catch (ClientException e) {
+        } catch (ClientException | NoSuchElementException e) {
             log.error("Error searching documents: {}", e.getMessage(), e);
             throw new GeminiApiException("Failed to search documents: " + e.getMessage(), e);
-        } catch (NoSuchElementException e) {
-            log.error("Error searching documents: {}", e.getMessage(), e);
-            throw new InvalidInputException("No such element: " + e.getMessage());
         }
-    }
-
-    private Double extractConfidenceScore(GroundingMetadata metadata, int chunkIndex) {
-        if (metadata.groundingSupports().isPresent()) {
-            for (GroundingSupport support : metadata.groundingSupports().get()) {
-                if (support.groundingChunkIndices().isPresent() &&
-                        support.groundingChunkIndices().get().contains(chunkIndex)) {
-
-                    if (support.confidenceScores().isPresent() &&
-                            !support.confidenceScores().get().isEmpty()) {
-                        return support.confidenceScores().get().getFirst().doubleValue();
-                    }
-                }
-            }
-        }
-        return 0.5; // Default score if not found
     }
 
     private String buildPromptContent(Prompt prompt) {
