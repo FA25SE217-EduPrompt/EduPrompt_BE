@@ -21,6 +21,7 @@ import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
+import SEP490.EduPrompt.service.ai.QuotaService;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
 import lombok.RequiredArgsConstructor;
@@ -45,11 +46,11 @@ public class AdminServiceImpl implements AdminService {
     private final SchoolSubscriptionRepository schoolSubRepo;
     private final PermissionService permissionService;
     private final SchoolRepository schoolRepo;
-    private final UserQuotaRepository userQuotaRepo;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepo;
     private final UserAuthRepository userAuthRepo;
     private final SchoolEmailRepository schoolEmailRepo;
+    private final QuotaService quotaService;
 
     //============Helper============
     private static Set<String> validateRole(BulkAssignTeachersRequest request, User admin) {
@@ -269,6 +270,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    @Transactional
     public void removeTeacherFromSchool(UUID adminUserId, RemoveTeacherFromSchoolRequest request) {
         User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
         UUID schoolId = admin.getSchoolId();
@@ -277,7 +279,7 @@ public class AdminServiceImpl implements AdminService {
         User teacher = userRepo.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher not found"));
 
-        if (!"TEACHER".equalsIgnoreCase(teacher.getRole())) {
+        if (!Role.TEACHER.name().equalsIgnoreCase(teacher.getRole())) {
             throw new InvalidActionException("Can only remove teachers");
         }
         if (!schoolId.equals(teacher.getSchoolId())) {
@@ -286,20 +288,9 @@ public class AdminServiceImpl implements AdminService {
 
         // Remove from school
         teacher.setSchoolId(null);
-
-        // Reset quota to individual (zero)
-        UserQuota quota = userQuotaRepo.findByUserId(teacherId)
-                .orElseGet(() -> UserQuota.builder().user(teacher).build());
-
-        quota.setSchoolSubscription(null);
-        quota.setSubscriptionTier(null);
-        quota.setIndividualTokenLimit(0);
-        quota.setIndividualTokenRemaining(0);
-        quota.setTestingQuotaLimit(0);
-        quota.setOptimizationQuotaLimit(0);
-
         userRepo.save(teacher);
-        userQuotaRepo.save(quota);
+
+        quotaService.syncUserQuotaWithSubscriptionTier(teacher);
     }
 
     private SchoolSubscriptionResponse toSubscriptionResponse(SchoolSubscription sub) {
