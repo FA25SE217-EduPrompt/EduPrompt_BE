@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -72,4 +73,20 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
         WHERE p.id = :id AND p.isDeleted = false
         """)
     Optional<Prompt> findActiveById(@Param("id") UUID id);
+
+    @Modifying
+    @Query("UPDATE Prompt p SET p.avgRating = :avgRating WHERE p.id = :id")
+    int updateAvgRatingById(@Param("id") UUID id, @Param("avgRating") Double avgRating);
+
+    @Modifying
+    @Query("""
+           UPDATE Prompt p
+           SET p.avgRating = NULL
+           WHERE p.id NOT IN (
+               SELECT DISTINCT pr.prompt.id
+               FROM PromptRating pr
+               WHERE pr.prompt.id IS NOT NULL
+           )
+           """)
+    int clearAvgRatingForUnratedPrompts();
 }
