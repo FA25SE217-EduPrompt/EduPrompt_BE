@@ -83,4 +83,7 @@ public class Prompt {
     @JoinColumn(name = "current_version_id")
     private PromptVersion currentVersion;
 
+    @Column(name = "avg_rating")
+    private Double avgRating;
+
 }
