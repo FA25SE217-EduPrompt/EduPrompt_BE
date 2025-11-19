@@ -14,6 +14,8 @@ public record SemanticSearchRequest(
         @NotNull(message = "User ID is required")
         UUID userId,
 
+        String username,
+
         SearchContext context,
 
         Integer limit // default 10, max 20

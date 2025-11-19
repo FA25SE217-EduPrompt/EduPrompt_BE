@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record SearchContext(
         List<String> tags,
-        String currentPromptDraft,
+        String currentPrompt,
         String visibility,
         UUID schoolId,
         UUID groupId
