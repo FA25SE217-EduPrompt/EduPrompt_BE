@@ -1,0 +1,4 @@
+-- Add average rating to prompt
+
+ALTER TABLE prompts
+    ADD COLUMN avg_rating DOUBLE PRECISION CHECK (avg_rating >= 1 AND avg_rating <= 5);
