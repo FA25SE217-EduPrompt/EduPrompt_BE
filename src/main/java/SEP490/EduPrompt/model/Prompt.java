@@ -28,6 +28,9 @@ public class Prompt {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private UUID userId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "collection_id")
