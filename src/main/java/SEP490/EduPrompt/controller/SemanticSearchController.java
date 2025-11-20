@@ -41,7 +41,7 @@ public class SemanticSearchController {
                                 .limit(request.limit())
                                 .context(request.context())
                                 .userId(currentUser.getUserId())
-                                .username(currentUser.getUsername())
+                        .username(request.username())
                                 .build();
 
                 return ResponseDto.success(semanticSearchService.search(secureRequest));

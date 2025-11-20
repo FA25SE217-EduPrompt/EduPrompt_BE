@@ -7,7 +7,7 @@ import java.util.UUID;
 @Builder
 public record IndexingResult(
         UUID promptId,
-        String status, // success, failed, skipped
+        String status, // indexed, pending, failed, skipped
         String documentId,
         String errorMessage
 ) {
