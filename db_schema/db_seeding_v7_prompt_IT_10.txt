@@ -1,0 +1,557 @@
+-- INSERT 10 PROMPT NGỮ VĂN 10
+WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
+     subject_tag AS (SELECT id FROM tags WHERE type = 'môn' AND value = 'tin học'),
+     inserted_prompts AS (
+         INSERT INTO prompts (
+                              id,
+                              user_id,
+                              created_by,
+                              updated_by,
+                              title,
+                              description,
+                              instruction,
+                              context,
+                              input_example,
+                              output_format,
+                              constraints,
+                              visibility,
+                              current_version_id
+             )
+             VALUES
+                 (
+                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     'Giáo án Tin học 10 – Chương 1: Máy tính và xã hội tri thức',
+                     'Prompt chuyên tạo giáo án Tin học 10 chuẩn Công văn 5512 & CTGDPT 2018 – Chương 1 (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia Tin học THPT hàng đầu Việt Nam, từng tham gia biên soạn SGK Tin học 10 chương trình 2018 và tập huấn giáo viên cốt cán quốc gia.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh giáo án Chương 1 “Máy tính và xã hội tri thức” lớp 10 (bao gồm các bài 1→5), tuân thủ 100% cấu trúc 4 hoạt động theo Công văn 5512, dạy học dự án + trải nghiệm thực tế + phát triển năng lực tin học và năng lực số.
+
+        Nguyên tắc bắt buộc:
+        - Học sinh tự khám phá ≥70% kiến thức qua hoạt động thực hành nhóm, thảo luận tình huống thực tế, dự án nhỏ
+        - Mỗi tiết đều có sản phẩm cụ thể: mindmap, infographic, video ngắn, báo cáo nhóm, bài thuyết trình…
+        - Tích hợp ít nhất 2 công cụ số (Canva, Padlet, Mentimeter, Google Forms, QR code…)
+        - Giáo viên không giảng liên tục quá 5 phút, chỉ đóng vai trò điều phối
+        - Phân hóa rõ 4 mức độ nhiệm vụ, có nhiệm vụ mở cho học sinh giỏi (thiết kế poster, viết bài tuyên truyền…)
+        - Đánh giá bằng rubric 4 mức + tự đánh giá, đồng đẳng đánh giá',
+
+                     -- CONTEXT
+                     'Năng lực tin học cần hình thành:
+        - Hiểu vai trò của máy tính và ICT trong xã hội tri thức
+        - Nhận thức về an toàn thông tin, bản quyền, đạo đức mạng
+        - Sử dụng thành thạo các công cụ số cơ bản
+        - Làm việc nhóm trực tuyến
+
+        Năng lực chung: Tự chủ & tự học, Giao tiếp & hợp tác, Giải quyết vấn đề & sáng tạo
+
+        Phẩm chất: Trách nhiệm, Trung thực, Tôn trọng bản quyền',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 1: Máy tính và xã hội tri thức (toàn chương)"
+        sach_giao_khoa: "Kết nối tri thức"
+        so_tiet: "8 tiết (bao gồm cả kiểm tra)"
+        cap_do_lop: "Lớp cơ bản + nâng cao"
+        yeu_cau_san_pham:
+          - "Mindmap khái niệm xã hội tri thức"
+          - "Infographic vai trò ICT trong các lĩnh vực"
+          - "Video ngắn 60s về an toàn thông tin"
+          - "Báo cáo nhóm: Đề xuất giải pháp sử dụng Internet an toàn ở trường"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án (toàn chương ~25–35 trang):
+
+        [TRANG 1–2] Thông tin chung + Lập kế hoạch dạy học chương
+        I. Mục tiêu chương (kiến thức – năng lực – phẩm chất)
+        II. Ma trận phân bổ tiết & sản phẩm
+        III. Giáo án chi tiết từng bài (Bài 1 → Bài 5 + 1 tiết ôn tập)
+           Mỗi bài đều có:
+           a) Mục tiêu bài
+           b) Thiết bị & học liệu (máy chiếu, phòng máy, tài khoản Google, Canva…)
+           c) Tiến trình 4 hoạt động:
+              • Hoạt động 1: Mở đầu (tình huống thực tế)
+              • Hoạt động 2: Khám phá / Thực hành
+              • Hoạt động 3: Luyện tập / Hoàn thiện sản phẩm
+              • Hoạt động 4: Vận dụng & đánh giá
+           d) Sản phẩm học tập cụ thể
+           e) Rubric đánh giá 4 mức
+           f) Phụ lục: Phiếu học tập, link tài nguyên, mã QR
+
+        IV. Đề kiểm tra đánh giá cuối chương (trắc nghiệm + thực hành)
+        V. Danh sách sản phẩm học sinh nộp (Google Drive / Padlet)',
+
+                     -- CONSTRAINTS
+                     '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+        - Mỗi tiết phải có sản phẩm số cụ thể của học sinh
+        - Tích hợp ít nhất 2 công cụ số/tiệt
+        - Không copy y nguyên SGK, phải thiết kế hoạt động trải nghiệm
+        - Phân hóa rõ ràng 4 mức độ nhiệm vụ
+        - Có rubric chi tiết cho từng sản phẩm
+        - Định dạng Word đẹp, mục lục tự động, dễ in + dễ dùng trên Google Docs',
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     'Giáo án Tin học 10 – Chương 2: Làm quen với máy tính và hệ điều hành',
+                     'Prompt chuyên tạo giáo án Tin học 10 chuẩn Công văn 5512 – Chương 2 (toàn chương, thực hành nặng, phù hợp mọi sách KNTT, Cánh Diều, CTST).',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia Tin học THPT, giảng viên đại học sư phạm Tin học, từng thẩm định SGK Tin học 10 và thiết kế phòng máy hiện đại.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 2 “Làm quen với máy tính và hệ điều hành” (từ bài 6 đến bài 11 + 1 tiết tổng kết), 100% dạy học trải nghiệm thực hành, dự án mini và phát triển năng lực số.
+
+        Nguyên tắc bắt buộc:
+        - 100% thời lượng học sinh ngồi máy (hoặc điện thoại nếu không đủ máy)
+        - Mỗi tiết học sinh phải tạo ra ít nhất 1 sản phẩm số thực tế: thư mục khoa học, file nén, ảnh chụp màn hình có chú thích, video hướng dẫn 30–60s, quiz Kahoot/Mentimeter…
+        - Không giảng lý thuyết quá 4 phút liên tục, chỉ dùng slide ngắn + demo nhanh
+        - Tích hợp ít nhất 3 công cụ mỗi tiết: Windows 11 / Ubuntu (tùy trường), File Explorer nâng cao, 7-Zip, Paint 3D, Microsoft Photos, Google Drive, BitLocker/Veracrypt, Canva, QR code generator…
+        - Phân hóa 4 mức độ nhiệm vụ (từ sắp xếp thư mục cơ bản → mã hóa ổ đĩa, tạo hệ điều hành live USB)
+        - Đánh giá bằng portfolio sản phẩm + rubric 4 mức + tự đánh giá',
+
+                     -- CONTEXT
+                     'Năng lực tin học cần hình thành (theo CT 2018):
+        - Nhận biết và sử dụng thành thạo phần cứng, phần mềm cơ bản
+        - Quản lý tệp và thư mục hiệu quả, an toàn
+        - Sử dụng các tiện ích hệ điều hành
+        - Bảo vệ thông tin cá nhân và thiết bị
+        - Làm việc nhóm qua không gian số
+
+        Phẩm chất: Trách nhiệm số, Cẩn thận, Sáng tạo công nghệ',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 2: Làm quen với máy tính và hệ điều hành (toàn chương)"
+        sach_giao_khoa: "Cánh Diều"
+        so_tiet: "10 tiết (8 tiết thực hành + 1 kiểm tra thực hành + 1 tổng kết)"
+        cap_do_lop: "Lớp có phòng máy đầy đủ + lớp dùng điện thoại cá nhân"
+        san_pham_mong_muon:
+          - "Cấu trúc thư mục cá nhân khoa học (có screenshot)"
+          - "Video hướng dẫn 45s: 3 cách nén/giải nén nhanh"
+          - "Quiz Kahoot tự tạo về tiện ích Windows"
+          - "File ISO + USB boot Linux/Windows (nhóm nâng cao)"
+          - "Bảng so sánh Windows vs Linux (infographic)"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án toàn chương (~30–40 trang):
+
+        [TRANG 1–3] Thông tin chung + Kế hoạch phân phối chương trình
+        I. Mục tiêu chương học
+        II. Danh sách thiết bị & phần mềm cần chuẩn bị
+        III. Giáo án chi tiết từng bài (Bài 6 → Bài 11 + kiểm tra)
+           Mỗi bài gồm:
+           a) Mục tiêu bài
+           b) Thiết bị & tài khoản cần có
+           c) Tiến trình 4 hoạt động thực hành 100%
+           d) Danh sách sản phẩm học sinh phải nộp (link Google Drive/Padlet)
+           e) Rubric đánh giá chi tiết 4 mức
+           f) Phiếu thực hành + mã QR tài liệu hướng dẫn
+
+        IV. Đề kiểm tra thực hành cuối chương (60 phút trên máy)
+        V. Dự án mini cuối chương: “Xây dựng bộ hướng dẫn sử dụng máy tính an toàn cho học sinh lớp 6”
+        VI. Tổng hợp link tất cả sản phẩm học sinh',
+
+                     -- CONSTRAINTS
+                     '- Học sinh phải thực hành 100% trên máy/điện thoại
+        - Mỗi tiết có ít nhất 1 sản phẩm số nộp được
+        - Không copy nguyên hoạt động trong SGK
+        - Phải có nhiệm vụ nâng cao cho học sinh giỏi (mã hóa ổ, dual boot, live USB…)
+        - Rubric đánh giá phải chi tiết, đo lường được
+        - Giáo án phải kèm link tải sẵn tài nguyên (file ISO, phần mềm portable…)
+        - Định dạng Word đẹp, có mục lục tự động, dễ chuyển sang Google Docs',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     'Giáo án Tin học 10 – Chương 3: Mạng máy tính và Internet',
+                     'Prompt tạo giáo án Tin học 10 chuẩn Công văn 5512 – Chương 3 “Mạng máy tính và Internet” (toàn chương, thực hành 90%, phù hợp mọi sách KNTT, Cánh Diều, CTST).',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia mạng máy tính & an toàn thông tin, giảng viên ĐH Bách Khoa, từng thiết kế chương trình Tin học 10 CT 2018 và tập huấn giáo viên toàn quốc.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 3 “Mạng máy tính và Internet” (Bài 12 → Bài 17 + dự án cuối chương), 100% dạy học dự án + thực hành thực tế + trải nghiệm an toàn mạng.
+
+        Nguyên tắc bắt buộc:
+        - Học sinh phải tự thực hành ≥90% thời lượng (dùng Wi-Fi trường, mạng LAN ảo, điện thoại hotspot, công cụ online)
+        - Mỗi tiết đều có sản phẩm số cụ thể: sơ đồ mạng tự vẽ, video hướng dẫn chia sẻ mạng, quiz bảo mật, poster an toàn mạng, báo cáo “dấu vết số cá nhân”…
+        - Tích hợp ít nhất 4 công cụ mỗi tiết: Cisco Packet Tracer, Draw.io, Wireshark (phiên bản giáo dục), WhatIsMyIP, HaveIBeenPwned, QR code, Mentimeter/Kahoot, Google Forms
+        - Giáo viên không giảng quá 4 phút/lần, chỉ demo nhanh + đặt câu hỏi mở
+        - Phân hóa 4 mức độ rõ ràng (từ kết nối Wi-Fi → thiết kế mạng LAN nhỏ → tìm lỗ hổng bảo mật cơ bản)
+        - Có ít nhất 1 tiết thực hành “phòng thủ” (phát hiện phishing, tạo mật khẩu mạnh, dùng 2FA)
+        - Đánh giá bằng portfolio + rubric 4 mức + thuyết trình sản phẩm nhóm',
+
+                     -- CONTEXT
+                     'Năng lực tin học cần hình thành:
+        - Hiểu cấu trúc & nguyên lý hoạt động của mạng máy tính và Internet
+        - Sử dụng thành thạo các dịch vụ Internet cơ bản & nâng cao
+        - Nhận diện và phòng tránh các nguy cơ mất an toàn thông tin
+        - Thiết kế mạng đơn giản và chia sẻ tài nguyên an toàn
+
+        Năng lực chung: Giao tiếp & hợp tác, Giải quyết vấn đề & sáng tạo, Tự chủ & trách nhiệm số
+
+        Phẩm chất: Trung thực, Trách nhiệm công dân số, Tôn trọng quyền riêng tư',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 3: Mạng máy tính và Internet (toàn chương)"
+        sach_giao_khoa: "Chân Trời Sáng Tạo"
+        so_tiet: "11 tiết (9 thực hành + 1 kiểm tra + 1 dự án)"
+        cap_do_lop: "Lớp có phòng máy + Wi-Fi ổn định"
+        san_pham_mong_muon:
+          - "Sơ đồ mạng trường học (Draw.io hoặc Packet Tracer)"
+          - "Video 60s: Cách phát hiện email lừa đảo"
+          - "Báo cáo nhóm: Dấu vết số của em trong 24h qua"
+          - "Quiz Kahoot tự tạo về an toàn thông tin"
+          - "Poster/infographic 10 nguyên tắc vàng an toàn mạng"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án toàn chương (~35–45 trang):
+
+        [TRANG 1–3] Thông tin chung + Kế hoạch dạy học chương
+        I. Mục tiêu chương học (kiến thức – năng lực – phẩm chất)
+        II. Danh sách thiết bị & phần mềm cần chuẩn bị (Packet Tracer, link online…)
+        III. Giáo án chi tiết từng bài (Bài 12 → Bài 17 + kiểm tra + dự án)
+           Mỗi bài gồm:
+           a) Mục tiêu bài
+           b) Thiết bị & học liệu (link tải, tài khoản chung)
+           c) Tiến trình 4 hoạt động (90% thực hành)
+           d) Sản phẩm học sinh phải nộp (link Google Drive / Padlet / Genially)
+           e) Rubric đánh giá chi tiết 4 mức
+           f) Phiếu thực hành + mã QR hướng dẫn nhanh
+
+        IV. Dự án cuối chương: “Thiết kế mạng & kế hoạch an toàn thông tin cho trường THPT” (nhóm 4–6 HS)
+        V. Đề kiểm tra thực hành cuối chương (60 phút trên máy)
+        VI. Tổng hợp toàn bộ link sản phẩm học sinh + video thuyết trình',
+
+                     -- CONSTRAINTS
+                     '- 90–100% thời lượng học sinh thực hành trên máy/điện thoại
+        - Mỗi tiết có sản phẩm số cụ thể nộp được
+        - Không copy nguyên hoạt động SGK, phải sáng tạo trải nghiệm thực tế
+        - Bắt buộc có nội dung an toàn thông tin & bảo vệ dấu vết số
+        - Nhiệm vụ nâng cao: dùng Packet Tracer thiết kế mạng 20 máy, phát hiện phishing thực tế
+        - Rubric phải đo lường được kỹ năng và thái độ
+        - Giáo án kèm đầy đủ link tải phần mềm portable & file mẫu
+        - Định dạng Word đẹp, mục lục tự động, dễ chuyển sang Google Docs',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     'Giáo án Tin học 10 – Chương 4: Trình bày và trao đổi thông tin bằng văn bản',
+                     'Prompt tạo giáo án Tin học 10 chuẩn Công văn 5512 – Chương 4 “Trình bày và trao đổi thông tin bằng văn bản” (toàn chương, thực hành 100%, phù hợp mọi sách KNTT, Cánh Diều, CTST).',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia Tin học văn phòng & thiết kế số, từng biên soạn SGK Tin học 10 và thiết kế hàng trăm bài giảng thực hành Microsoft Word + Google Docs.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 4 “Trình bày và trao đổi thông tin bằng văn bản” (Bài 18 → Bài 24 + dự án cuối chương), 100% dạy học dự án, thực hành sáng tạo nội dung và phát triển kỹ năng số hiện đại.
+
+        Nguyên tắc bắt buộc:
+        - Học sinh thực hành 100% trên máy (Word 2019/365 hoặc Google Docs)
+        - Mỗi tiết đều tạo ra sản phẩm thực tế có thể dùng ngay: CV cá nhân, báo tường số, tài liệu học tập huấn, thư mời, báo cáo nhóm, hợp đồng mẫu…
+        - Tích hợp ít nhất 4 công cụ mỗi tiết: Word/Google Docs nâng cao, Canva, QR code, Google Forms, Mail Merge, Microsoft Designer, Grammarly, track changes, comment online…
+        - Không giảng lý thuyết quá 3 phút/lần, chỉ demo nhanh + giao nhiệm vụ dự án
+        - Phân hóa 4 mức độ rõ ràng (từ định dạng văn bản cơ bản → thiết kế báo cáo 10 trang chuyên nghiệp + Mail Merge + bảo mật tài liệu)
+        - Có ít nhất 2 tiết làm việc nhóm thực hiện dự án “Thiết kế bộ nhận diện lớp học số”
+        - Đánh giá bằng portfolio sản phẩm + rubric 4 mức + thuyết trình + phản hồi đồng đẳng',
+
+                     -- CONTEXT
+                     'Năng lực tin học cần hình thành:
+        - Soạn thảo, định dạng văn bản chuyên nghiệp
+        - Thiết kế tài liệu đẹp, chuẩn in ấn và trực tuyến
+        - Sử dụng thành thạo Mail Merge, bảo vệ tài liệu, theo dõi thay đổi
+        - Trao đổi, cộng tác trực tuyến hiệu quả
+        - Trình bày thông tin rõ ràng, thuyết phục
+
+        Năng lực chung: Giao tiếp & hợp tác, Giải quyết vấn đề & sáng tạo, Tự chủ & trách nhiệm số
+
+        Phẩm chất: Tinh thần trách nhiệm, Tính thẩm mỹ, Trung thực khi sử dụng nguồn',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 4: Trình bày và trao đổi thông tin bằng văn bản (toàn chương)"
+        sach_giao_khoa: "Kết nối tri thức"
+        so_tiet: "12 tiết (10 thực hành + 1 kiểm tra + 1 dự án)"
+        cap_do_lop: "Lớp có máy tính đầy đủ + tài khoản Microsoft 365/Google Workspace"
+        san_pham_mong_muon:
+          - "CV cá nhân + thư xin việc chuyên nghiệp"
+          - "Báo tường số chào mừng 20-11"
+          - "Tài liệu hướng dẫn sử dụng phần mềm bằng Word (có mục lục tự động, hình minh họa)"
+          - "Thư mời phụ huynh họp lớp bằng Mail Merge"
+          - "Bộ nhận diện lớp học số (banner, poster, name card, QR code đăng ký)"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án toàn chương (~40–50 trang):
+
+        [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương + Ma trận kỹ năng
+        I. Mục tiêu chương học
+        II. Danh sách phần mềm & tài khoản cần chuẩn bị
+        III. Giáo án chi tiết từng bài (Bài 18 → Bài 24 + kiểm tra + dự án)
+           Mỗi bài gồm:
+           a) Mục tiêu bài
+           b) Học liệu & template có sẵn
+           c) Tiến trình 4 hoạt động (100% thực hành sáng tạo)
+           d) Danh sách sản phẩm phải nộp (link OneDrive/Google Drive)
+           e) Rubric đánh giá 4 mức (nội dung + thẩm mỹ + kỹ thuật)
+           f) Phiếu nhiệm vụ + video hướng dẫn ngắn + mã QR
+
+        IV. Dự án cuối chương: “Thiết kế bộ tài liệu nhận diện lớp học số hoàn chỉnh”
+        V. Đề kiểm tra thực hành cuối chương (90 phút – làm 1 báo cáo 8–10 trang chuyên nghiệp)
+        VI. Portfolio mẫu + toàn bộ link sản phẩm học sinh',
+
+                     -- CONSTRAINTS
+                     '- 100% thời lượng học sinh thực hành trên Word hoặc Google Docs
+        - Mỗi tiết phải nộp ít nhất 1 sản phẩm hoàn chỉnh
+        - Bắt buộc có Mail Merge, mục lục tự động, style, header/footer, bảo vệ tài liệu
+        - Nhiệm vụ nâng cao: thiết kế template trường học, tạo form đăng ký tự động, xuất PDF tương tác
+        - Rubric phải đánh giá cả thẩm mỹ và kỹ thuật
+        - Giáo án kèm đầy đủ file template, hình mẫu, video 1 phút hướng dẫn
+        - Định dạng Word đẹp, mục lục tự động, dễ chuyển sang Google Docs',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     'Giáo án Tin học 10 – Chương 5: Trình bày dữ liệu bằng biểu đồ và trang tính',
+                     'Prompt tạo giáo án Tin học 10 chuẩn Công văn 5512 – Chương 5 “Trình bày dữ liệu bằng biểu đồ và trang tính” (toàn chương, thực hành 100%, phù hợp mọi sách KNTT, Cánh Diều, CTST).',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia Excel & Phân tích dữ liệu giáo dục, từng đào tạo giáo viên Tin học toàn quốc và thiết kế bài thi thực hành THPT Quốc gia phần Excel.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 5 “Trình bày dữ liệu bằng biểu đồ và trang tính” (Bài 25 → Bài 31 + dự án cuối chương, 100% dạy học dựa trên dự án thực tế và dữ liệu đời sống.
+
+        Nguyên tắc bắt buộc:
+        - Học sinh thực hành 100% trên Excel 365 / Google Sheets
+        - Mỗi tiết phải tạo ít nhất 1 sản phẩm có thể dùng ngay: bảng điểm lớp, biểu đồ thống kê học tập, quản lý tài chính cá nhân, khảo sát + biểu đồ tự động, dashboard học tập…
+        - Tích hợp ít nhất 5 công cụ mỗi tiết: Excel nâng cao (bảng Pivot, Conditional Formatting, Data Validation, Sparklines, Slicer, Power Query cơ bản), Google Sheets Script đơn giản, Canva Data Viz, QR code kết nối dữ liệu
+        - Không giảng lý thuyết quá 3 phút/lần, chỉ demo 30 giây + giao dự án ngay
+        - Phân hóa 4 mức độ rõ ràng (từ tính tổng, trung bình → PivotTable, Power Query, dự báo xu hướng, tự động hóa bằng macro đơn giản)
+        - Có ít nhất 2 tiết làm dự án nhóm “Xây dựng Dashboard theo dõi kết quả học tập lớp 10A?”
+        - Đánh giá bằng portfolio + rubric 4 mức + thuyết trình dashboard',
+
+                     -- CONTEXT
+                     'Năng lực tin học cần hình thành:
+        - Nhập, quản lý và xử lý dữ liệu bảng tính
+        - Trực quan hóa dữ liệu bằng biểu đồ chuyên nghiệp
+        - Phân tích và rút ra kết luận từ dữ liệu
+        - Tự động hóa công việc lặp lại
+        - Trình bày dữ liệu thuyết phục, khoa học
+
+        Năng lực chung: Tư duy tính toán, Giải quyết vấn đề thực tiễn, Sáng tạo, Giao tiếp dữ liệu (data storytelling)
+
+        Phẩm chất: Chính xác, Trung thực khi xử lý số liệu, Tinh thần trách nhiệm',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 5: Trình bày dữ liệu bằng biểu đồ và trang tính (toàn chương)"
+        sach_giao_khoa: "Kết nối tri thức"
+        so_tiet: "13 tiết (11 thực hành + 1 kiểm tra + 1 dự án)"
+        cap_do_lop: "Lớp có máy + tài khoản Microsoft 365 hoặc Google Workspace"
+        san_pham_mong_muon:
+          - "Dashboard theo dõi điểm cả năm lớp học"
+          - "Biểu đồ tương tác khảo sát sở thích học sinh"
+          - "File quản lý thu chi đoàn thanh niên"
+          - "Báo cáo thống kê kết quả học tập kèm dự báo"
+          - "Video hướng dẫn 2 phút sử dụng PivotTable"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án toàn chương (~45–60 trang):
+
+        [TRANG 1–4] Thông tin chung + Kế hoạch dạy học + Ma trận kỹ năng Excel
+        I. Mục tiêu chương học
+        II. Danh sách file dữ liệu mẫu & template
+        III. Giáo án chi tiết từng bài (Bài 25 → Bài 31 + kiểm tra + dự án)
+           Mỗi bài gồm:
+           a) Mục tiêu bài
+           b) File dữ liệu thực tế kèm theo
+           c) Tiến trình 4 hoạt động (100% thực hành dự án)
+           d) Sản phẩm phải nộp (link OneDrive/Share Google Sheets)
+           e) Rubric đánh giá 4 mức (tính chính xác + thẩm mỹ + tự động hóa)
+           f) Video hướng dẫn 30–60 giây + mã QR
+
+        IV. Dự án cuối chương: “Xây dựng Dashboard học tập & hoạt động lớp 10A?” (nhóm 4–6 HS)
+        V. Đề kiểm tra thực hành cuối chương (90 phút – phân tích dữ liệu thật + làm dashboard)
+        VI. Bộ sưu tập 50+ dashboard mẫu học sinh + link nộp bài',
+
+                     -- CONSTRAINTS
+                     '- 100% thời lượng học sinh làm việc trên Excel/Google Sheets
+        - Mỗi tiết nộp ít nhất 1 file bảng tính hoàn chỉnh + biểu đồ đẹp
+        - Bắt buộc dạy: hàm nâng cao, PivotTable, Slicer, Conditional Formatting, Data Validation, Sparklines
+        - Nhiệm vụ nâng cao: Power Query, Get & Transform, macro ghi nhanh
+        - Dashboard cuối chương phải có ít nhất 5 sheet liên kết + 8 biểu đồ tương tác
+        - Rubric đánh giá cả độ chính xác tính toán và tính thẩm mỹ
+        - Giáo án kèm đầy đủ file .xlsx mẫu + video hướng dẫn từng bước
+        - Định dạng Word đẹp, mục lục tự động, dễ in + dễ chia sẻ online',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     'Đề cương ôn tập Tin học 10 – Cả năm học (chuẩn thi học kỳ & THPT Quốc gia)',
+                     'Prompt tạo đề cương ôn tập Tin học 10 cực chất, chuẩn kiến thức kỹ năng CTGDPT 2018, sát đề thi học kỳ và định hướng kỳ thi tốt nghiệp THPT Quốc gia (50 câu trắc nghiệm + thực hành).',
+
+                     -- INSTRUCTION
+                     'Bạn là tổ trưởng chuyên môn Tin học cấp tỉnh, 15+ năm ra đề thi học kỳ và đề tham khảo THPT Quốc gia phần Tin học.
+
+        Nhiệm vụ: Soạn ĐỀ CƯƠNG ÔN TẬP CẢ NĂM môn Tin học lớp 10 hoàn chỉnh, khoa học, sát 100% với cấu trúc đề thi hiện hành.
+
+        Yêu cầu bắt buộc:
+        - Phân bổ tỷ lệ chính xác: Lý thuyết 40–45%, Thực hành Word/Excel 30–35%, Mạng & an toàn thông tin 20–25%
+        - Chia rõ 4 mức độ theo ma trận đề THPT Quốc gia (Nhận biết 25–30%, Thông hiểu 30–35%, Vận dụng 25%, Vận dụng cao 10–15%)
+        - M…
+        - Mỗi chuyên đề có: bảng tóm tắt lý thuyết trọng.fxml + công thức/hàm cần nhớ + phân dạng bài hay ra + ví dụ minh họa + 30–50 câu trắc nghiệm + 5–8 bài thực hành có đáp án chi tiết
+        - Đặc biệt chú trọng các dạng thực hành vận dụng cao: Mail Merge, PivotTable, Conditional Formatting, bảo mật tài liệu, phát hiện phishing, thiết kế dashboard…
+        - Có phần “Mẹo làm bài nhanh – Bẫy thường gặp – Thủ thuật Excel/Word”
+        - Độ dài 35–50 trang A4, định dạng Word đẹp, dễ in photo đen trắng',
+
+                     -- CONTEXT
+                     'Phạm vi ôn tập Tin học 10 (CT 2018) cả năm:
+        - Chương 1: Máy tính và xã hội tri thức
+        - Chương 2: Làm quen với máy tính và hệ điều hành
+        - Chương 3: Mạng máy tính và Internet
+        - Chương 4: Trình bày và trao đổi thông tin bằng văn bản (Word)
+        - Chương 5: Trình bày dữ liệu bằng biểu đồ và trang tính (Excel)
+        - Chương 6: Tư duy thuật toán và giải quyết vấn đề (nếu có trong sách)
+
+        Ma trận đề thi tham khảo (50 câu trắc nghiệm 90 phút + 10–15 phút thực hành):
+        - Lý thuyết: 20–23 câu
+        - Word: 10–12 câu
+        - Excel: 12–15 câu
+        - Mạng & an toàn thông tin: 8–10 câu
+        - Vận dụng cao: ít nhất 6–8 câu',
+
+                     -- INPUT_EXAMPLE
+                     'ky: "Cả năm học"
+        nam_hoc: "2025-2026"
+        sach_giao_khoa: "Kết nối tri thức"
+        loai_de: "Đề chuẩn thi THPT Quốc gia + học kỳ (50 câu TN + thực hành)"
+        dinh_dang: "Word đẹp, mục lục tự động, bảng biểu rõ ràng, dễ photo"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word đề cương ôn tập (35–50 trang):
+
+        TRANG BÌA + LỜI NÓI ĐẦU + HƯỚNG DẪN ÔN TẬP HIỆU QUẢ
+
+        I. Ma trận đề thi & tỷ lệ điểm từng chương
+        II. Phương pháp ôn tập Tin học 10 đạt điểm cao
+        III. Tóm tắt lý thuyết trọng tâm từng chương (bảng + sơ đồ tư duy)
+        IV. Bảng tổng hợp hàm Excel & lệnh Word hay ra thi
+        V. Phân dạng bài điển hình (4 mức độ) + mẹo giải nhanh
+        VI. Ngân hàng 600+ câu trắc nghiệm chọn lọc (có đáp án + giải thích)
+        VII. 50 bài thực hành Word & Excel từ dễ đến khó (có file dữ liệu + đáp án chi tiết)
+        VIII. 10 đề thi thử cả năm (5 đề HK1 + 5 đề HK2) + đáp án & biểu điểm
+        IX. Phụ lục:
+           - Checklist kiến thức cần nắm vững
+           - 100 mẹo Excel/Word trong 2 phút
+           - Bộ file thực hành mẫu (đính kèm zip)
+           - Link video hướng dẫn các dạng vận dụng cao',
+
+                     -- CONSTRAINTS
+                     '- 100% chính xác theo SGK hiện hành và đề minh họa 2025+
+        - Có đủ dạng thực hành vận dụng cao (Mail Merge phức tạp, Pivot + Slicer, bảo vệ file, phát hiện nguy cơ mạng…)
+        - Đề thử phải sát cấu trúc đề chính thức, độ khó nhỉnh hơn 5–10%
+        - File thực hành phải kèm sẵn dữ liệu để học sinh làm ngay
+        - Bắt buộc có mục lục tự động, đánh số câu liên tục, font đẹp khi photo
+        - Định dạng đẹp, dễ in, dễ chia sẻ Zalo/Drive',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     'Bộ tiêu chí chấm điểm (Rubric) chuẩn cho mọi bài kiểm tra Tin học 10',
+                     'Prompt tạo bộ RUBRIC chi tiết, công bằng, đo lường được cho mọi dạng bài kiểm tra Tin học 10 (trắc nghiệm, thực hành Word/Excel, dự án, sản phẩm số), chuẩn Công văn 5512 & định hướng đánh giá năng lực THPT Quốc gia.',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia đánh giá năng lực Tin học THPT, thành viên ban ra đề & chấm thi THPT Quốc gia phần Tin học.
+
+        Nhiệm vụ: Tạo bộ RUBRIC hoàn chỉnh, áp dụng được cho mọi loại bài kiểm tra Tin học 10 trong cả năm học:
+        - Kiểm tra thường xuyên (15 phút, 1 tiết)
+        - Kiểm tra định kỳ học kỳ (50 câu trắc nghiệm + thực hành)
+        - Đánh giá dự án/sản phẩm cuối chương
+        - Đánh giá portfolio cả năm
+
+        Yêu cầu bắt buộc:
+        - Mỗi rubric chia đúng 4 mức độ (Mức 1: 4–5đ, Mức 2: 6–7đ, Mức 3: 8–9đ, Mức 4: 9.5–10đ)
+        - Có 4–6 tiêu chí con rõ ràng (kiến thức, kỹ năng, thẩm mỹ, sáng tạo, thái độ, đúng hạn…)
+        - Định lượng được, giáo viên khác chấm cũng ra cùng điểm (±0.25)
+        - Có cột “Mô tả hành vi học sinh” cụ thể ở từng mức
+        - Có phiên bản riêng cho: Trắc nghiệm lý thuyết, Thực hành Word, Thực hành Excel, Dự án nhóm, Sản phẩm số (video/poster/dashboard)
+        - Tổng cộng ≥12 rubric mẫu khác nhau trong 1 file Word duy nhất
+        - Định dạng đẹp, bảng rõ ràng, dễ in, dễ dán vào giáo án',
+
+                     -- CONTEXT
+                     'Các dạng kiểm tra Tin học 10 cần rubric:
+        1. Kiểm tra trắc nghiệm lý thuyết (20–50 câu)
+        2. Kiểm tra thực hành Word 45 phút
+        3. Kiểm tra thực hành Excel 45–60 phút
+        4. Kiểm tra thực hành tổng hợp Word + Excel 90 phút
+        5. Dự án cuối chương (infographic, video an toàn mạng, dashboard…)
+        6. Portfolio sản phẩm cả năm
+        7. Thuyết trình sản phẩm nhóm
+        8. Bài tập về nhà thực hành
+
+        Nguyên tắc đánh giá: Đo lường năng lực tin học + năng lực chung + phẩm chất',
+
+                     -- INPUT_EXAMPLE
+                     'loai_kiem_tra: "Tất cả các loại trong năm học"
+        sach_giao_khoa: "Bất kỳ (KNTT/Cánh Diều/CTST)"
+        dinh_dang: "1 file Word duy nhất, 20–30 trang, bảng rubric đẹp, có màu nhẹ màu"
+        yeu_cau_tuy_chinh:
+          - "Có rubric riêng cho Excel nâng cao (PivotTable, Slicer, Power Query)"
+          - "Có rubric cho dự án nhóm 4–6 học sinh"
+          - "Có rubric chấm dashboard học tập"
+          - "Có phiên bản rút gọn in A4 dán bàn giáo viên"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word duy nhất (20–30 trang):
+
+        TRANG BÌA + HƯỚNG DẪN SỬ DỤNG BỘ RUBRIC
+
+        I. Nguyên tắc chung xây dựng rubric Tin học 10
+        II. 12+ bảng rubric chi tiết:
+           1. Rubric trắc nghiệm lý thuyết (20–50 câu)
+           2. Rubric thực hành Word cơ bản → nâng cao
+           3. Rubric thực hành Excel cơ bản
+           4. Rubric Excel nâng cao (Pivot, Slicer, Power Query)
+           5. Rubric Mail Merge & bảo mật tài liệu
+           6. Rubric dashboard học tập / thống kê
+           7. Rubric infographic / poster số
+           8. Rubric video hướng dẫn bằng văn bản (Word)
+           9. Rubric video ngắn 30–90 giây
+           10. Rubric dự án nhóm cuối chương
+           11. Rubric thuyết trình sản phẩm
+           12. Rubric portfolio cả năm
+           13. Rubric bài tập về nhà thực hành
+
+        Mỗi bảng rubric có:
+        - Tiêu chí | Mức 1 (4-5) | Mức 2 (6-7) | Mức 3 (8-9) | Mức 4 (9.5-10) | Điểm tối đa
+        - Dòng cuối: Tổng điểm & nhận xét
+
+        III. Phụ lục: File Excel tính điểm tự động từ rubric + biểu mẫu giao bài',
+
+                     -- CONSTRAINTS
+                     '- Phải chia đúng 4 mức độ, mô tả hành vi cụ thể, không chung chung
+        - Tổng điểm mỗi rubric = 10.0
+        - Có thể dùng cho chấm máy + chấm tay
+        - Bảng phải đẹp, có màu nhẹ, dễ photo đen trắng vẫn đọc được
+        - Có hướng dẫn cách cộng điểm khi kết hợp nhiều rubric
+        - Bắt buộc kèm file .docx và .pdf trong thư mục tải về
+        - Đảm bảo giáo viên khác chấm cùng bài cách nhau ≤ 0.5 điểm',
+
+                     'PUBLIC',
+                     NULL
+                 )
+             RETURNING id
+     )
+
+INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
+SELECT p.id, g.id, now() FROM inserted_prompts p, grade_tag g
+UNION ALL
+SELECT p.id, s.id, now() FROM inserted_prompts p, subject_tag s;
