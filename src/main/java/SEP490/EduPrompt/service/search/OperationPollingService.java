@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.service.search;
 
 import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
+import SEP490.EduPrompt.enums.IndexStatus;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Prompt;
@@ -41,7 +42,7 @@ public class OperationPollingService {
     public void pollPendingOperations() {
         List<Prompt> pendingPrompts = promptRepository
                 .findByIndexingStatusAndIsDeletedAndVisibility(
-                        "pending",
+                        IndexStatus.PENDING.name(),
                         false,
                         Visibility.PUBLIC.name());
 
@@ -79,7 +80,7 @@ public class OperationPollingService {
                 if (currentRetries >= MAX_POLL_ATTEMPTS) {
                     log.error("Max poll attempts ({}) reached for prompt {}, marking as failed",
                             MAX_POLL_ATTEMPTS, prompt.getId());
-                    prompt.setIndexingStatus("failed");
+                    prompt.setIndexingStatus(IndexStatus.FAILED.name());
                     promptRepository.save(prompt);
 
                     failedCount++;
@@ -113,8 +114,8 @@ public class OperationPollingService {
                     prompt.getId(), prompt.getGeminiFileId());
 
             // Ensure status is correct
-            if (!"indexed".equals(prompt.getIndexingStatus())) {
-                prompt.setIndexingStatus("indexed");
+            if (!IndexStatus.INDEXED.name().equalsIgnoreCase(prompt.getIndexingStatus())) {
+                prompt.setIndexingStatus(IndexStatus.INDEXED.name());
                 prompt.setLastIndexedAt(Instant.now());
                 promptRepository.save(prompt);
             }
@@ -125,7 +126,7 @@ public class OperationPollingService {
         if (!prompt.getGeminiFileId().contains(OPERATION_NAME_FACTOR)) {
             log.error("Prompt {} has invalid geminiFileId format (not operation or document): {}",
                     prompt.getId(), prompt.getGeminiFileId());
-            prompt.setIndexingStatus("failed");
+            prompt.setIndexingStatus(IndexStatus.FAILED.name());
             promptRepository.save(prompt);
             return true; // Consider it done (failed)
         }
@@ -137,10 +138,10 @@ public class OperationPollingService {
                 geminiClientService.pollOperation(prompt.getGeminiFileId());
 
         // Check if operation failed
-        if ("failed".equals(operationResponse.status())) {
+        if (IndexStatus.FAILED.name().equalsIgnoreCase(operationResponse.status())) {
             log.error("Operation failed for prompt {}: {}",
                     prompt.getId(), operationResponse.errorMessage());
-            prompt.setIndexingStatus("failed");
+            prompt.setIndexingStatus(IndexStatus.FAILED.name());
             promptRepository.save(prompt);
             return true;
         }
@@ -157,7 +158,7 @@ public class OperationPollingService {
 
                 // Replace operation ID with document ID
                 prompt.setGeminiFileId(documentId);
-                prompt.setIndexingStatus("indexed");
+                prompt.setIndexingStatus(IndexStatus.INDEXED.name());
                 prompt.setLastIndexedAt(Instant.now());
                 promptRepository.save(prompt);
 
@@ -168,7 +169,7 @@ public class OperationPollingService {
             } else {
                 log.error("Operation completed but no valid document ID for prompt {}",
                         prompt.getId());
-                prompt.setIndexingStatus("failed");
+                prompt.setIndexingStatus(IndexStatus.FAILED.name());
                 promptRepository.save(prompt);
                 return true;
             }

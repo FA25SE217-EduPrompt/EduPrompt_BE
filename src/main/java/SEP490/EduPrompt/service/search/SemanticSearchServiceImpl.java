@@ -223,6 +223,7 @@ public class SemanticSearchServiceImpl implements SemanticSearchService {
                 .resultsCount(resultCount)
                 .build();
         semanticSearchLogRepository.save(searchLog);
+
         log.info("Search logged: user={}, query={}, results={}",
                 request.userId(), request.query(), resultCount);
     }

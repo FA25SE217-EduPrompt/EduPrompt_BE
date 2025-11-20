@@ -2,6 +2,7 @@ package SEP490.EduPrompt.service.search;
 
 import SEP490.EduPrompt.dto.response.search.FileUploadResponse;
 import SEP490.EduPrompt.dto.response.search.IndexingResult;
+import SEP490.EduPrompt.enums.IndexStatus;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.client.GeminiApiException;
@@ -54,7 +55,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
             prompt.setGeminiFileId(uploadResponse.operationId()); //it should be document id, yet since the response from gemini is async, the document id within that time will be null, i've tested this
             // check this id format to verify its status , using polling method to check
             prompt.setLastIndexedAt(Instant.now());
-            prompt.setIndexingStatus("indexed");
+            prompt.setIndexingStatus(IndexStatus.PENDING.name());
             promptRepository.save(prompt);
 
             log.info("Successfully indexed prompt: {} with file ID: {}",
@@ -62,31 +63,31 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
 
             return IndexingResult.builder()
                     .promptId(promptId)
-                    .status("success")
+                    .status(IndexStatus.INDEXED.name())
                     .documentId(uploadResponse.documentId())
                     .build();
 
         } catch (GeminiApiException e) {
             log.error("Gemini API error indexing prompt: {}", promptId, e);
 
-            prompt.setIndexingStatus("failed");
+            prompt.setIndexingStatus(IndexStatus.FAILED.name());
             promptRepository.save(prompt);
 
             return IndexingResult.builder()
                     .promptId(promptId)
-                    .status("failed")
+                    .status(IndexStatus.FAILED.name())
                     .errorMessage("Gemini API error: " + e.getMessage())
                     .build();
 
         } catch (ClientException e) {
             log.error("Unexpected error indexing prompt: {}", promptId, e);
 
-            prompt.setIndexingStatus("failed");
+            prompt.setIndexingStatus(IndexStatus.FAILED.name());
             promptRepository.save(prompt);
 
             return IndexingResult.builder()
                     .promptId(promptId)
-                    .status("failed")
+                    .status(IndexStatus.FAILED.name())
                     .errorMessage(e.getMessage())
                     .build();
         }
@@ -138,9 +139,9 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
                 IndexingResult result = indexPromptWithRetry(prompt.getId());
                 results.add(result);
 
-                if ("success".equalsIgnoreCase(result.status())) {
+                if (IndexStatus.INDEXED.name().equalsIgnoreCase(result.status())) {
                     successCount++;
-                } else if ("failed".equalsIgnoreCase(result.status())) {
+                } else if (IndexStatus.FAILED.name().equalsIgnoreCase(result.status())) {
                     failedCount++;
                 } else {
                     skippedCount++;
@@ -159,7 +160,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
             } else {
                 results.add(IndexingResult.builder()
                         .promptId(prompt.getId())
-                        .status("skipped")
+                        .status(IndexStatus.SKIPPED.name())
                         .errorMessage("Private prompts are not indexed")
                         .build());
                 skippedCount++;
@@ -207,7 +208,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
             log.info("Skipping private prompt: {}", prompt.getId());
             return IndexingResult.builder()
                     .promptId(prompt.getId())
-                    .status("skipped")
+                    .status(IndexStatus.SKIPPED.name())
                     .errorMessage("Private prompts are not indexed")
                     .build();
         }
@@ -216,7 +217,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
             log.info("Skipping deleted prompt: {}", prompt.getId());
             return IndexingResult.builder()
                     .promptId(prompt.getId())
-                    .status("skipped")
+                    .status(IndexStatus.SKIPPED.name())
                     .errorMessage("Deleted prompts are not indexed")
                     .build();
         }
@@ -228,7 +229,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
             log.info("Skipping empty prompt: {}", prompt.getId());
             return IndexingResult.builder()
                     .promptId(prompt.getId())
-                    .status("skipped")
+                    .status(IndexStatus.SKIPPED.name())
                     .errorMessage("Prompt has no content to index")
                     .build();
         }
@@ -247,7 +248,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
                 //should use transaction template here
                 lastResult = indexPrompt(promptId);
 
-                if ("success".equals(lastResult.status())) {
+                if (IndexStatus.INDEXED.name().equalsIgnoreCase(lastResult.status())) {
                     return lastResult;
                 }
 
@@ -269,7 +270,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
 
         return lastResult != null ? lastResult : IndexingResult.builder()
                 .promptId(promptId)
-                .status("failed")
+                .status(IndexStatus.FAILED.name())
                 .errorMessage("Failed after " + MAX_RETRIES + " retries")
                 .build();
     }

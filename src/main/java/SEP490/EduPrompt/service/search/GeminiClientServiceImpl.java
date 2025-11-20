@@ -2,8 +2,9 @@ package SEP490.EduPrompt.service.search;
 
 import SEP490.EduPrompt.dto.response.search.FileSearchStoreResponse;
 import SEP490.EduPrompt.dto.response.search.FileUploadResponse;
-import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
 import SEP490.EduPrompt.dto.response.search.GroundingChunk;
+import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
+import SEP490.EduPrompt.enums.IndexStatus;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.client.GeminiApiException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
@@ -96,13 +97,18 @@ public class GeminiClientServiceImpl implements GeminiClientService {
 
             String operationId = operation.name().orElseThrow();
             // as i observe, i found that operationId and documentId (after operation is done) is similar to each other, just have different prefix
-            String documentId = operationId.replace("operations/", "documents/");
+            String documentId = operation.response().orElseThrow()
+                    .documentName()
+                    .orElse(null) == null
+                    ? operationId.replace("upload/operations/", "documents/") : null;
+
+//            String documentId = operationId.replace("upload/operations/", "documents/");
             boolean done = operation.done().orElse(false);
 
             FileUploadResponse response = FileUploadResponse.builder()
                     .documentId(documentId)
                     .operationId(operationId)
-                    .status(done ? "active" : "processing")
+                    .status(done ? IndexStatus.INDEXED.name() : IndexStatus.PENDING.name())
                     .promptId(prompt.getId())
                     .build();
 
@@ -132,14 +138,14 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             boolean done = uploadOperation.done().orElse(false);
 
             String documentId = null;
-            String status = "processing";
+            String status = IndexStatus.PENDING.name();
 
             if (done) {
                 // Extract document ID when operation completes
                 if (uploadOperation.response().isPresent() &&
                         uploadOperation.response().get().documentName().isPresent()) {
                     documentId = uploadOperation.response().get().documentName().get();
-                    status = "completed";
+                    status = IndexStatus.INDEXED.name();
                     log.info("Operation {} completed with document ID: {}", operationName, documentId);
                 } else {
                     status = "failed";
@@ -202,7 +208,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             log.info("Listing documents in store: {}", fileSearchStoreId);
 
             ListDocumentsConfig documentsConfig = ListDocumentsConfig.builder()
-                    .pageSize(100)
+                    .pageSize(10)
                     .build();
             Pager<Document> documents = genAiClient.fileSearchStores.documents
                     .list(fileSearchStoreId, documentsConfig);
