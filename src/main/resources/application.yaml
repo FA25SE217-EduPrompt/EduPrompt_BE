@@ -112,3 +112,11 @@ gemini:
 #    password-reset: ${POSTMARK_PASSWORD_RESET_TEMPLATE_ID}
 #    welcome: ${POSTMARK_WELCOME_TEMPLATE_ID}
 
+vnpay:
+  sandbox: true   # đổi thành false khi lên production
+  tmn-code: ${TMN_CODE}
+  hash-secret: ${HASH_SECRET}
+  pay-url: ${PAY_URL}
+  return-url: ${RETURN_URL}
+  ipn-url: ${IPN_URL}
+
