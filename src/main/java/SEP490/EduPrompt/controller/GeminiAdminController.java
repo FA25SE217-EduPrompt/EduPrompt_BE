@@ -6,8 +6,6 @@ import SEP490.EduPrompt.dto.response.search.FileSearchStoreResponse;
 import SEP490.EduPrompt.dto.response.search.GroundingChunk;
 import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
 import SEP490.EduPrompt.service.search.GeminiClientService;
-import com.google.genai.Pager;
-import com.google.genai.types.Document;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -27,10 +25,10 @@ import java.util.Map;
 @PreAuthorize("hasRole('SYSTEM_ADMIN')")
 public class GeminiAdminController {
 
-    private final GeminiClientService geminiClientService;
     private static final String FILE_SEARCH_STORE_PREFIX = "fileSearchStores/";
+    private final GeminiClientService geminiClientService;
 
-    private String normalize(String name){
+    private String normalize(String name) {
         return name.replace("_", "/");
     }
 

@@ -1,6 +1,5 @@
 package SEP490.EduPrompt.dto.response.schoolAdmin;
 
-import SEP490.EduPrompt.model.User;
 import lombok.Builder;
 
 import java.util.List;

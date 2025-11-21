@@ -99,6 +99,7 @@ public class OperationPollingService {
 
     /**
      * Check operation status and update prompt accordingly
+     *
      * @return true if operation completed, false if still processing
      */
     @Transactional

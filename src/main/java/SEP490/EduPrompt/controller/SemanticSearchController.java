@@ -24,26 +24,26 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Semantic Search", description = "APIs for semantic search functionality")
 public class SemanticSearchController {
 
-        private final SemanticSearchService semanticSearchService;
+    private final SemanticSearchService semanticSearchService;
 
-        @Operation(summary = "Perform semantic search", description = "Search for prompts using natural language query")
-        @PostMapping
-        @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-        public ResponseDto<SemanticSearchResponse> search(
-                        @Valid @RequestBody SemanticSearchRequest request,
-                        @AuthenticationPrincipal UserPrincipal currentUser) {
-                log.info("Received semantic search request from user: {} for query: {}", currentUser.getUserId(),
-                                request.query());
+    @Operation(summary = "Perform semantic search", description = "Search for prompts using natural language query")
+    @PostMapping
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<SemanticSearchResponse> search(
+            @Valid @RequestBody SemanticSearchRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Received semantic search request from user: {} for query: {}", currentUser.getUserId(),
+                request.query());
 
-                // Ensure request has correct user ID from token
-                SemanticSearchRequest secureRequest = SemanticSearchRequest.builder()
-                                .query(request.query())
-                                .limit(request.limit())
-                                .context(request.context())
-                                .userId(currentUser.getUserId())
-                        .username(request.username())
-                                .build();
+        // Ensure request has correct user ID from token
+        SemanticSearchRequest secureRequest = SemanticSearchRequest.builder()
+                .query(request.query())
+                .limit(request.limit())
+                .context(request.context())
+                .userId(currentUser.getUserId())
+                .username(request.username())
+                .build();
 
-                return ResponseDto.success(semanticSearchService.search(secureRequest));
-        }
+        return ResponseDto.success(semanticSearchService.search(secureRequest));
+    }
 }

@@ -25,16 +25,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SemanticSearchServiceImpl implements SemanticSearchService {
 
+    private static final int DEFAULT_LIMIT = 10;
+    private static final int MAX_LIMIT = 20;
     private final GeminiClientService geminiClientService;
     private final PromptRepository promptRepository;
     private final SemanticSearchLogRepository semanticSearchLogRepository;
     private final UserRepository userRepository;
-
     @Value("${gemini.file-search-store}")
     private String fileSearchStoreName;
-
-    private static final int DEFAULT_LIMIT = 10;
-    private static final int MAX_LIMIT = 20;
 
     @Override
     @Transactional(readOnly = true)
@@ -129,7 +127,7 @@ public class SemanticSearchServiceImpl implements SemanticSearchService {
             List<GroundingChunk> chunks = entry.getValue();
 
             // format: fileSearchStores/{store}/documents/{doc}
-            Optional<Prompt> promptOpt =promptRepository.findByGeminiFileIdStartingWith(documentId);
+            Optional<Prompt> promptOpt = promptRepository.findByGeminiFileIdStartingWith(documentId);
             if (promptOpt.isPresent() && promptOpt.get().getIsDeleted()) {
                 log.info("Prompt {} not found or deleted, skipping", promptOpt.get().getId());
                 continue;

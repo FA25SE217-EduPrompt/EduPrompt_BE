@@ -66,7 +66,7 @@ public class PromptIndexingController {
 //        long successCount = results.stream()
 //                .filter(r -> "success".equals(r.status()))
 //                .count();
-        return  ResponseDto.success(results);
+        return ResponseDto.success(results);
     }
 
     /**

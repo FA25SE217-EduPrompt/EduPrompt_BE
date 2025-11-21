@@ -2,8 +2,6 @@ package SEP490.EduPrompt.service.search;
 
 import SEP490.EduPrompt.dto.response.search.*;
 import SEP490.EduPrompt.model.Prompt;
-import com.google.genai.Pager;
-import com.google.genai.types.Document;
 
 import java.util.List;
 
@@ -79,9 +77,10 @@ public interface GeminiClientService {
 
     /**
      * Perform semantic search using Gemini's generateContent with grounding
+     *
      * @param fileSearchStoreId The store to search in
-     * @param query User's search query
-     * @param maxResults Maximum number of results to return
+     * @param query             User's search query
+     * @param maxResults        Maximum number of results to return
      * @return List of grounding chunks with matched content
      */
     List<GroundingChunk> searchDocuments(String fileSearchStoreId, String query, int maxResults);

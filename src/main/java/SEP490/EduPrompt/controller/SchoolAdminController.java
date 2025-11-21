@@ -2,12 +2,9 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.school.CreateSchoolRequest;
 import SEP490.EduPrompt.dto.request.school.SchoolEmailRequest;
-import SEP490.EduPrompt.dto.request.schoolAdmin.BulkAssignTeachersRequest;
 import SEP490.EduPrompt.dto.request.schoolAdmin.RemoveTeacherFromSchoolRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.school.CreateSchoolResponse;
-import SEP490.EduPrompt.dto.response.school.SchoolWithEmailsResponse;
-import SEP490.EduPrompt.dto.response.schoolAdmin.BulkAssignTeachersResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolAdminTeacherResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolSubscriptionUsageResponse;
 import SEP490.EduPrompt.service.admin.AdminService;
@@ -17,10 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.*;
 
 @RestController

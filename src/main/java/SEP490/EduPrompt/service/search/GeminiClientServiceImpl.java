@@ -1,7 +1,7 @@
 package SEP490.EduPrompt.service.search;
 
-import SEP490.EduPrompt.dto.response.search.*;
 import SEP490.EduPrompt.dto.response.search.GroundingChunk;
+import SEP490.EduPrompt.dto.response.search.*;
 import SEP490.EduPrompt.enums.IndexStatus;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.client.GeminiApiException;
@@ -409,10 +409,10 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                 .build();
     }
 
-    private List<DocumentResponse> toListDocumentResponse(Pager<Document> pager){
+    private List<DocumentResponse> toListDocumentResponse(Pager<Document> pager) {
         if (pager == null) return null;
         List<DocumentResponse> list = new ArrayList<>();
-        while(!pager.iterator().hasNext() || list.size() > 50){
+        while (!pager.iterator().hasNext() || list.size() > 50) {
             List<DocumentResponse> nextList = pager.nextPage().stream().toList()
                     .stream().map(this::toDocumentResponse).toList();
             list.addAll(nextList);
