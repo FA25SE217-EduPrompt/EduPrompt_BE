@@ -1,7 +1,7 @@
 ALTER TABLE prompts
 ADD COLUMN gemini_file_id VARCHAR(255),
 ADD COLUMN last_indexed_at TIMESTAMP WITHOUT TIME ZONE NULL,
-ADD COLUMN indexing_status VARCHAR(50) DEFAULT 'pending'; -- pending, indexed, failed
+ADD COLUMN indexing_status VARCHAR(50) DEFAULT 'PENDING'; -- pending, indexed, failed, skipped
 
 -- Create index for efficient lookup
 CREATE INDEX idx_prompts_gemini_file ON prompts(gemini_file_id) WHERE gemini_file_id IS NOT NULL;
