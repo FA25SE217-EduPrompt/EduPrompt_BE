@@ -113,10 +113,9 @@ gemini:
 #    welcome: ${POSTMARK_WELCOME_TEMPLATE_ID}
 
 vnpay:
-  sandbox: true   # đổi thành false khi lên production
-  tmn-code: ${TMN_CODE}
-  hash-secret: ${HASH_SECRET}
-  pay-url: ${PAY_URL}
-  return-url: ${RETURN_URL}
-  ipn-url: ${IPN_URL}
+  tmncode: ${TMN_CODE}
+  hash_secret: ${HASH_SECRET}
+  url: ${PAYMENT_URL}
+  return_url: ${RETURN_URL}
+  version: ${VNPAY_VERSION}
 

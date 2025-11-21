@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.config;
 
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -8,10 +9,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConfigurationProperties(prefix = "vnpay")
 public class VnpayConfig {
-    private boolean sandbox;
+    @Value("${vnpay.tmncode}")
     private String tmnCode;
+
+    @Value("${vnpay.hash_secret}")
     private String hashSecret;
-    private String payUrl;
+
+    @Value("${vnpay.url}")
+    private String url;
+
+    @Value("${vnpay.return_url}")
     private String returnUrl;
-    private String ipnUrl;
+
+    @Value("${vnpay.version}")
+    private String version;
 }
