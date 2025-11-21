@@ -1,9 +1,7 @@
 package SEP490.EduPrompt.service.search;
 
-import SEP490.EduPrompt.dto.response.search.FileSearchStoreResponse;
-import SEP490.EduPrompt.dto.response.search.FileUploadResponse;
+import SEP490.EduPrompt.dto.response.search.*;
 import SEP490.EduPrompt.dto.response.search.GroundingChunk;
-import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
 import SEP490.EduPrompt.enums.IndexStatus;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.client.GeminiApiException;
@@ -26,15 +24,16 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class GeminiClientServiceImpl implements GeminiClientService {
+
+    private static final Pattern PROMPT_ID_PATTERN = Pattern.compile("PromptID:\\s*([a-f0-9-]{36})", Pattern.CASE_INSENSITIVE);
 
     private final Client genAiClient;
     private final PromptTagRepository promptTagRepository;
@@ -141,14 +140,14 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             String status = IndexStatus.PENDING.name();
 
             if (done) {
-                // Extract document ID when operation completes
+                // extract document id when operation complete
                 if (uploadOperation.response().isPresent() &&
                         uploadOperation.response().get().documentName().isPresent()) {
                     documentId = uploadOperation.response().get().documentName().get();
                     status = IndexStatus.INDEXED.name();
                     log.info("Operation {} completed with document ID: {}", operationName, documentId);
                 } else {
-                    status = "failed";
+                    status = IndexStatus.FAILED.name();
                     log.error("Operation {} completed but no document ID found", operationName);
                 }
             }
@@ -166,19 +165,19 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             return ImportOperationResponse.builder()
                     .operationName(operationName)
                     .done(true)
-                    .status("failed")
+                    .status(IndexStatus.FAILED.name())
                     .errorMessage(e.getMessage())
                     .build();
         }
     }
 
     @Override
-    public Document getDocument(String documentName) {
+    public DocumentResponse getDocument(String documentName) {
         try {
             log.info("Getting document: {}", documentName);
 
             GetDocumentConfig documentsConfig = GetDocumentConfig.builder().build();
-            return genAiClient.fileSearchStores.documents.get(documentName, documentsConfig);
+            return toDocumentResponse(genAiClient.fileSearchStores.documents.get(documentName, documentsConfig));
 
         } catch (ClientException e) {
             log.error("Error getting document {}: {}", documentName, e.getMessage());
@@ -203,18 +202,18 @@ public class GeminiClientServiceImpl implements GeminiClientService {
     }
 
     @Override
-    public Pager<Document> listDocumentsInStore(String fileSearchStoreId) {
+    public List<DocumentResponse> listDocumentsInStore(String fileSearchStoreId) {
         try {
             log.info("Listing documents in store: {}", fileSearchStoreId);
 
             ListDocumentsConfig documentsConfig = ListDocumentsConfig.builder()
-                    .pageSize(10)
+                    .pageSize(20)
                     .build();
             Pager<Document> documents = genAiClient.fileSearchStores.documents
                     .list(fileSearchStoreId, documentsConfig);
 
             log.info("Found {} documents in store {}", documents.size(), fileSearchStoreId);
-            return documents;
+            return toListDocumentResponse(documents);
 
         } catch (ClientException e) {
             log.error("Error listing documents in store {}: {}", fileSearchStoreId, e.getMessage());
@@ -274,7 +273,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                     .build();
 
             String searchPrompt = String.format(
-                    "Find the most relevant teaching prompts for: %s",
+                    "Find the most relevant teaching prompts for: %s , keep it concise with one line summary of its content",
                     query);
 
             GenerateContentResponse response = genAiClient.models.generateContent(
@@ -290,7 +289,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                 if (candidate.groundingMetadata().isPresent() &&
                         candidate.groundingMetadata().get().groundingChunks().isPresent()) {
 
-                    int rank = 0; // Track relevance rank
+                    int rank = 0; // tracking rank
 
                     for (com.google.genai.types.GroundingChunk chunk : candidate.groundingMetadata().get()
                             .groundingChunks().get()) {
@@ -299,22 +298,29 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                             String documentTitle = chunk.retrievedContext().get().title().orElse(null);
                             String text = chunk.retrievedContext().get().text().orElse(null);
 
-                            if (documentTitle != null && text != null) {
-                                //document name or displayName is different from file name or displayName
-                                //format of a document name : fileSearchStores/eduprompt-5fuy52dsj4vf/documents/upgs8mhhg64a-p1u11mg22tf8
-                                //this documentNameWithTitle is : fileSearchStores/eduprompt-5fuy52dsj4vf/documents/upgs8mhhg64a
-                                //upgs8mhhg64a : document title, which is its filename before import to FileSearchStore and become a document
-                                //p1u11mg22tf8 : document displayName
-                                String documentNameWithTitle = fileSearchStoreId + "/documents/" + documentTitle;
+                            if (text != null) {
+                                Optional<Prompt> promptOpt = Optional.empty();
+                                // extract embedded prompt id from response
+                                Matcher matcher = PROMPT_ID_PATTERN.matcher(text);
+                                if (matcher.find()) {
+                                    try {
+                                        UUID extractedId = UUID.fromString(matcher.group(1));
+                                        promptOpt = promptRepository.findById(extractedId);
+                                    } catch (IllegalArgumentException e) {
+                                        log.warn("Found invalid UUID in text content: {}", matcher.group(1));
+                                    }
+                                }
 
-                                var promptOpt = promptRepository.findByGeminiFileIdStartingWith(documentNameWithTitle);
+                                // fallback to check document title
+                                if (promptOpt.isEmpty() && documentTitle != null) {
+                                    String documentNameWithTitle = fileSearchStoreId + "/documents/" + documentTitle;
+                                    promptOpt = promptRepository.findByGeminiFileIdStartingWith(documentNameWithTitle);
+                                }
+
                                 if (promptOpt.isPresent()) {
                                     Prompt prompt = promptOpt.get();
-
-                                    // New Strategy: Calculate synthetic confidence score based on Rank.
-                                    // The API returns chunks sorted by relevance (index 0 is best).
-                                    // 1st result = 0.99, 2nd = 0.98, etc.
-                                    Double score = Math.max(0.1, 0.99 - (rank * 0.01));
+                                    // rank-based scoring, might need a better strategy for ranking
+                                    Double score = Math.max(0.1, 0.99 - (rank * 0.03));
 
                                     chunks.add(GroundingChunk.builder()
                                             .documentId(prompt.getGeminiFileId())
@@ -322,13 +328,9 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                                             .confidenceScore(score)
                                             .build());
                                 } else {
-                                    log.warn("No prompt found with geminiFileId starting with: {}",
-                                            documentNameWithTitle);
+                                    log.warn("Could not map Chunk to DB Prompt. Title: '{}', ID in Text: {}",
+                                            documentTitle, matcher.find());
                                 }
-                            } else {
-                                log.warn(
-                                        "Skipping chunk with missing documentId or text. DocumentId: {}, Text present: {}",
-                                        documentTitle, text != null);
                             }
                             rank++;
                         }
@@ -351,6 +353,9 @@ public class GeminiClientServiceImpl implements GeminiClientService {
 
     private String buildPromptContent(Prompt prompt) {
         StringBuilder content = new StringBuilder();
+
+        // embed prompt id to extract it from chunk
+        content.append("PromptID: ").append(prompt.getId()).append("\n\n");
 
         if (prompt.getTitle() != null && !prompt.getTitle().isBlank()) {
             content.append("Title: ").append(prompt.getTitle()).append("\n\n");
@@ -388,12 +393,30 @@ public class GeminiClientServiceImpl implements GeminiClientService {
             metadataList.add(metadata);
         }
 
-        // Add visibility metadata
-        metadataList.add(CustomMetadata.builder()
-                .key("visibility")
-                .stringValue(prompt.getVisibility())
-                .build());
-
         return metadataList;
+    }
+
+    private DocumentResponse toDocumentResponse(Document doc) {
+        if (doc == null) return null;
+        return DocumentResponse.builder()
+                .name(doc.name().orElse(""))
+                .displayName(doc.displayName().orElse(""))
+                .state(doc.state().toString())
+                .sizeBytes(doc.sizeBytes().orElse(0L))
+                .mimeType(doc.mimeType().orElse(""))
+                .createTime(doc.createTime().orElse(Instant.now()))
+                .updateTime(doc.updateTime().orElse(Instant.now()))
+                .build();
+    }
+
+    private List<DocumentResponse> toListDocumentResponse(Pager<Document> pager){
+        if (pager == null) return null;
+        List<DocumentResponse> list = new ArrayList<>();
+        while(!pager.iterator().hasNext() || list.size() > 50){
+            List<DocumentResponse> nextList = pager.nextPage().stream().toList()
+                    .stream().map(this::toDocumentResponse).toList();
+            list.addAll(nextList);
+        }
+        return list;
     }
 }

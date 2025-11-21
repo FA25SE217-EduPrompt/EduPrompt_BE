@@ -124,7 +124,9 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
     public List<IndexingResult> indexAllPendingPrompts() {
         log.info("Starting batch indexing of pending prompts");
 
-        List<Prompt> pendingPrompts = promptRepository.findByIndexingStatusAndIsDeleted("pending", false);
+        List<Prompt> pendingPrompts = promptRepository.findByIndexingStatusAndIsDeleted(
+                IndexStatus.PENDING.name(),
+                false);
 
         log.info("Found {} prompts to index", pendingPrompts.size());
 
@@ -186,7 +188,7 @@ public class PromptIndexingServiceImpl implements PromptIndexingService {
                 geminiClientService.deleteDocument(prompt.getGeminiFileId());
 
                 prompt.setGeminiFileId(null);
-                prompt.setIndexingStatus("pending");
+                prompt.setIndexingStatus(IndexStatus.PENDING.name());
                 promptRepository.save(prompt);
 
                 log.info("Successfully removed prompt {} from index", promptId);

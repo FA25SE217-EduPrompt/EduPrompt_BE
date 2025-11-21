@@ -1,9 +1,6 @@
 package SEP490.EduPrompt.service.search;
 
-import SEP490.EduPrompt.dto.response.search.FileSearchStoreResponse;
-import SEP490.EduPrompt.dto.response.search.FileUploadResponse;
-import SEP490.EduPrompt.dto.response.search.GroundingChunk;
-import SEP490.EduPrompt.dto.response.search.ImportOperationResponse;
+import SEP490.EduPrompt.dto.response.search.*;
 import SEP490.EduPrompt.model.Prompt;
 import com.google.genai.Pager;
 import com.google.genai.types.Document;
@@ -45,9 +42,9 @@ public interface GeminiClientService {
      * Get file/document metadata from File Search Store
      *
      * @param documentName The document name (format: fileSearchStores/xxx/documents/yyy)
-     * @return Document metadata
+     * @return DocumentResponse metadata
      */
-    Document getDocument(String documentName);
+    DocumentResponse getDocument(String documentName);
 
     /**
      * Delete document from File Search Store
@@ -62,7 +59,7 @@ public interface GeminiClientService {
      * @param fileSearchStoreId The store ID
      * @return List of document names
      */
-    Pager<Document> listDocumentsInStore(String fileSearchStoreId);
+    List<DocumentResponse> listDocumentsInStore(String fileSearchStoreId);
 
     /**
      * Get File Search Store details
