@@ -329,7 +329,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                                             .build());
                                 } else {
                                     log.warn("Could not map Chunk to DB Prompt. Title: '{}', ID in Text: {}",
-                                            documentTitle, matcher.find());
+                                            documentTitle, matcher.group(1));
                                 }
                             }
                             rank++;
@@ -412,7 +412,7 @@ public class GeminiClientServiceImpl implements GeminiClientService {
     private List<DocumentResponse> toListDocumentResponse(Pager<Document> pager) {
         if (pager == null) return null;
         List<DocumentResponse> list = new ArrayList<>();
-        while (!pager.iterator().hasNext() || list.size() > 50) {
+        while (pager.iterator().hasNext() || list.size() < 50) {
             List<DocumentResponse> nextList = pager.nextPage().stream().toList()
                     .stream().map(this::toDocumentResponse).toList();
             list.addAll(nextList);

@@ -160,7 +160,7 @@ public class SemanticSearchServiceImpl implements SemanticSearchService {
                     .visibility(prompt.getVisibility())
                     .createdBy(userId)
                     .createdByName(userName)
-                    .averageRating(4 + Math.random()) // wait for prompt rating
+                    .averageRating(4 + Math.random()) // wait for prompt rating service to implement
                     .build());
         }
 
