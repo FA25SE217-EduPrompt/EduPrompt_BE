@@ -10,7 +10,9 @@ import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.TeacherProfile;
 import SEP490.EduPrompt.model.User;
-import SEP490.EduPrompt.repo.*;
+import SEP490.EduPrompt.repo.CollectionRepository;
+import SEP490.EduPrompt.repo.GroupMemberRepository;
+import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,11 +25,8 @@ import java.util.UUID;
 public class PermissionServiceImpl implements PermissionService {
 
     private final GroupMemberRepository groupMemberRepository;
-    private final GroupRepository groupRepository;
-    private final PromptRepository promptRepository;
     private final CollectionRepository collectionRepository;
     private final UserRepository userRepository;
-    private final SchoolRepository schoolRepository;
 
     @Override
     public boolean canAccessPrompt(Prompt prompt, UserPrincipal currentUser) {
@@ -40,19 +39,21 @@ public class PermissionServiceImpl implements PermissionService {
         switch (Visibility.valueOf(prompt.getVisibility())) {
             case PRIVATE:
                 // Only owner can access
-                return currentUser.getUserId().equals(prompt.getCreatedBy());
+                return currentUser.getUserId().equals(prompt.getUserId());
             case SCHOOL:
                 // Check if user's schoolId matches prompt owner's schoolId
-                User promptOwner = userRepository.findById(prompt.getCreatedBy())
+                User promptOwner = userRepository.findById(prompt.getUserId())
                         .orElseThrow(() -> new ResourceNotFoundException("Prompt owner not found"));
                 return currentUser.getSchoolId() != null &&
                         currentUser.getSchoolId().equals(promptOwner.getSchoolId());
             case GROUP:
                 // Check if user is a member of the group associated with the collection
-                if (prompt.getCollection() == null || prompt.getCollection().getGroup() == null) {
+                Collection collection = collectionRepository.findById(prompt.getCollectionId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
+                if (collection.getGroupId() == null) {
                     return false;
                 }
-                UUID groupId = prompt.getCollection().getGroup().getId();
+                UUID groupId = collection.getGroupId();
                 return isGroupMember(currentUser, groupId);
             case PUBLIC:
                 return true;
@@ -63,8 +64,10 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public boolean canEditPrompt(UserPrincipal user, Prompt prompt) {
-        if (user == null) return false;
-        if (user.getUserId().equals(prompt.getCreatedBy())) return true;
+        if (user == null)
+            return false;
+        if (user.getUserId().equals(prompt.getUserId()))
+            return true;
         return isAdmin(user);
     }
 
@@ -80,7 +83,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public boolean canDoAll(UserPrincipal user) {
-        return isAdmin(user) && user.getUsername().equalsIgnoreCase("lord tri nguyen"); //dont ask why
+        return isAdmin(user) && user.getUsername().equalsIgnoreCase("lord tri nguyen"); // dont ask why
     }
 
     @Override
@@ -92,33 +95,37 @@ public class PermissionServiceImpl implements PermissionService {
         return switch (Visibility.valueOf(prompt.getVisibility())) {
             case PRIVATE ->
                 // Only owner can access
-                    currentUser.getUserId().equals(prompt.getCreatedBy());
+                    currentUser.getUserId().equals(prompt.getUserId());
             case GROUP, SCHOOL, PUBLIC -> true;
             default -> false;
         };
     }
 
     public boolean isAdmin(UserPrincipal user) {
-        if (user == null) return false;
+        if (user == null)
+            return false;
         String r = user.getRole();
         return Role.SYSTEM_ADMIN.name().equalsIgnoreCase(r) || Role.SCHOOL_ADMIN.name().equalsIgnoreCase(r);
     }
 
     @Override
     public boolean isSchoolAdmin(UserPrincipal user) {
-        if (user == null) return false;
+        if (user == null)
+            return false;
         return Role.SCHOOL_ADMIN.name().equalsIgnoreCase(user.getRole());
     }
 
     @Override
     public boolean isSystemAdmin(UserPrincipal user) {
-        if (user == null) return false;
+        if (user == null)
+            return false;
         return Role.SYSTEM_ADMIN.name().equalsIgnoreCase(user.getRole());
     }
 
     @Override
     public boolean isGroupMember(UserPrincipal user, UUID groupId) {
-        if (user == null || groupId == null) return false;
+        if (user == null || groupId == null)
+            return false;
         return groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, user.getUserId(), "active");
     }
 
@@ -129,8 +136,10 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public boolean isGroupAdmin(UserPrincipal user, UUID groupId) {
-        if (user == null || groupId == null) return false;
-        return groupMemberRepository.existsByGroupIdAndUserIdAndRoleIn(groupId, user.getUserId(), List.of(GroupRole.ADMIN.name()));
+        if (user == null || groupId == null)
+            return false;
+        return groupMemberRepository.existsByGroupIdAndUserIdAndRoleIn(groupId, user.getUserId(),
+                List.of(GroupRole.ADMIN.name()));
     }
 
     @Override
@@ -141,19 +150,19 @@ public class PermissionServiceImpl implements PermissionService {
         switch (Visibility.valueOf(collection.getVisibility())) {
             case PRIVATE:
                 // Only owner can access
-                return userPrincipal.getUserId().equals(collection.getCreatedBy());
+                return userPrincipal.getUserId().equals(collection.getUserId());
             case SCHOOL:
                 // Check if user's schoolId matches prompt owner's schoolId
-                User promptOwner = userRepository.findById(collection.getCreatedBy())
+                User promptOwner = userRepository.findById(collection.getUserId())
                         .orElseThrow(() -> new ResourceNotFoundException("Prompt owner not found"));
                 return userPrincipal.getSchoolId() != null &&
                         userPrincipal.getSchoolId().equals(promptOwner.getSchoolId());
             case GROUP:
                 // Check if user is a member of the group associated with the collection
-                if (collection.getGroup() == null) {
+                if (collection.getGroupId() == null) {
                     return false;
                 }
-                UUID groupId = collection.getGroup().getId();
+                UUID groupId = collection.getGroupId();
                 return isGroupMember(userPrincipal, groupId);
             case PUBLIC:
                 return true;
@@ -164,7 +173,8 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public boolean canCreatePrompt(UserPrincipal user) {
-        if (user == null) return false;
+        if (user == null)
+            return false;
         String role = user.getRole();
         return Role.TEACHER.name().equalsIgnoreCase(role)
                 || Role.SCHOOL_ADMIN.name().equalsIgnoreCase(role)
@@ -204,7 +214,7 @@ public class PermissionServiceImpl implements PermissionService {
         Collection collection = collectionRepository.findById(collectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         return canViewCollection(currentUser, collection) ||
-                collection.getUser().getId().equals(currentUser.getUserId()) ||
+                (collection.getUserId() != null && collection.getUserId().equals(currentUser.getUserId())) ||
                 isAdmin(currentUser);
     }
 
@@ -220,7 +230,7 @@ public class PermissionServiceImpl implements PermissionService {
         }
 
         // Collection owner can edit their own collection
-        UUID ownerId = collection.getCreatedBy();
+        UUID ownerId = collection.getUserId();
         return userPrincipal.getUserId().equals(ownerId);
     }
 
@@ -240,15 +250,17 @@ public class PermissionServiceImpl implements PermissionService {
     public void validatePromptAccess(Prompt prompt, UserPrincipal currentUser) {
         switch (Visibility.valueOf(prompt.getVisibility())) {
             case PRIVATE:
-                if (!currentUser.getUserId().equals(prompt.getCreatedBy()) && !isAdmin(currentUser)) {
+                if (!currentUser.getUserId().equals(prompt.getUserId()) && !isAdmin(currentUser)) {
                     throw new AccessDeniedException("You do not have permission to view this private prompt");
                 }
                 break;
             case GROUP:
-                if (prompt.getCollection() == null || prompt.getCollection().getGroup() == null) {
+                Collection collection = collectionRepository.findById(prompt.getCollectionId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
+                if (collection.getGroupId() == null) {
                     throw new ResourceNotFoundException("Group not found for this prompt");
                 }
-                if (!isGroupMember(currentUser, prompt.getCollection().getGroup().getId())) {
+                if (!isGroupMember(currentUser, collection.getGroupId())) {
                     throw new AccessDeniedException("You are not a member of the group associated with this prompt");
                 }
                 break;
@@ -256,7 +268,7 @@ public class PermissionServiceImpl implements PermissionService {
                 if (currentUser.getSchoolId() == null) {
                     throw new AccessDeniedException("You must have a school affiliation to view this prompt");
                 }
-                User promptOwner = userRepository.findById(prompt.getCreatedBy())
+                User promptOwner = userRepository.findById(prompt.getUserId())
                         .orElseThrow(() -> new ResourceNotFoundException("Prompt owner not found"));
                 if (!currentUser.getSchoolId().equals(promptOwner.getSchoolId())) {
                     throw new AccessDeniedException("You do not belong to the same school as the prompt owner");
@@ -279,7 +291,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public void validateOwnershipOrAdmin(TeacherProfile profile, UserPrincipal currentUser) {
-        UUID ownerId = profile.getUser().getId();
+        UUID ownerId = profile.getUserId();
         UUID currentUserId = currentUser.getUserId();
 
         if (!ownerId.equals(currentUserId) && !isSystemAdmin(currentUser)) {

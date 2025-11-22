@@ -55,7 +55,7 @@ public class PromptServiceImpl implements PromptService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
-        UserQuota userQuota = null;
+        UserQuota userQuota;
         if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
         } else {
@@ -149,7 +149,7 @@ public class PromptServiceImpl implements PromptService {
         User user = userRepository.getReferenceById(currentUser.getUserId());
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
-        UserQuota userQuota = null;
+        UserQuota userQuota;
         if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
         } else {
@@ -531,7 +531,6 @@ public class PromptServiceImpl implements PromptService {
 
         if (removeFromCollection) {
             prompt.setCollection(null);
-            collection = null;
         } else if (newVisibility.equals(Visibility.GROUP.name())) {
             // GROUP visibility requires a collection with a group
             if (collection == null && request.getCollectionId() == null) {
@@ -614,7 +613,7 @@ public class PromptServiceImpl implements PromptService {
     @Transactional
     public void softDeletePrompt(UUID promptId, UserPrincipal currentUser) {
         // Fetch prompt
-        log.info("User with id " + currentUser.getUserId() + " attempt to delete prompt with id " + promptId);
+        log.info("User with id {} attempt to delete prompt with id {}", currentUser.getUserId(), promptId);
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
 
@@ -634,7 +633,7 @@ public class PromptServiceImpl implements PromptService {
 
         // Save changes
         promptRepository.save(prompt);
-        log.info("Prompt with id " + promptId + " has been successfully deleted");
+        log.info("Prompt with id {} has been successfully deleted", promptId);
     }
 
     // ======================================================================//
@@ -642,25 +641,15 @@ public class PromptServiceImpl implements PromptService {
 
     @Override
     public boolean hasUserViewedPrompt(UserPrincipal currentUser, UUID promptId) {
-        User user = userRepository.getReferenceById(currentUser.getUserId());
-        if (user == null) {
-            throw new ResourceNotFoundException("user not found with ID: " + currentUser.getUserId());
-        }
-
-        Prompt prompt = promptRepository.getReferenceById(promptId);
-        if (prompt == null) {
-            throw new ResourceNotFoundException("Prompt not found with ID: " + promptId);
-        }
-
-        return promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, currentUser.getUserId())
+        return promptViewLogRepository.findPromptViewLogByPromptIdAndUserId(promptId, currentUser.getUserId())
                 .isPresent();
     }
 
     @Override
     public PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request) {
         User user = userRepository.getReferenceById(currentUser.getUserId());
-
-        Prompt prompt = promptRepository.getReferenceById(request.promptId());
+        Prompt prompt = promptRepository.findById(request.promptId())
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + request.promptId()));
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
         UserQuota userQuota;
@@ -671,7 +660,7 @@ public class PromptServiceImpl implements PromptService {
         }
 
         PromptViewLog viewLog = promptViewLogRepository
-                .findPromptViewLogByPromptAndUserId(prompt, currentUser.getUserId())
+                .findPromptViewLogByPromptIdAndUserId(request.promptId(), currentUser.getUserId())
                 .orElseGet(() -> {
                     if (userQuota.getPromptUnlockRemaining() <= 0) {
                         throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(),
@@ -703,7 +692,7 @@ public class PromptServiceImpl implements PromptService {
         List<PromptVersion> versions = promptVersionRepository.findByPromptIdOrderByVersionNumberDesc(promptId);
         int nextVersion = 1;
         if (!versions.isEmpty()) {
-            nextVersion = versions.get(0).getVersionNumber() + 1;
+            nextVersion = versions.getFirst().getVersionNumber() + 1;
         }
 
         PromptVersion newVersion = PromptVersion.builder()
@@ -723,7 +712,8 @@ public class PromptServiceImpl implements PromptService {
 
         // Update prompt current version
         prompt.setCurrentVersion(savedVersion);
-        // Also update the prompt content to match the new version (optional, but good
+        // Also update the prompt content to match the new version (optional yet it
+        // should be :D, but good
         // for "current state")
         prompt.setInstruction(request.instruction());
         prompt.setContext(request.context());
