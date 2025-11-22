@@ -1,0 +1,669 @@
+-- INSERT 10 PROMPT SINH HỌC 10
+WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
+     subject_tag AS (SELECT id FROM tags WHERE type = 'môn' AND value = 'sinh học'),
+     inserted_prompts AS (
+         INSERT INTO prompts (
+                              id,
+                              user_id,
+                              created_by,
+                              updated_by,
+                              title,
+                              description,
+                              instruction,
+                              context,
+                              input_example,
+                              output_format,
+                              constraints,
+                              visibility,
+                              current_version_id
+             )
+             VALUES
+                 (
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
+                     'Giáo án Sinh học 10 – Chương 1: Thành phần hóa học của tế bào (toàn chương)',
+                     'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 & CTGDPT 2018 – Chương 1 Thành phần hóa học của tế bào (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia Sinh học THPT hàng đầu Việt Nam, từng tham gia biên soạn SGK Sinh học 10 chương trình 2018, bồi dưỡng HSG quốc gia và tập huấn giáo viên cốt cán toàn quốc.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 1 “Thành phần hóa học của tế bào” (Bài 1 → Bài 6 + 2 tiết thực hành + 1 tiết ôn tập + 1 tiết dự án), 100% dạy học tích cực, trải nghiệm thực tế, mô hình 3D và công nghệ số.
+
+        Nguyên tắc bắt buộc:
+        - Học sinh tự khám phá ≥70% kiến thức (nước, muối khoáng, gluxit, lipit, protein, axit nucleic) qua thí nghiệm thực hành, quan sát kính hiển vi, mô hình 3D, phần mềm sinh học tương tác và hoạt động nhóm
+        - Mỗi tiết đều có sản phẩm cụ thể: sơ đồ tư duy thành phần hóa học, video thí nghiệm tách tinh bột/đạm, mô hình phân tử 3D tự làm (bằng giấy hoặc Tinkercad), infographic vai trò của nước, báo cáo nhóm “thành phần hóa học trong thực phẩm hàng ngày”…
+        - Tích hợp ít nhất 2 công cụ số mỗi tiết: Visible Body, BioDigital Human, Tinkercad, PhET Molecule Shapes, Google Slides/Miro, Padlet, Mentimeter, Canva, QR code liên kết tài liệu 3D
+        - Giáo viên không giảng liên tục quá 5 phút, chỉ tổ chức, đặt câu hỏi dẫn dắt, demo thí nghiệm nhanh
+        - Phân hóa rõ 4 mức độ nhiệm vụ, có hoạt động vận dụng cao và liên môn (Hóa – Sinh – Dinh dưỡng)
+        - Có ít nhất 2 tiết thực hành: quan sát tế bào thực vật + động vật dưới kính hiển vi, thí nghiệm hóa sinh cơ bản (tách tinh bột, phản ứng Biuret…)
+        - Đánh giá bằng rubric 4 mức + portfolio sản phẩm + thuyết trình nhóm',
+
+                     -- CONTEXT
+                     'Năng lực Sinh học đặc thù:
+        - Nhận biết và mô tả thành phần hóa học của tế bào
+        - Phân tích vai trò sinh học của từng chất
+        - Thực hiện và báo cáo thí nghiệm hóa sinh cơ bản
+        - Mô hình hóa cấu trúc phân tử hữu cơ
+        - Sử dụng công nghệ số trong học tập Sinh học
+
+        Năng lực chung: Tự học, Hợp tác, Giải quyết vấn đề, Sáng tạo, Trách nhiệm sức khỏe
+
+        Phẩm chất: Trung thực khoa học, Cẩn thận, Ý thức dinh dưỡng hợp lý',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 1: Thành phần hóa học của tế bào (toàn chương)"
+        sach_giao_khoa: "Kết nối tri thức"
+        so_tiet: "12 tiết (8 lý thuyết-thực hành + 2 thực hành + 1 kiểm tra + 1 dự án)"
+        cap_do_lop: "Lớp chuyên Sinh + lớp cơ bản"
+        yeu_cau_san_pham:
+          - "Mô hình 3D phân tử glucozơ bằng Tinkercad"
+          - "Video thí nghiệm phản ứng Biuret"
+          - "Infographic: Vai trò của nước trong tế bào"
+          - "Báo cáo phân tích thành phần hóa học của 1 thực phẩm quen thuộc"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án toàn chương (~50–70 trang):
+
+        [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+        I. Mục tiêu chương học (kiến thức – năng lực – phẩm chất)
+        II. Danh sách thiết bị, phần mềm & tài khoản cần chuẩn bị
+        III. Giáo án chi tiết từng bài (Bài 1 → Bài 6 + thực hành + ôn tập)
+           Mỗi bài gồm:
+           a) Mục tiêu bài
+           b) Thiết bị & học liệu số (link 3D, video mẫu)
+           c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+           d) Sản phẩm học sinh phải nộp (link Google Drive/Padlet)
+           e) Rubric đánh giá 4 mức chi tiết
+           f) Phiếu học tập + mã QR tài nguyên
+
+        IV. Dự án cuối chương: “Xây dựng mô hình 3D tế bào + phân tích thành phần hóa học thực phẩm”
+        V. Đề kiểm tra cuối chương (trắc nghiệm + thực hành + phân tích hình)
+        VI. Tổng hợp toàn bộ link sản phẩm học sinh + portfolio',
+
+                     -- CONSTRAINTS
+                     '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+        - Mỗi tiết có ít nhất 1 sản phẩm số hoặc mô hình thực tế
+        - Học sinh tự thực hiện thí nghiệm hóa sinh và quan sát kính hiển vi
+        - Không copy nguyên hoạt động trong SGK
+        - Bắt buộc dùng công cụ 3D ít nhất 4 tiết
+        - Phân hóa 4 mức độ, có hoạt động liên môn Hóa – Dinh dưỡng
+        - Rubric đánh giá cả độ chính xác khoa học và tính thẩm mỹ sản phẩm
+        - Giáo án kèm đầy đủ link tải mô hình 3D, video hướng dẫn thí nghiệm, file mẫu',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
+                     'Giáo án Sinh học 10 – Chương 2: Cấu trúc tế bào (toàn chương)',
+                     'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 – Chương 2 Cấu trúc tế bào (tế bào nhân sơ, nhân thực, màng sinh chất, nhân, bào quan…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia Sinh học tế bào THPT, từng biên soạn SGK Sinh học 10 CT 2018, thiết kế phòng thí nghiệm sinh học hiện đại và bồi dưỡng HSG quốc gia phần tế bào.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 2 “Cấu trúc tế bào” (Bài 7 → Bài 14 + 3 tiết thực hành + 1 tiết ôn tập + 1 tiết dự án), 100% dạy học trải nghiệm, kính hiển vi số, mô hình 3D tương tác và công nghệ thực tế ảo (AR/VR).
+
+        Nguyên tắc bắt buộc:
+        - Học sinh tự khám phá ≥70% cấu tạo và chức năng các bào quan qua quan sát kính hiển vi thực tế, kính hiển vi số, mô hình 3D tương tác, ứng dụng AR (Merge Cube, Cell Explorer), video siêu chậm tế bào sống
+        - Mỗi tiết đều có sản phẩm cụ thể: ảnh chụp kính hiển vi có chú thích, mô hình 3D tế bào động vật/thực vật bằng Tinkercad hoặc giấy, video thuyết minh 60s về một bào quan, sơ đồ tư duy so sánh tế bào nhân sơ – nhân thực, infographic “hành trình của protein trong tế bào”, báo cáo nhóm “tế bào ung thư dưới kính hiển vi”…
+        - Tích hợp ít nhất 3 công cụ số mỗi tiết: Visible Body Human Anatomy Atlas, BioDigital, Cell Explorer AR, Merge Cube, kính hiển vi số USB, Tinkercad, Canva, Padlet, Mentimeter, Google Slides 3D, QR code liên kết mô hình thực tế ảo
+        - Giáo viên không giảng liên tục quá 5 phút, chỉ tổ chức quan sát và đặt câu hỏi dẫn dắt
+        - Phân hóa 4 mức độ rõ ràng, có hoạt động nâng cao (so sánh tế bào thực vật – động vật – vi khuẩn, vai trò của lưới nội chất trong tổng hợp steroid…)
+        - Có ít nhất 3 tiết thực hành quan sát tế bào sống (hành tây, tế bào má người, vi khuẩn sữa chua, tảo…) dưới kính hiển vi
+        - Đánh giá bằng rubric 4 mức + portfolio ảnh/mô hình + thuyết trình sản phẩm nhóm',
+
+                     -- CONTEXT
+                     'Năng lực Sinh học đặc thù:
+        - Nhận biết và mô tả cấu trúc tế bào nhân sơ, nhân thực
+        - Phân tích chức năng của màng sinh chất và các bào quan
+        - Thực hiện quan sát và chụp ảnh kính hiển vi
+        - Mô hình hóa cấu trúc tế bào 3D
+        - So sánh các loại tế bào và ứng dụng công nghệ sinh học
+
+        Năng lực chung: Tư duy khoa học, Quan sát, Ghi chép, Hợp tác, Sáng tạo số
+
+        Phẩm chất: Trung thực khoa học, Cẩn thận, Ý thức bảo vệ sức khỏe tế bào',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 2: Cấu trúc tế bào (toàn chương)"
+        sach_giao_khoa: "Cánh Diều"
+        so_tiet: "15 tiết (10 lý thuyết-thực hành + 3 thực hành + 1 kiểm tra + 1 dự án)"
+        cap_do_lop: "Lớp chuyên Sinh + lớp cơ bản"
+        yeu_cau_san_pham:
+          - "Mô hình 3D tế bào động vật hoàn chỉnh (Tinkercad)"
+          - "Ảnh chụp kính hiển vi tế bào má người + chú thích đầy đủ"
+          - "Video 60s: Hành trình của phân tử glucozơ vào tế bào"
+          - "Infographic so sánh tế bào nhân sơ – nhân thực"
+          - "Báo cáo nhóm: Quan sát và phân tích tế bào ung thư"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án toàn chương (~70–90 trang):
+
+        [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+        I. Mục tiêu chương học
+        II. Danh sách thiết bị & công cụ số (kính hiển vi số, Merge Cube, tài khoản Visible Body…)
+        III. Giáo án chi tiết từng bài (Bài 7 → Bài 14 + thực hành + ôn tập)
+           Mỗi bài gồm:
+           a) Mục tiêu bài
+           b) Thiết bị & học liệu số (link mô hình 3D, AR)
+           c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+           d) Sản phẩm học sinh phải nộp (ảnh, mô hình, video…)
+           e) Rubric đánh giá 4 mức chi tiết
+           f) Phiếu quan sát + mã QR tài nguyên 3D/AR
+
+        IV. Dự án cuối chương: “Xây dựng bảo tàng tế bào ảo 3D” (tế bào động vật, thực vật, vi khuẩn, ung thư…)
+        V. Đề kiểm tra cuối chương (trắc nghiệm + nhận diện hình + phân tích ảnh kính hiển vi)
+        VI. Tổng hợp toàn bộ link sản phẩm học sinh + portfolio ảnh/mô hình',
+
+                     -- CONSTRAINTS
+                     '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+        - Mỗi tiết có ít nhất 1 hoạt động quan sát kính hiển vi thực tế hoặc số
+        - Học sinh tự chụp ảnh, xây dựng mô hình 3D, chú thích đầy đủ
+        - Không copy nguyên hoạt động trong SGK
+        - Bắt buộc dùng công nghệ 3D/AR ít nhất 6 tiết
+        - Phân hóa 4 mức độ, có hoạt động nâng cao về tế bào gốc, tế bào ung thư
+        - Rubric đánh giá độ chính xác khoa học, tính thẩm mỹ và kỹ năng công nghệ
+        - Giáo án kèm đầy đủ link mô hình 3D, file AR, video hướng dẫn quan sát kính hiển vi',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
+                     'Giáo án Sinh học 10 – Chương 3: Chuyển hóa vật chất và năng lượng trong tế bào (toàn chương)',
+                     'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 – Chương 3 Chuyển hóa vật chất và năng lượng (hô hấp tế bào, quang hợp, enzyme, ATP…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia Sinh lý – Hóa sinh tế bào THPT, thành viên ban biên soạn SGK Sinh học 10 CT 2018, chuyên gia dạy học dự án STEM Sinh học và bồi dưỡng HSG quốc gia phần chuyển hóa năng lượng.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 3 “Chuyển hóa vật chất và năng lượng trong tế bào” (Bài 15 → Bài 23 + 4 tiết thực hành + 1 tiết ôn tập + 1 tiết dự án), 100% dạy học trải nghiệm, thí nghiệm thực tế, mô phỏng 3D chu trình Krebs & Calvin, cảm biến CO₂/O₂ và dự án năng lượng sinh học.
+
+        Nguyên tắc bắt buộc:
+        - Học sinh tự khám phá ≥70% cơ chế (enzyme, hô hấp hiếu khí/ kỵ khí, quang hợp, chu trình Krebs, chuỗi hô hấp, quang phosphoryl hóa…) qua thí nghiệm thực hành, cảm biến khí, mô phỏng 3D tương tác, video siêu chậm tế bào sống, hoạt động nhóm
+        - Mỗi tiết đều có sản phẩm đo được: đồ thị tốc độ hô hấp men rượu/men lactic, video thí nghiệm lên men, mô hình 3D ty thể/lục lạp bằng Tinkercad, infographic “hành trình ATP”, báo cáo đo hiệu suất quang hợp lá cây, mô hình năng lượng sinh học từ rác hữu cơ…
+        - Tích hợp ít nhất 3 công cụ mỗi tiết: Visible Body Physiology, BioInteractive PhET, Cell Energy Cycle Gizmo, cảm biến CO₂/O₂ Vernier hoặc Phyphox, Tinkercad, Canva, Mentimeter, Merge Cube AR, máy đo pH + nhiệt độ, lò ủ men tự chế
+        - Giáo viên không giảng quá 4 phút liên tục, chỉ demo thí nghiệm nhanh và đặt câu hỏi dự đoán – kiểm chứng
+        - Phân hóa 4 mức độ rõ ràng, có hoạt động nâng cao (hô hấp kỵ khí ở vi khuẩn, quang hợp C4/CAM, hiệu suất năng lượng thực tế, ứng dụng công nghệ sinh học)
+        - Có ít nhất 4 tiết thực hành: lên men rượu/lactic, đo tốc độ hô hấp men, đo quang hợp lá cây (bóng khí O₂), thí nghiệm enzyme catalase gan
+        - Đánh giá bằng rubric 4 mức + portfolio thí nghiệm + video thuyết trình dự án nhóm',
+
+                     -- CONTEXT
+                     'Năng lực Sinh học đặc thù:
+        - Hiểu cơ chế chuyển hóa năng lượng trong tế bào
+        - Mô hình hóa chu trình Krebs, Calvin, chuỗi hô hấp
+        - Thực hiện và phân tích thí nghiệm hô hấp & quang hợp
+        - Đo lường và xử lý dữ liệu chuyển hóa năng lượng
+        - Ứng dụng công nghệ sinh học trong năng lượng tái tạo
+
+        Năng lực chung: Tư duy khoa học, Thí nghiệm, Phân tích dữ liệu, Sáng tạo, Ý thức bảo vệ môi trường
+
+        Phẩm chất: Trung thực khoa học, Tiết kiệm năng lượng, Trách nhiệm với môi trường',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 3: Chuyển hóa vật chất và năng lượng trong tế bào (toàn chương)"
+        sach_giao_khoa: "Chân Trời Sáng Tạo"
+        so_tiet: "18 tiết (12 lý thuyết-thực hành + 4 thực hành + 1 kiểm tra + 1 dự án)"
+        cap_do_lop: "Lớp chuyên Sinh + lớp cơ bản"
+        yeu_cau_san_pham:
+          - "Video thí nghiệm lên men rượu + đo nồng độ CO₂"
+          - "Mô hình 3D ty thể + chuỗi hô hấp electron (Tinkercad)"
+          - "Đồ thị tốc độ quang hợp theo ánh sáng/CO₂"
+          - "Infographic: Hành trình một phân tử glucozơ thành 38 ATP"
+          - "Dự án: Sản xuất năng lượng sinh học từ rác nhà bếp"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án toàn chương (~80–100 trang):
+
+        [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+        I. Mục tiêu chương học
+        II. Danh sách thiết bị & công cụ số (cảm biến CO₂/O₂, Gizmo, Visible Body…)
+        III. Giáo án chi tiết từng bài (Bài 15 → Bài 23 + thực hành + ôn tập)
+           Mỗi bài gồm:
+           a) Mục tiêu bài
+           b) Thiết bị & học liệu số (link mô phỏng 3D, cảm biến)
+           c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+           d) Sản phẩm học sinh phải nộp (video, đồ thị, mô hình…)
+           e) Rubric đánh giá 4 mức chi tiết
+           f) Phiếu thí nghiệm + mã QR tài nguyên
+
+        IV. Dự án cuối chương: “Thiết kế hệ thống năng lượng sinh học mini từ rác hữu cơ” (biogas, lên men ethanol…)
+        V. Đề kiểm tra cuối chương (trắc nghiệm + phân tích đồ thị + xử lý số liệu thí nghiệm)
+        VI. Tổng hợp toàn bộ link sản phẩm + video thí nghiệm + portfolio học sinh',
+
+                     -- CONSTRAINTS
+                     '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+        - Mỗi tiết phải có thí nghiệm thực hành hoặc mô phỏng tương tác
+        - Học sinh tự đo, vẽ đồ thị, tính hiệu suất năng lượng
+        - Không copy nguyên hoạt động trong SGK
+        - Bắt buộc dùng mô phỏng 3D/cảm biến ít nhất 8 tiết
+        - Phân hóa 4 mức độ, có hoạt động nâng cao về hô hấp kỵ khí và quang hợp C4/CAM
+        - Rubric đánh giá độ chính xác thí nghiệm, khả năng phân tích chu trình, ý thức tiết kiệm năng lượng
+        - Giáo án kèm đầy đủ link mô phỏng, file cảm biến, video hướng dẫn thí nghiệm từng bước',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
+                     'Giáo án Sinh học 10 – Chương 4: Tế bào phân bào – Sinh sản tế bào (toàn chương)',
+                     'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 – Chương 4 Tế bào phân bào & sinh sản tế bào (nguyên phân, giảm phân, thụ tinh, chu kỳ tế bào, ung thư…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia Di truyền tế bào & Sinh học phát triển THPT, thành viên ban biên soạn SGK Sinh học 10 CT 2018, chuyên gia dạy học mô hình 3D & AR về phân bào, bồi dưỡng HSG quốc gia phần di truyền tế bào.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 4 “Tế bào phân bào – Sinh sản tế bào” (Bài 24 → Bài 32 + 4 tiết thực hành + 1 tiết ôn tập + 1 tiết dự án), 100% dạy học trải nghiệm, mô hình 3D động, kính hiển vi số, AR/VR và dự án “theo dõi sự sống từ một tế bào”.
+
+        Nguyên tắc bắt buộc:
+        - Học sinh tự khám phá ≥70% các giai đoạn (nguyên phân, giảm phân, thụ tinh) qua mô hình 3D động, video kính hiển vi sống (tế bào hành, phôi ếch, tinh trùng cá…), ứng dụng AR (Complete Anatomy, Cell Division AR), hoạt động lắp ghép mô hình từ nam châm/đất nặn
+        - Mỗi tiết đều có sản phẩm cụ thể: video quay kính hiển vi tế bào phân bào thực tế, mô hình 3D động nguyên phân/giảm phân bằng Tinkercad hoặc Stop-motion, timeline chu kỳ tế bào, infographic “từ hợp tử đến phôi nang”, báo cáo nhóm “quan sát tế bào ung thư phân chia bất thường”…
+        - Tích hợp ít nhất 3 công cụ mỗi tiết: Visible Body, Complete Anatomy, Cell Division Gizmo, Merge Cube AR, kính hiển vi số + phần mềm chụp ảnh, Tinkercad/Blender cơ bản, Stop-motion Studio, Canva, Padlet, Mentimeter
+        - Giáo viên không giảng quá 4 phút liên tục, chỉ tổ chức quan sát thực tế và đặt câu hỏi dự đoán – kiểm chứng
+        - Phân hóa 4 mức độ rõ ràng, có hoạt động nâng cao (sai lệch nhiễm sắc thể, tế bào gốc, chỉnh sửa gen CRISPR cơ bản, ung thư và kiểm soát chu kỳ tế bào)
+        - Có ít nhất 4 tiết thực hành: quan sát nguyên phân ở rễ hành, giảm phân ở tinh hoàn châu chấu/hoa huệ, thụ tinh ngoài ở ếch/cá, tế bào ung thư HeLa
+        - Đánh giá bằng rubric 4 mức + portfolio mô hình/video + thuyết trình dự án nhóm',
+
+                     -- CONTEXT
+                     'Năng lực Sinh học đặc thù:
+        - Nhận biết và mô tả các giai đoạn nguyên phân, giảm phân, thụ tinh
+        - Mô hình hóa quá trình phân bào 3D động
+        - Quan sát và ghi nhận tế bào sống dưới kính hiển vi
+        - Phân tích sai lệch phân bào và hậu quả di truyền
+        - Ứng dụng công nghệ AR/VR trong học tập Sinh học
+
+        Năng lực chung: Tư duy khoa học, Quan sát chính xác, Làm việc nhóm, Trình bày thuyết phục
+
+        Phẩm chất: Trung thực khoa học, Tôn trọng sự sống, Ý thức phòng chống ung thư',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 4: Tế bào phân bào – Sinh sản tế bào (toàn chương)"
+        sach_giao_khoa: "Kết nối tri thức"
+        so_tiet: "18 tiết (12 lý thuyết-thực hành + 4 thực hành + 1 kiểm tra + 1 dự án)"
+        cap_do_lop: "Lớp chuyên Sinh + lớp cơ bản"
+        yeu_cau_san_pham:
+          - "Video stop-motion nguyên phân 8 giai đoạn"
+          - "Mô hình 3D động giảm phân + bắt chéo (Tinkercad)"
+          - "Ảnh kính hiển vi tế bào rễ hành ở các kỳ phân bào"
+          - "Infographic: Hành trình từ hợp tử đến phôi 64 tế bào"
+          - "Dự án: Tế bào gốc – Hy vọng và đạo đức"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án toàn chương (~90–110 trang):
+
+        [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+        I. Mục tiêu chương học
+        II. Danh sách thiết bị & công cụ số (kính hiển vi số, Merge Cube, tài khoản Complete Anatomy…)
+        III. Giáo án chi tiết từng bài (Bài 24 → Bài 32 + thực hành + ôn tập)
+           Mỗi bài gồm:
+           a) Mục tiêu bài
+           b) Thiết bị & học liệu số (link mô hình động, AR)
+           c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+           d) Sản phẩm học sinh phải nộp (video, mô hình, ảnh kính hiển vi…)
+           e) Rubric đánh giá 4 mức chi tiết
+           f) Phiếu quan sát + mã QR tài nguyên 3D/AR
+
+        IV. Dự án cuối chương: “Theo dõi một tế bào từ hợp tử đến cơ thể hoàn chỉnh” (mô hình 3D động + thuyết trình)
+        V. Đề kiểm tra cuối chương (trắc nghiệm + nhận diện giai đoạn + phân tích sai lệch NST)
+        VI. Tổng hợp toàn bộ link sản phẩm + video stop-motion + portfolio học sinh',
+
+                     -- CONSTRAINTS
+                     '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+        - Mỗi tiết có ít nhất 1 hoạt động quan sát tế bào sống hoặc mô hình 3D động
+        - Học sinh tự lắp ghép mô hình, quay video, chú thích chính xác các kỳ
+        - Không copy nguyên hoạt động trong SGK
+        - Bắt buộc dùng công nghệ 3D/AR/stop-motion ít nhất 8 tiết
+        - Phân hóa 4 mức độ, có nội dung nâng cao về tế bào gốc, CRISPR, ung thư
+        - Rubric đánh giá độ chính xác khoa học, tính sáng tạo mô hình, kỹ năng trình bày
+        - Giáo án kèm đầy đủ link mô hình động, file AR, video hướng dẫn từng bước',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
+                     'Giáo án Sinh học 10 – Chương 5: Cơ chế di truyền và biến dị (toàn chương)',
+                     'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 – Chương 5 Cơ chế di truyền và biến dị (bản chất gen, nhân đôi ADN, tổng hợp protein, đột biến gen & NST, lai giao tử…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia Di truyền phân tử & Di truyền cổ điển THPT, thành viên ban biên soạn SGK Sinh học 10 CT 2018, chuyên gia dạy học mô phỏng 3D nhân đôi ADN, phiên mã, dịch mã và bồi dưỡng HSG quốc gia phần di truyền.
+
+        Nhiệm vụ: Soạn giáo án hoàn chỉnh toàn Chương 5 “Cơ chế di truyền và biến dị” (Bài 33 → Bài 42 + 4 tiết thực hành + 1 tiết ôn tập + 1 tiết dự án), 100% dạy học trải nghiệm, mô hình 3D động, mô phỏng phân tử, phần mềm di truyền và dự án “DNA của tương lai”.
+
+        Nguyên tắc bắt buộc:
+        - Học sinh tự khám phá ≥70% cơ chế (nhân đôi ADN bán bảo toàn, phiên mã, dịch mã, quy tắc bổ sung, đột biến gen & NST, lai giao tử, quy luật Mendel…) qua mô hình 3D động, phần mềm tương tác (DNA Replication Gizmo, BioInteractive, Stax), hoạt động lắp ghép phân tử ADN bằng nam châm/đất nặn, thí nghiệm tách ADN chuối/dâu
+        - Mỗi tiết đều có sản phẩm cụ thể: video stop-motion nhân đôi ADN, mô hình 3D động phiên mã + dịch mã bằng Tinkercad/Blender, sơ đồ lai giao tử 3D, infographic “từ gen đến tính trạng”, báo cáo nhóm “phát hiện đột biến gen trong quần thể người”, poster “CRISPR – cắt dán gen”…
+        - Tích hợp ít nhất 3 công cụ mỗi tiết: BioInteractive, DNA Learning Center, PhET Gene Machine, Gizmos DNA/Protein Synthesis, Tinkercad, Merge Cube AR, Stop-motion Studio, Visible Body Genetics, Canva, Mentimeter, QR code mô hình 3D động
+        - Giáo viên không giảng quá 4 phút liên tục, chỉ tổ chức hoạt động và đặt câu hỏi dự đoán – kiểm chứng
+        - Phân hóa 4 mức độ rõ ràng, có hoạt động nâng cao (đột biến dịch khung, bệnh di truyền người, chỉnh sửa gen CRISPR, di truyền liên kết giới tính, di truyền ngoài nhân…)
+        - Có ít nhất 4 tiết thực hành: tách ADN thực vật, quan sát NST người/giun đất, mô phỏng lai 3 tính trạng bằng phần mềm, thí nghiệm đột biến ở vi khuẩn
+        - Đánh giá bằng rubric 4 mức + portfolio mô hình/video + thuyết trình dự án nhóm',
+
+                     -- CONTEXT
+                     'Năng lực Sinh học đặc thù:
+        - Hiểu cơ chế di truyền ở cấp độ phân tử và tế bào
+        - Mô hình hóa nhân đôi ADN, phiên mã, dịch mã 3D động
+        - Phân tích quy luật di truyền Mendel và mở rộng
+        - Nhận diện và giải thích các dạng đột biến gen & NST
+        - Ứng dụng công nghệ sinh học phân tử và chỉnh sửa gen
+
+        Năng lực chung: Tư duy logic, Mô hình hóa, Giải quyết vấn đề, Sáng tạo số, Đạo đức sinh học
+
+        Phẩm chất: Trung thực khoa học, Trách nhiệm với di sản gen, Ý thức đạo đức công nghệ gen',
+
+                     -- INPUT_EXAMPLE
+                     'ten_bai: "Chương 5: Cơ chế di truyền và biến dị (toàn chương)"
+        sach_giao_khoa: "Kết nối tri thức"
+        so_tiet: "20 tiết (14 lý thuyết-thực hành + 4 thực hành + 1 kiểm tra + 1 dự án)"
+        cap_do_lop: "Lớp chuyên Sinh + lớp cơ bản"
+        yeu_cau_san_pham:
+          - "Video stop-motion nhân đôi ADN bán bảo toàn"
+          - "Mô hình 3D động toàn bộ quá trình tổng hợp protein"
+          - "Sơ đồ lai giao tử 3 tính trạng + xác suất kiểu hình"
+          - "Infographic: CRISPR – công cụ cắt dán gen"
+          - "Dự án: Thiết kế một sinh vật biến đổi gen có lợi cho con người"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word giáo án toàn chương (~100–120 trang):
+
+        [TRANG 1–4] Thông tin chung + Kế hoạch phân phối chương trình
+        I. Mục tiêu chương học
+        II. Danh sách thiết bị & công cụ số (Gizmos, BioInteractive, Merge Cube…)
+        III. Giáo án chi tiết từng bài (Bài 33 → Bài 42 + thực hành + ôn tập)
+           Mỗi bài gồm:
+           a) Mục tiêu bài
+           b) Thiết bị & học liệu số (link mô phỏng động, AR)
+           c) Tiến trình 4 hoạt động (trải nghiệm → khám phá → luyện tập → vận dụng)
+           d) Sản phẩm học sinh phải nộp (video, mô hình, sơ đồ lai…)
+           e) Rubric đánh giá 4 mức chi tiết
+           f) Phiếu hoạt động + mã QR tài nguyên 3D
+
+        IV. Dự án cuối chương: “Thiết kế sinh vật biến đổi gen” (mô hình 3D + thuyết trình đạo đức)
+        V. Đề kiểm tra cuối chương (trắc nghiệm + tự luận lai + phân tích đột biến + đề xuất chỉnh sửa gen)
+        VI. Tổng hợp toàn bộ link sản phẩm + video stop-motion + portfolio học sinh',
+
+                     -- CONSTRAINTS
+                     '- Tuân thủ 100% cấu trúc 4 hoạt động Công văn 5512
+        - Mỗi tiết có ít nhất 1 hoạt động mô phỏng 3D động hoặc thực hành tách ADN
+        - Học sinh tự lắp ghép mô hình, quay stop-motion, giải bài lai đúng quy trình
+        - Không copy nguyên hoạt động trong SGK
+        - Bắt buộc dùng công nghệ mô phỏng di truyền ít nhất 10 tiết
+        - Phân hóa 4 mức độ, có nội dung nâng cao CRISPR, di truyền liên kết, bệnh di truyền người
+        - Rubric đánh giá độ chính xác khoa học, tính sáng tạo mô hình, ý thức đạo đức sinh học
+        - Giáo án kèm đầy đủ link mô phỏng, file AR, video hướng dẫn từng bước',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
+                     'Đề cương ôn tập Sinh học 10 – Cả năm học (chuẩn thi học kỳ & THPT Quốc gia 2025+)',
+                     'Prompt tạo đề cương ôn tập Sinh học 10 cực chất, chuẩn kiến thức kỹ năng CTGDPT 2018, sát 100% ma trận đề minh họa THPT Quốc gia (50 câu trắc nghiệm + tự luận thực hành).',
+
+                     -- INSTRUCTION
+                     'Bạn là tổ trưởng chuyên môn Sinh học cấp tỉnh, 18+ năm ra đề thi học kỳ, đề tham khảo THPT Quốc gia và bồi dưỡng HSG quốc gia.
+
+        Nhiệm vụ: Soạn ĐỀ CƯƠNG ÔN TẬP CẢ NĂM môn Sinh học lớp 10 hoàn chỉnh, khoa học, sát nhất với đề chính thức.
+
+        Yêu cầu bắt buộc:
+        - Phân bổ tỷ lệ chính xác: Tế bào học 35–40%, Chuyển hóa năng lượng 25–30%, Di truyền tế bào & phân tử 30–35%
+        - Chia rõ 4 mức độ theo ma trận đề THPTQG mới nhất (Nhận biết 25–30%, Thông hiểu 30–35%, Vận dụng 20–25%, Vận dụng cao 10–15%)
+        - Mỗi chuyên đề có: bảng tóm tắt lý thuyết trọng tâm + sơ đồ tư duy + công thức then chốt (highlight) + phân dạng bài hay ra + ví dụ chọn lọc + 50–80 câu trắc nghiệm + 10–15 bài tự luận thực hành (phân tích hình, thí nghiệm, lai, đột biến…) có đáp án chi tiết
+        - Đặc biệt chú trọng các dạng vận dụng cao thường ra đề quốc gia: phân tích hình kính hiển vi, đồ thị hô hấp/quang hợp, lai 3 tính trạng, đột biến gen + NST, nhân đôi ADN, phiên mã/dịch mã, CRISPR, tế bào ung thư…
+        - Có phần “Mẹo làm bài nhanh – Bẫy thường gặp – Thủ thuật xử lý sơ đồ lai, chu kỳ tế bào”
+        - Độ dài 60–80 trang A4, định dạng Word đẹp, dễ in photo đen trắng',
+
+                     -- CONTEXT
+                     'Phạm vi ôn tập Sinh học 10 cả năm (CT 2018):
+        - Chương 1: Thành phần hóa học của tế bào
+        - Chương 2: Cấu trúc tế bào
+        - Chương 3: Chuyển hóa vật chất và năng lượng trong tế bào
+        - Chương 4: Tế bào phân bào – Sinh sản tế bào
+        - Chương 5: Cơ chế di truyền và biến dị
+
+        Ma trận đề thi THPT Quốc gia (50 câu trắc nghiệm 90 phút):
+        - Tế bào học (Ch1+2): 16–20 câu
+        - Chuyển hóa năng lượng (Ch3): 12–15 câu
+        - Di truyền tế bào & phân tử (Ch4+5): 16–20 câu
+        - Vận dụng & vận dụng cao: ≥ 35% (đọc ảnh kính hiển vi, phân tích sơ đồ lai, đồ thị thí nghiệm, ứng dụng công nghệ sinh học)',
+
+                     -- INPUT_EXAMPLE
+                     'ky: "Cả năm học"
+        nam_hoc: "2025-2026"
+        sach_giao_khoa: "Kết nối tri thức"
+        loai_de: "Đề chuẩn thi THPT Quốc gia + học kỳ (50 câu TN + tự luận nếu cần)"
+        dinh_dang: "Word đẹp, mục lục tự động, bảng biểu rõ ràng, dễ photo"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word đề cương ôn tập (60–80 trang):
+
+        TRANG BÌA + LỜI NÓI ĐẦU + HƯỚNG DẪN ÔN TẬP HIỆU QUẢ
+
+        I. Ma trận đề thi & tỷ lệ điểm từng chương (theo đề minh họa 2025+)
+        II. Phương pháp ôn tập Sinh học 10 đạt 9–10 điểm
+        III. Tóm tắt lý thuyết trọng tâm từng chương (bảng + sơ đồ tư duy)
+        IV. Bảng công thức & quy tắc Sinh học 10 cần thuộc lòng (highlight vàng)
+        V. Phân dạng bài điển hình (4 mức độ) + mẹo giải nhanh + bẫy thường gặp
+        VI. Ngân hàng 1200+ câu trắc nghiệm chọn lọc (có đáp án + giải thích chi tiết)
+        VII. 150 bài tự luận + thực hành từ dễ đến khó (có lời giải mẫu + biểu điểm)
+        VIII. 15 đề thi thử cả năm:
+           - 7 đề học kỳ 1
+           - 8 đề học kỳ 2 (độ khó tăng dần, 3 đề nhỉnh hơn đề chính thức)
+           → Mỗi đề có đáp án chi tiết + biểu điểm + phân tích sai số thí nghiệm
+        IX. Phụ lục:
+           - Checklist kiến thức bắt buộc nắm
+           - 100 mẹo xử lý hình kính hiển vi & sơ đồ lai trong 2 phút
+           - Bộ ảnh kính hiển vi + sơ đồ chuẩn để luyện tập
+           - Link video giải các dạng vận dụng cao (CRISPR, lai 3 tính trạng, tế bào ung thư…)',
+
+                     -- CONSTRAINTS
+                     '- 100% chính xác theo SGK hiện hành và đề minh họa 2025+
+        - Có đủ dạng vận dụng cao: phân tích ảnh kính hiển vi, đồ thị + bảng số liệu thí nghiệm, lai nhiều tính trạng, đột biến dịch khung, ứng dụng CRISPR…
+        - Đề thử phải sát cấu trúc, độ khó nhỉnh hơn đề chính thức 5–10%
+        - Bài thực hành phải kèm ảnh/hình mẫu + yêu cầu phân tích
+        - Bắt buộc có mục lục tự động, đánh số câu liên tục, font đẹp khi photo
+        - Định dạng đẹp, dễ in, dễ chia sẻ Zalo/Drive',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
+                     'Bộ đề thi Sinh học 10 – Cả năm học (25 đề chuẩn THPT Quốc gia 2025+)',
+                     'Prompt tạo bộ 25 đề thi Sinh học 10 cực chất: 10 đề học kỳ 1, 10 đề học kỳ 2, 5 đề tổng ôn cả năm – 100% sát cấu trúc, ma trận và độ khó đề minh họa THPT Quốc gia 2025+, có đáp án + biểu điểm + giải thích chi tiết.',
+
+                     -- INSTRUCTION
+                     'Bạn là trưởng ban ra đề thi Sinh học THPT Quốc gia, 20+ năm kinh nghiệm ra đề chính thức và đề minh họa của Bộ GD&ĐT.
+
+        Nhiệm vụ: Soạn bộ 25 đề thi Sinh học 10 hoàn chỉnh:
+        - 10 đề học kỳ 1 (Chương 1→3 + một phần Chương 4)
+        - 10 đề học kỳ 2 (toàn bộ Chương 4→5 + ôn lại tế bào học)
+        - 5 đề tổng ôn cả năm (độ khó nhỉnh hơn đề chính thức)
+
+        Yêu cầu bắt buộc:
+        - Đúng 100% ma trận đề minh họa 2025+ (50 câu trắc nghiệm, 90 phút)
+        - Tỷ lệ 4 mức độ chính xác: Nhận biết 25–30%, Thông hiểu 30–35%, Vận dụng 20–25%, Vận dụng cao 10–15%
+        - Có đầy đủ các dạng hot:
+           • Nhận diện hình kính hiển vi tế bào & bào quan
+           • Phân tích đồ thị hô hấp/quang hợp
+           • Nhân đôi ADN, phiên mã, dịch mã, đột biến gen
+           • Nguyên phân/giảm phân/thụ tinh (giai đoạn + số NST)
+           • Lai 2–3 tính trạng, liên kết giới tính
+           • CRISPR, tế bào gốc, ung thư, bệnh di truyền người
+           • Thí nghiệm ảo (tách ADN, lên men, đo O₂/CO₂…)
+        - Mỗi đề đều có:
+           • 10–12 câu vận dụng & vận dụng cao (phân hóa cực mạnh)
+           • 6–8 câu đọc ảnh kính hiển vi + sơ đồ lai
+           • 2–4 câu liên môn (Hóa–Sinh, Sinh–Môi trường)
+        - Đáp án chi tiết từng câu + biểu điểm 0.2 điểm/câu
+        - File Word + PDF + file Excel tính điểm tự động',
+
+                     -- CONTEXT
+                     'Cấu trúc đề thi THPT Quốc gia Sinh học 2025+ (50 câu):
+        - Tế bào học (Ch1+2): 16–18 câu
+        - Chuyển hóa năng lượng (Ch3): 12–14 câu
+        - Di truyền tế bào & phân tử (Ch4+5): 18–22 câu
+        - Vận dụng cao: ≥ 9 câu (thường rơi vào: ảnh kính hiển vi, đồ thị thí nghiệm, lai phức tạp, đột biến + biểu hiện, ứng dụng CRISPR, tế bào ung thư, đạo đức công nghệ gen…)',
+
+                     -- INPUT_EXAMPLE
+                     'loai_bo_de: "25 đề đầy đủ cả năm"
+        nam_hoc: "2025-2026"
+        sach_giao_khoa: "Phù hợp mọi sách KNTT/Cánh Diều/CTST"
+        dinh_dang: "1 file Word tổng hợp + 25 file đề riêng + đáp án + Excel chấm điểm"
+        yeu_cau_dac_biet:
+          - "5 đề cuối phải khó hơn đề chính thức 8–12%"
+          - "Mỗi đề có mã riêng (SH10-HK1-01 → SH10-CN-05)"
+          - "Có ít nhất 40% câu hoàn toàn mới, chưa từng xuất hiện trên mạng hoặc sách tham khảo"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file chính (Word ~500–600 trang):
+
+        TRANG BÌA + HƯỚNG DẪN SỬ DỤNG BỘ ĐỀ
+
+        I. Ma trận chung & phân tích độ khó từng đề
+        II. 25 đề thi chi tiết:
+           • Đề 01–10: Học kỳ 1 (tăng dần độ khó)
+           • Đề 11–20: Học kỳ 2 (tăng dần độ khó)
+           • Đề 21–25: Tổng ôn cả năm (siêu khó – dự đoán đề 2026–2027)
+
+        Mỗi đề gồm:
+           - Trang bìa đề (mã đề, thời gian, số câu)
+           - 50 câu hỏi trắc nghiệm (4 đáp án, kèm hình ảnh kính hiển vi/đồ thị khi cần)
+           - Đáp án nhanh (bảng)
+           - Giải thích chi tiết từng câu (cơ sở khoa học, cách loại đáp án, mẹo nhanh)
+           - Biểu điểm 0.2 điểm/câu
+           - Phân tích mức độ nhận thức & năng lực kiểm tra
+
+        III. Phụ lục:
+           - Tổng hợp 150 câu vận dụng cao nhất
+           - Bộ ảnh kính hiển vi + sơ đồ chuẩn dùng trong đề
+           - File Excel tự động chấm + thống kê điểm lớp (tô màu theo mức điểm)
+           - 25 file đề riêng (Word + PDF) để in trực tiếp
+           - Link Google Drive chứa toàn bộ tài liệu + hình ảnh chất lượng cao',
+
+                     -- CONSTRAINTS
+                     '- 100% sát ma trận đề minh họa 2025+, không lệch dù chỉ 1 câu
+        - Không copy nguyên đề cũ, phải có ≥40% câu gốc hoàn toàn mới
+        - Các câu vận dụng cao phải có cách giải ngắn gọn dưới 90 giây
+        - Hình ảnh kính hiển vi, đồ thị phải rõ nét, đúng thực tế
+        - Đáp án duy nhất, không gây tranh cãi
+        - Định dạng đẹp, dễ in, font rõ khi photo đen trắng
+        - File Excel chấm điểm phải tự động hiển thị biểu đồ phân bố điểm lớp
+        - Bắt buộc kèm file riêng từng đề + đáp án để giáo viên dễ photo và phát cho học sinh',
+
+                     'PUBLIC',
+                     NULL
+                 ),
+
+                 (
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
+                     'Bộ tiêu chí chấm điểm (Rubric) chuẩn cho mọi bài kiểm tra Sinh học 10',
+                     'Prompt tạo bộ RUBRIC hoàn chỉnh, công bằng, đo lường được cho mọi dạng kiểm tra Sinh học 10 (trắc nghiệm, tự luận, thực hành thí nghiệm, quan sát kính hiển vi, mô hình 3D, dự án, thuyết trình), chuẩn Công văn 5512 & định hướng đánh giá năng lực THPT Quốc gia 2025+.',
+
+                     -- INSTRUCTION
+                     'Bạn là chuyên gia đánh giá năng lực Sinh học THPT, thành viên ban chấm thi THPT Quốc gia, trưởng ban chấm HSG quốc gia Sinh học.
+
+        Nhiệm vụ: Tạo 1 bộ RUBRIC duy nhất áp dụng được cho toàn bộ các dạng kiểm tra Sinh học 10 trong cả năm học:
+        - Kiểm tra 15 phút, 45 phút
+        - Kiểm tra học kỳ (50 câu trắc nghiệm + tự luận)
+        - Thực hành thí nghiệm (tách ADN, lên men, quan sát kính hiển vi…)
+        - Quan sát & nhận diện ảnh kính hiển vi
+        - Phân tích đồ thị hô hấp/quang hợp
+        - Giải bài toán di truyền (lai, đột biến
+        - Dự án nhóm & sản phẩm STEM (mô hình 3D, video stop-motion…)
+        - Thuyết trình & portfolio
+
+        Yêu cầu bắt buộc:
+        - Chia đúng 4 mức độ: Mức 1 (4–5đ), Mức 2 (6–7đ), Mức 3 (8–9đ), Mức 4 (9.5–10đ)
+        - Mỗi rubric có 5–8 tiêu chí con rõ ràng, định lượng được (độ chính xác khoa học, trình bày, sử dụng thuật ngữ, xử lý số liệu/sai số, sáng tạo, đạo đức sinh học…)
+        - Mô tả hành vi học sinh cụ thể ở từng mức → giáo viên khác chấm cùng bài không lệch quá 0.25 điểm
+        - Có rubric riêng cho:
+          1. Trắc nghiệm 50 câu
+          2. Tự luận tế bào học
+          3. Tự luận chuyển hóa năng lượng
+          4. Tự luận di truyền tế bào & phân tử
+          5. Thực hành tách ADN & lên men
+          6. Quan sát kính hiển vi + vẽ & chú thích tế bào
+          7. Phân tích đồ thị thí nghiệm
+          8. Giải bài toán lai & đột biến
+          9. Mô hình 3D tế bào/ty thể/lục lạp
+          10. Video stop-motion nhân đôi ADN, nguyên phân, giảm phân
+          11. Dự án nhóm STEM Sinh học
+          12. Thuyết trình sản phẩm
+          13. Portfolio cả năm
+        - Tổng cộng ≥20 rubric mẫu trong 1 file Word duy nhất
+        - Định dạng đẹp, bảng màu nhẹ, dễ in, dễ dán phòng thí nghiệm và giáo án',
+
+                     -- CONTEXT
+                     'Các dạng kiểm tra Sinh học 10 cần rubric:
+        1. Trắc nghiệm khách quan
+        2. Tự luận nhận diện cấu trúc tế bào
+        3. Tự luận cơ chế chuyển hóa năng lượng
+        4. Tự luận di truyền (lai, đột biến, tổng hợp protein)
+        5. Thực hành thí nghiệm hóa sinh & sinh học phân tử
+        6. Quan sát kính hiển vi & vẽ tế bào
+        7. Phân tích đồ thị, bảng số liệu thí nghiệm
+        8. Dự án & sản phẩm sáng tạo (mô hình 3D, video, infographic)
+        9. Thuyết trình nhóm
+        10. Portfolio học tập',
+
+                     -- INPUT_EXAMPLE
+                     'lop: "10"
+        mon: "Sinh học"
+        nam_hoc: "2025-2026"
+        yeu_cau_tuy_chinh:
+          - "Có rubric riêng cho bài thực hành tách ADN từ chuối/dâu"
+          - "Có rubric riêng giải bài toán lai 3 tính trạng + liên kết"
+          - "Có rubric riêng video stop-motion giảm phân"
+          - "Có phiên bản rút gọn A4 dán phòng thí nghiệm và bàn chấm thi"',
+
+                     -- OUTPUT_FORMAT
+                     'Cấu trúc file Word duy nhất (35–50 trang):
+
+        TRANG BÌA + HƯỚNG DẪN SỬ DỤNG BỘ RUBRIC SINH HỌC 10
+
+        I. Nguyên tắc chung xây dựng rubric Sinh học 10
+        II. 20+ bảng rubric chi tiết:
+           1–4. Rubric trắc nghiệm & tự luận các chương
+           5–7. Rubric thực hành thí nghiệm (tách ADN, lên men, đo O₂/CO₂…)
+           8–9. Rubric quan sát kính hiển vi + vẽ & chú thích tế bào
+           10–11. Rubric phân tích đồ thị & bảng số liệu thí nghiệm
+           12–14. Rubric bài toán di truyền (lai 1–3 tính trạng, đột biến gen/NST)
+           15–17. Rubric mô hình 3D & video stop-motion (nhân đôi ADN, phân bào…)
+           18. Rubric dự án nhóm STEM Sinh học
+           19. Rubric thuyết trình sản phẩm
+           20. Rubric portfolio cả năm
+           21. Rubric kiểm tra 15 phút (2–3 câu tự luận + thực hành)
+
+        Mỗi bảng có:
+        - Tiêu chí | Mức 1 (4-5) | Mức 2 (6-7) | Mức 3 (8-9) | Mức 4 (9.5-10) | Điểm tối đa
+        - Dòng cuối: Tổng điểm + chỗ ghi nhận xét + chữ ký giáo viên
+
+        III. Phụ lục:
+           - File Excel tính điểm tự động từ rubric
+           - Biểu mẫu báo cáo thí nghiệm chuẩn
+           - Checklist lỗi thường gặp khi vẽ tế bào, giải bài lai, làm thí nghiệm
+           - Bộ ảnh kính hiển vi mẫu để đối chiếu',
+
+                     -- CONSTRAINTS
+                     '- Mô tả hành vi cụ thể, không dùng từ chung chung
+        - Tổng điểm mỗi rubric = 10.0 (hoặc 10 × số câu)
+        - Độ lệch chấm giữa các giáo viên ≤ 0.25 điểm
+        - Bảng có màu nhẹ, dễ photo đen trắng
+        - Có hướng dẫn cách cộng điểm khi dùng nhiều rubric trong 1 bài kiểm tra
+        - Bắt buộc kèm file .docx + .pdf + .xlsx tính điểm tự động
+        - Có phiên bản rút gọn A4 để dán phòng thí nghiệm và bàn chấm thi',
+
+                     'PUBLIC',
+                     NULL
+                 )
+             RETURNING id
+     )
+
+INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
+SELECT p.id, g.id, now() FROM inserted_prompts p, grade_tag g
+UNION ALL
+SELECT p.id, s.id, now() FROM inserted_prompts p, subject_tag s;

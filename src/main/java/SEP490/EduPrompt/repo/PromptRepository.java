@@ -28,16 +28,19 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
 
     // Private prompts: Only fetch for the current user
     @Query("SELECT p FROM Prompt p WHERE p.visibility = :visibility AND p.isDeleted = false AND p.user.id = :userId")
-    Page<Prompt> findByVisibilityAndIsDeletedFalseAndUserId(@Param("visibility") String visibility, @Param("userId") UUID userId, Pageable pageable);
+    Page<Prompt> findByVisibilityAndIsDeletedFalseAndUserId(@Param("visibility") String visibility,
+                                                            @Param("userId") UUID userId, Pageable pageable);
 
     // Visibility with userId filter
     Page<Prompt> findByVisibilityAndUserIdAndIsDeletedFalse(String visibility, UUID userId, Pageable pageable);
 
     // Visibility with collectionId filter
-    Page<Prompt> findByVisibilityAndCollectionIdAndIsDeletedFalse(String visibility, UUID collectionId, Pageable pageable);
+    Page<Prompt> findByVisibilityAndCollectionIdAndIsDeletedFalse(String visibility, UUID collectionId,
+                                                                  Pageable pageable);
 
     // Visibility with both userId and collectionId
-    Page<Prompt> findByVisibilityAndUserIdAndCollectionIdAndIsDeletedFalse(String visibility, UUID userId, UUID collectionId, Pageable pageable);
+    Page<Prompt> findByVisibilityAndUserIdAndCollectionIdAndIsDeletedFalse(String visibility, UUID userId,
+                                                                           UUID collectionId, Pageable pageable);
 
     // All non-deleted prompts, sorted by createdAt
     Page<Prompt> findByIsDeletedFalseOrderByCreatedAtAsc(Pageable pageable);
@@ -61,17 +64,18 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
 
     // Temporary method to handle combined userId and collectionId query
     @Query("SELECT p FROM Prompt p WHERE p.user.id = :userId AND p.collection.id = :collectionId AND p.isDeleted = false")
-    Page<Prompt> findByUserIdAndCollectionIdAndIsDeletedFalse(@Param("userId") UUID userId, @Param("collectionId") UUID collectionId, Pageable pageable);
+    Page<Prompt> findByUserIdAndCollectionIdAndIsDeletedFalse(@Param("userId") UUID userId,
+                                                              @Param("collectionId") UUID collectionId, Pageable pageable);
 
     @Query("SELECT p FROM Prompt p JOIN FETCH p.user JOIN FETCH p.collection c LEFT JOIN FETCH c.group WHERE p.collection.id = :collectionId AND p.isDeleted = false")
     List<Prompt> findByCollectionIdAndIsDeletedFalse(UUID collectionId);
 
     @Query("""
-        SELECT p FROM Prompt p
-        LEFT JOIN FETCH p.collection c
-        LEFT JOIN FETCH c.group g
-        WHERE p.id = :id AND p.isDeleted = false
-        """)
+            SELECT p FROM Prompt p
+            LEFT JOIN FETCH p.collection c
+            LEFT JOIN FETCH c.group g
+            WHERE p.id = :id AND p.isDeleted = false
+            """)
     Optional<Prompt> findActiveById(@Param("id") UUID id);
 
     @Modifying
@@ -89,4 +93,36 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
            )
            """)
     int clearAvgRatingForUnratedPrompts();
+           
+    /**
+     * Find all prompts with specific indexing status
+     */
+    List<Prompt> findByIndexingStatusAndIsDeletedAndVisibility(String indexingStatus, Boolean isDeleted,
+                                                               String visibility);
+
+    List<Prompt> findByIndexingStatusAndIsDeleted(String indexingStatus, boolean isDeleted);
+
+    /**
+     * Find all prompts that need reindexing (updated after last index)
+     */
+    @Query("SELECT p FROM Prompt p WHERE p.indexingStatus = 'indexed' " +
+            "AND p.isDeleted = false " +
+            "AND p.updatedAt > p.lastIndexedAt")
+    List<Prompt> findPromptsNeedingReindex();
+
+    /**
+     * Count indexed prompts by status
+     */
+    long countByIndexingStatus(String indexingStatus);
+
+    /**
+     * Find prompt by geminiFileId (the document ID in Gemini)
+     */
+    Optional<Prompt> findByGeminiFileId(String geminiFileId);
+
+    /**
+     * Find prompt where geminiFileId starts with the given prefix
+     * Useful when Gemini returns a document ID that is a prefix of the stored ID
+     */
+    Optional<Prompt> findByGeminiFileIdStartingWith(String prefix);
 }

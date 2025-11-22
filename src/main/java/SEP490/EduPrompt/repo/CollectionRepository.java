@@ -31,9 +31,9 @@ public interface CollectionRepository extends JpaRepository<Collection, UUID> {
     boolean existsByNameIgnoreCase(String name);
 
     @Query("""
-        SELECT c FROM Collection c
-        LEFT JOIN FETCH c.group g
-        WHERE c.id = :id AND c.isDeleted = false
-        """)
+            SELECT c FROM Collection c
+            LEFT JOIN FETCH c.group g
+            WHERE c.id = :id AND c.isDeleted = false
+            """)
     Optional<Collection> findActiveById(@Param("id") UUID id);
 }

@@ -11,4 +11,5 @@ public record CreateTeacherProfileRequest(
 
         @Size(max = 1000, message = "Teaching style cannot exceed 1000 characters")
         String teachingStyle
-) {}
+) {
+}

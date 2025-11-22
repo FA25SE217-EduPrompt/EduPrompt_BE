@@ -9,4 +9,5 @@ import java.util.UUID;
 public record CreatePromptViewLogRequest(
         @NotNull(message = "Prompt ID is required")
         UUID promptId
-) {}
+) {
+}

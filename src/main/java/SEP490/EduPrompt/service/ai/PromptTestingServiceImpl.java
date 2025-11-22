@@ -81,8 +81,8 @@ public class PromptTestingServiceImpl implements PromptTestingService {
      */
     private boolean shouldUseAsync(PromptTestRequest request) {
         // Use async if high token count or long input
-        return request.maxTokens() > 1000 ||
-                (request.inputText() != null && request.inputText().length() > 2000);
+        return request.maxTokens() > 2000 ||
+                (request.inputText() != null && request.inputText().length() > 4000);
     }
 
     /**

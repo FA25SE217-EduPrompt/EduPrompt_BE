@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
@@ -26,6 +27,9 @@ public class Prompt {
     @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "user_id")
     private User user;
+
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private UUID userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.SET_NULL)
@@ -85,5 +89,17 @@ public class Prompt {
 
     @Column(name = "avg_rating")
     private Double avgRating;
+  
+    @Size(max = 255)
+    @Column(name = "gemini_file_id")
+    private String geminiFileId;
+
+    @Column(name = "last_indexed_at")
+    private Instant lastIndexedAt;
+
+    @Size(max = 50)
+    @ColumnDefault("'pending'")
+    @Column(name = "indexing_status", length = 50)
+    private String indexingStatus;
 
 }

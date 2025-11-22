@@ -9,4 +9,5 @@ public record TagResponse(
         UUID id,
         String type,
         String value
-) {}
+) {
+}

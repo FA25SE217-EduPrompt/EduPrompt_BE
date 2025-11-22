@@ -10,4 +10,5 @@ import java.util.UUID;
 public record AddTagsToPromptRequest(
         @NotEmpty(message = "tagIds must not be empty")
         List<UUID> tagIds
-) {}
+) {
+}

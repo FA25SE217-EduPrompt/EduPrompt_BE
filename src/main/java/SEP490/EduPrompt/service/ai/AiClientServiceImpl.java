@@ -360,22 +360,22 @@ public class AiClientServiceImpl implements AiClientService {
 
         return String.format(
                 """
-                You are an expert prompt engineer. Your task is to optimize the following prompt for high school teachers with better clarity, effectiveness, and results.
-                                
-                Current Prompt:
-                %s
-                                
-                Optimization Request:
-                %s
-                                
-                Please provide an improved version of the prompt that:
-                1. Maintains the original intent and requirements
-                2. Improves clarity and structure
-                3. Follows best practices for prompt engineering
-                4. Addresses the specific optimization request
-                                
-                Return only the optimized prompt without explanations.
-                """,
+                        You are an expert prompt engineer. Your task is to optimize the following prompt for high school teachers with better clarity, effectiveness, and results.
+                                        
+                        Current Prompt:
+                        %s
+                                        
+                        Optimization Request:
+                        %s
+                                        
+                        Please provide an improved version of the prompt that:
+                        1. Maintains the original intent and requirements
+                        2. Improves clarity and structure
+                        3. Follows best practices for prompt engineering
+                        4. Addresses the specific optimization request
+                                        
+                        Return only the optimized prompt without explanations.
+                        """,
                 currentPrompt,
                 optimizationInput
         );
