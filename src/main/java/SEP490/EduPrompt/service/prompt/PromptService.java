@@ -4,10 +4,12 @@ import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PromptVersionResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptViewLogResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface PromptService {
@@ -24,9 +26,11 @@ public interface PromptService {
 
     PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId);
 
-    DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request, UserPrincipal currentUser);
+    DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
+            UserPrincipal currentUser);
 
-    DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request, UserPrincipal currentUser);
+    DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
+            UserPrincipal currentUser);
 
     void softDeletePrompt(UUID promptId, UserPrincipal currentUser);
 
@@ -37,4 +41,9 @@ public interface PromptService {
     boolean hasUserViewedPrompt(UserPrincipal currentUser, UUID promptId);
 
     PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request);
+
+    PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
+            UserPrincipal currentUser);
+
+    List<PromptVersionResponse> getPromptVersions(UUID promptId, UserPrincipal currentUser);
 }

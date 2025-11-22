@@ -5,6 +5,7 @@ import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PromptVersionResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptViewLogResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.prompt.PromptService;
@@ -50,7 +51,7 @@ public class PromptController {
         return ResponseDto.success(response);
     }
 
-    //This function only get all private prompt of a specific user
+    // This function only get all private prompt of a specific user
     @GetMapping("/my-prompt")
     @PreAuthorize("hasAnyRole('TEACHER', 'SYSTEM_ADMIN')")
     public ResponseDto<PaginatedDetailPromptResponse> getMyPrompts(
@@ -62,7 +63,7 @@ public class PromptController {
         return ResponseDto.success(promptService.getMyPrompts(currentUser, pageable));
     }
 
-    //Get all prompt of a user - no condition on prompt
+    // Get all prompt of a user - no condition on prompt
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     public ResponseDto<PaginatedPromptResponse> getPromptsByUserId(
@@ -75,7 +76,7 @@ public class PromptController {
         return ResponseDto.success(promptService.getPromptsByUserId(currentUser, pageable, userId));
     }
 
-    //Get all prompt of a user - no condition on prompt
+    // Get all prompt of a user - no condition on prompt
     @GetMapping("/get-non-private")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     public ResponseDto<PaginatedPromptResponse> getNonPrivatePrompt(
@@ -87,7 +88,7 @@ public class PromptController {
         return ResponseDto.success(promptService.getNonPrivatePrompts(currentUser, pageable));
     }
 
-    //Get all prompt of a specific collection - no condition on prompt
+    // Get all prompt of a specific collection - no condition on prompt
     @GetMapping("/collection/{collectionId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     public ResponseDto<PaginatedPromptResponse> getPromptsByCollectionId(
@@ -147,10 +148,13 @@ public class PromptController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        log.info("Filtering prompts for user: {} with params: createdBy={}, collectionName={}, tagTypes={}, tagValues={}, schoolName={}, groupName={}, title={}, includeDeleted={}",
-                currentUser.getUserId(), createdBy, collectionName, tagTypes, tagValues, schoolName, groupName, title, includeDeleted);
+        log.info(
+                "Filtering prompts for user: {} with params: createdBy={}, collectionName={}, tagTypes={}, tagValues={}, schoolName={}, groupName={}, title={}, includeDeleted={}",
+                currentUser.getUserId(), createdBy, collectionName, tagTypes, tagValues, schoolName, groupName, title,
+                includeDeleted);
 
-        PromptFilterRequest request = new PromptFilterRequest(createdBy, collectionName, tagTypes, tagValues, schoolName, groupName, title, includeDeleted);
+        PromptFilterRequest request = new PromptFilterRequest(createdBy, collectionName, tagTypes, tagValues,
+                schoolName, groupName, title, includeDeleted);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         PaginatedPromptResponse response = promptService.filterPrompts(request, currentUser, pageable);
         return ResponseDto.success(response);
@@ -188,5 +192,28 @@ public class PromptController {
 
         boolean viewed = promptService.hasUserViewedPrompt(principal, promptId);
         return ResponseDto.success(viewed);
+    }
+
+    @PostMapping("/{promptId}/versions")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "Create a new version for a prompt")
+    public ResponseDto<PromptVersionResponse> createPromptVersion(
+            @PathVariable UUID promptId,
+            @Valid @RequestBody CreatePromptVersionRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Creating new version for prompt {} by user: {}", promptId, currentUser.getUserId());
+        PromptVersionResponse response = promptService.createPromptVersion(promptId, request, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @GetMapping("/{promptId}/versions")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "Get all versions of a prompt")
+    public ResponseDto<List<PromptVersionResponse>> getPromptVersions(
+            @PathVariable UUID promptId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Retrieving versions for prompt {} by user: {}", promptId, currentUser.getUserId());
+        List<PromptVersionResponse> response = promptService.getPromptVersions(promptId, currentUser);
+        return ResponseDto.success(response);
     }
 }

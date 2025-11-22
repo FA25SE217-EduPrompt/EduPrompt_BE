@@ -36,6 +36,56 @@ All responses follow this structure:
 
 ---
 
+<<<<<<< Updated upstream
+=======
+## Data Structures
+
+### PromptResponse (Metadata)
+Used in paginated lists.
+
+```json
+{
+  "title": "string",
+  "description": "string",
+  "outputFormat": "string",
+  "visibility": "string",
+  "fullName": "string", // Creator's name
+  "collectionName": "string",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp"
+}
+```
+
+### DetailPromptResponse (Full Content)
+Used for single prompt retrieval and creation responses.
+
+```json
+{
+  "id": "UUID",
+  "title": "string",
+  "description": "string",
+  "instruction": "string", // Core prompt content
+  "context": "string", // Additional context
+  "inputExample": "string", // Example input
+  "outputFormat": "string", // Expected output format
+  "constraints": "string", // Any constraints or requirements
+  "visibility": "string", // PRIVATE, PUBLIC, etc.
+  "fullName": "string", // Creator's name
+  "collectionName": "string",
+  "tags": [
+    {
+      "id": "UUID",
+      "name": "string"
+    }
+  ],
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp"
+}
+```
+
+---
+
+>>>>>>> Stashed changes
 ## Endpoints
 
 ### 1. Create Standalone Prompt
@@ -461,6 +511,7 @@ Authorization: Bearer <token>
 
 **Response:**
 
+<<<<<<< Updated upstream
 * Status: `200`
 * Data:
 
@@ -495,3 +546,68 @@ Authorization: Bearer <token>
 
 API Version: `1.0`
 Last Updated: `October 2025`
+=======
+---
+
+### 14. Create Prompt Version
+Creates a new version of an existing prompt. This is typically used after optimizing a prompt or manually editing it.
+
+**POST** `/{promptId}/versions`
+
+**Request Body:** `CreatePromptVersionRequest`
+```json
+{
+  "instruction": "string",
+  "context": "string",
+  "inputExample": "string",
+  "outputFormat": "string",
+  "constraints": "string",
+  "isAiGenerated": "boolean" // Required
+}
+```
+
+**Response:**
+`PromptVersionResponse`
+```json
+{
+  "id": "UUID",
+  "promptId": "UUID",
+  "instruction": "string",
+  "context": "string",
+  "inputExample": "string",
+  "outputFormat": "string",
+  "constraints": "string",
+  "editorId": "UUID",
+  "versionNumber": "integer",
+  "isAiGenerated": "boolean",
+  "createdAt": "timestamp"
+}
+```
+
+---
+
+### 15. Get Prompt Versions
+Retrieves all versions of a specific prompt, ordered by version number descending.
+
+**GET** `/{promptId}/versions`
+
+**Response:**
+List of `PromptVersionResponse`
+```json
+[
+  {
+    "id": "UUID",
+    "promptId": "UUID",
+    "instruction": "string",
+    "context": "string",
+    "inputExample": "string",
+    "outputFormat": "string",
+    "constraints": "string",
+    "editorId": "UUID",
+    "versionNumber": "integer",
+    "isAiGenerated": "boolean",
+    "createdAt": "timestamp"
+  }
+]
+```
+>>>>>>> Stashed changes
