@@ -817,6 +817,7 @@ public class PromptServiceImpl implements PromptService {
                             : null;
 
                     return PromptResponse.builder()
+                            .id(prompt.getId())
                             .title(prompt.getTitle())
                             .description(prompt.getDescription())
                             .outputFormat(prompt.getOutputFormat())
@@ -881,6 +882,7 @@ public class PromptServiceImpl implements PromptService {
                 ? prompt.getCollection().getName()
                 : null;
         return PromptResponse.builder()
+                .id(prompt.getId())
                 .title(prompt.getTitle())
                 .description(prompt.getDescription())
                 .outputFormat(prompt.getOutputFormat())
