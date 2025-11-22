@@ -19,7 +19,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
              )
              VALUES
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Tin học 10 – Chương 1: Máy tính và xã hội tri thức',
                      'Prompt chuyên tạo giáo án Tin học 10 chuẩn Công văn 5512 & CTGDPT 2018 – Chương 1 (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
 
@@ -93,7 +93,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Tin học 10 – Chương 2: Làm quen với máy tính và hệ điều hành',
                      'Prompt chuyên tạo giáo án Tin học 10 chuẩn Công văn 5512 – Chương 2 (toàn chương, thực hành nặng, phù hợp mọi sách KNTT, Cánh Diều, CTST).',
 
@@ -165,7 +165,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Tin học 10 – Chương 3: Mạng máy tính và Internet',
                      'Prompt tạo giáo án Tin học 10 chuẩn Công văn 5512 – Chương 3 “Mạng máy tính và Internet” (toàn chương, thực hành 90%, phù hợp mọi sách KNTT, Cánh Diều, CTST).',
 
@@ -240,7 +240,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Tin học 10 – Chương 4: Trình bày và trao đổi thông tin bằng văn bản',
                      'Prompt tạo giáo án Tin học 10 chuẩn Công văn 5512 – Chương 4 “Trình bày và trao đổi thông tin bằng văn bản” (toàn chương, thực hành 100%, phù hợp mọi sách KNTT, Cánh Diều, CTST).',
 
@@ -315,7 +315,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Tin học 10 – Chương 5: Trình bày dữ liệu bằng biểu đồ và trang tính',
                      'Prompt tạo giáo án Tin học 10 chuẩn Công văn 5512 – Chương 5 “Trình bày dữ liệu bằng biểu đồ và trang tính” (toàn chương, thực hành 100%, phù hợp mọi sách KNTT, Cánh Diều, CTST).',
 
@@ -391,7 +391,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Đề cương ôn tập Tin học 10 – Cả năm học (chuẩn thi học kỳ & THPT Quốc gia)',
                      'Prompt tạo đề cương ôn tập Tin học 10 cực chất, chuẩn kiến thức kỹ năng CTGDPT 2018, sát đề thi học kỳ và định hướng kỳ thi tốt nghiệp THPT Quốc gia (50 câu trắc nghiệm + thực hành).',
 
@@ -464,7 +464,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Bộ tiêu chí chấm điểm (Rubric) chuẩn cho mọi bài kiểm tra Tin học 10',
                      'Prompt tạo bộ RUBRIC chi tiết, công bằng, đo lường được cho mọi dạng bài kiểm tra Tin học 10 (trắc nghiệm, thực hành Word/Excel, dự án, sản phẩm số), chuẩn Công văn 5512 & định hướng đánh giá năng lực THPT Quốc gia.',
 

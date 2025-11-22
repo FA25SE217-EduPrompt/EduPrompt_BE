@@ -1,4 +1,4 @@
--- INSERT 10 PROMPT TIN HỌC 10
+w-- INSERT 10 PROMPT TIN HỌC 10
 WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '11'),
      subject_tag AS (SELECT id FROM tags WHERE type = 'môn' AND value = 'toán học'),
 
@@ -19,7 +19,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '11'),
                               current_version_id
              )
              VALUES (
-                        gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                        gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                         'Đề cương ôn tập Toán 11 – Học kỳ 1 (chuẩn khung THPT Quốc gia)',
                         'Prompt chuyên tạo đề cương ôn tập học kỳ 1 Toán 11 cực chất, chuẩn ma trận đề minh họa THPT Quốc gia 2025+, phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
 
@@ -99,7 +99,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '11'),
              RETURNING id
      )
 
--- GẮN TAG: grade:10 + subject:Tin học
+-- GẮN TAG: grade:11 + subject: Toan
 INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
 SELECT p.id, g.id, now() FROM inserted_prompts p, grade_tag g
 UNION ALL

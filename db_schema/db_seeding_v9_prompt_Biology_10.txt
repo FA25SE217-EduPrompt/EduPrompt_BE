@@ -19,7 +19,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
              )
              VALUES
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Sinh học 10 – Chương 1: Thành phần hóa học của tế bào (toàn chương)',
                      'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 & CTGDPT 2018 – Chương 1 Thành phần hóa học của tế bào (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
 
@@ -94,7 +94,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Sinh học 10 – Chương 2: Cấu trúc tế bào (toàn chương)',
                      'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 – Chương 2 Cấu trúc tế bào (tế bào nhân sơ, nhân thực, màng sinh chất, nhân, bào quan…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
 
@@ -170,7 +170,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Sinh học 10 – Chương 3: Chuyển hóa vật chất và năng lượng trong tế bào (toàn chương)',
                      'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 – Chương 3 Chuyển hóa vật chất và năng lượng (hô hấp tế bào, quang hợp, enzyme, ATP…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
 
@@ -246,7 +246,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Sinh học 10 – Chương 4: Tế bào phân bào – Sinh sản tế bào (toàn chương)',
                      'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 – Chương 4 Tế bào phân bào & sinh sản tế bào (nguyên phân, giảm phân, thụ tinh, chu kỳ tế bào, ung thư…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
 
@@ -322,7 +322,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Giáo án Sinh học 10 – Chương 5: Cơ chế di truyền và biến dị (toàn chương)',
                      'Prompt tạo giáo án Sinh học 10 chuẩn Công văn 5512 – Chương 5 Cơ chế di truyền và biến dị (bản chất gen, nhân đôi ADN, tổng hợp protein, đột biến gen & NST, lai giao tử…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
 
@@ -398,7 +398,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Đề cương ôn tập Sinh học 10 – Cả năm học (chuẩn thi học kỳ & THPT Quốc gia 2025+)',
                      'Prompt tạo đề cương ôn tập Sinh học 10 cực chất, chuẩn kiến thức kỹ năng CTGDPT 2018, sát 100% ma trận đề minh họa THPT Quốc gia (50 câu trắc nghiệm + tự luận thực hành).',
 
@@ -471,7 +471,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Bộ đề thi Sinh học 10 – Cả năm học (25 đề chuẩn THPT Quốc gia 2025+)',
                      'Prompt tạo bộ 25 đề thi Sinh học 10 cực chất: 10 đề học kỳ 1, 10 đề học kỳ 2, 5 đề tổng ôn cả năm – 100% sát cấu trúc, ma trận và độ khó đề minh họa THPT Quốc gia 2025+, có đáp án + biểu điểm + giải thích chi tiết.',
 
@@ -559,7 +559,7 @@ WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '10'),
                  ),
 
                  (
-                     gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                     gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                      'Bộ tiêu chí chấm điểm (Rubric) chuẩn cho mọi bài kiểm tra Sinh học 10',
                      'Prompt tạo bộ RUBRIC hoàn chỉnh, công bằng, đo lường được cho mọi dạng kiểm tra Sinh học 10 (trắc nghiệm, tự luận, thực hành thí nghiệm, quan sát kính hiển vi, mô hình 3D, dự án, thuyết trình), chuẩn Công văn 5512 & định hướng đánh giá năng lực THPT Quốc gia 2025+.',
 

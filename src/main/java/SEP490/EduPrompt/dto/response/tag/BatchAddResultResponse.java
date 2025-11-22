@@ -9,4 +9,5 @@ import java.util.UUID;
 public record BatchAddResultResponse(
         UUID entityId,                     // promptId or collectionId
         List<TagRelationResponse> added
-) {}
+) {
+}

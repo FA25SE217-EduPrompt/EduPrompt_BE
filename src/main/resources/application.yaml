@@ -7,7 +7,7 @@ app:
   frontend-url: ${FRONTEND_URL}
   jwt:
     secret: ${JWT_SECRET}
-    expiration: 3600000 # 15min in milliseconds
+    expiration: 3600000 # 60min in milliseconds
 
 management:
   endpoints:
@@ -102,6 +102,7 @@ openai:
   timeout: 30s
 gemini:
   api-key: ${GEMINI_API_KEY}
+  file-search-store: "fileSearchStores/somethin-ewzxgazaxwbo"
 
 ## Postmark Configuration
 #postmark:

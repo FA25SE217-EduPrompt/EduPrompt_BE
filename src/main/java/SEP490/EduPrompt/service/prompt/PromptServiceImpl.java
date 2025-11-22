@@ -9,16 +9,14 @@ import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.client.QuotaExceededException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
-import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.model.Collection;
+import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
 import jakarta.persistence.criteria.*;
-import kotlin.jvm.Throws;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -36,7 +34,7 @@ import java.util.stream.Collectors;
 public class PromptServiceImpl implements PromptService {
 
     private final PromptRepository promptRepository;
-    private final PromptViewLogRepository  promptViewLogRepository;
+    private final PromptViewLogRepository promptViewLogRepository;
     private final CollectionRepository collectionRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final UserQuotaRepository userQuotaRepository;
@@ -58,10 +56,9 @@ public class PromptServiceImpl implements PromptService {
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
         UserQuota userQuota = null;
-        if(userQuotaOptional.isPresent()){
+        if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
-        }
-        else {
+        } else {
             throw new ResourceNotFoundException("User not register a subscription yet");
         }
         // Permission check
@@ -151,10 +148,9 @@ public class PromptServiceImpl implements PromptService {
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
         UserQuota userQuota = null;
-        if(userQuotaOptional.isPresent()){
+        if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
-        }
-        else {
+        } else {
             throw new ResourceNotFoundException("User Subscription was not available");
         }
 
@@ -653,7 +649,7 @@ public class PromptServiceImpl implements PromptService {
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
         UserQuota userQuota;
-        if(userQuotaOptional.isPresent()){
+        if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
         } else {
             throw new ResourceNotFoundException("User not register a subscription yet");
@@ -661,7 +657,7 @@ public class PromptServiceImpl implements PromptService {
 
         PromptViewLog viewLog = promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, currentUser.getUserId())
                 .orElseGet(() -> {
-                    if(userQuota.getPromptUnlockRemaining() <= 0) {
+                    if (userQuota.getPromptUnlockRemaining() <= 0) {
                         throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptUnlockRemaining());
                     }
                     PromptViewLog newLog = PromptViewLog.builder()
@@ -905,7 +901,10 @@ public class PromptServiceImpl implements PromptService {
         return root.get("id").in(subquery);
     }
 
-    private boolean nonBlank(String s) { return s != null && !s.isBlank(); }
+    private boolean nonBlank(String s) {
+        return s != null && !s.isBlank();
+    }
+
     private boolean allSingleLetter(List<String> list) {
         return list != null && list.stream().allMatch(s -> s.length() == 1);
     }

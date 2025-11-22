@@ -7,4 +7,5 @@ public record SchoolEmailResponse(
         UUID id,
         String email,
         Instant createdAt
-) {}
+) {
+}

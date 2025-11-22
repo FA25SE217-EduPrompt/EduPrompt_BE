@@ -71,5 +71,7 @@ public class User {
     }
 
     @PreUpdate
-    public void onUpdate() { this.updatedAt = Instant.now(); }
+    public void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

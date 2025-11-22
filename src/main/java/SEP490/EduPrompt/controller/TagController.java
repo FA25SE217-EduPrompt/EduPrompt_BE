@@ -1,7 +1,6 @@
 package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.tag.*;
-import SEP490.EduPrompt.dto.response.tag.*;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.tag.CollectionTagService;

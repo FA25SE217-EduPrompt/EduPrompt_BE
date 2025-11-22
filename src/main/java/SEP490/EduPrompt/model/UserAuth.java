@@ -51,15 +51,13 @@ public class UserAuth {
     private Instant updatedAt;
 
     @PrePersist
-    public void onPrePersist()
-    {
+    public void onPrePersist() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
     @PreUpdate
-    public void onPreUpdate()
-    {
+    public void onPreUpdate() {
         this.updatedAt = Instant.now();
     }
 

@@ -27,7 +27,7 @@ WITH grade_tag AS (
              current_version_id
          )
          VALUES (
-             gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+             gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
              'Giáo án Toán 10 – Mệnh đề và Tập hợp',
              'Prompt chuyên nghiệp dùng để tạo giáo án chuẩn Công văn 5512 & CTGDPT 2018 dành cho môn Toán THPT – Lớp 10.',
              -- INSTRUCTION
@@ -127,7 +127,7 @@ WITH grade_tag AS (
          ),
 
          (
-                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                       'Giáo án Toán 10 – Hàm số bậc nhất và bậc hai',
                       'Prompt chuyên tạo giáo án chuẩn Công văn 5512 cho bài Hàm số bậc nhất và bậc hai – Toán lớp 10 (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
                       -- INSTRUCTION
@@ -218,7 +218,7 @@ WITH grade_tag AS (
                   ),
 
          (
-                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                       'Giáo án Toán 10 – Phương trình lượng giác cơ bản',
                       'Prompt chuyên sâu tạo giáo án chuẩn Công văn 5512 cho bài Phương trình lượng giác cơ bản – Toán 10 (phù hợp mọi sách giáo khoa 2018).',
 
@@ -310,7 +310,7 @@ WITH grade_tag AS (
                   ),
 
          (
-                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                       'Giáo án Toán 10 – Đạo hàm và ứng dụng',
                       'Prompt tạo giáo án chuẩn 5512 cho bài Đạo hàm và ứng dụng – Toán 10 (tất cả sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
 
@@ -402,7 +402,7 @@ WITH grade_tag AS (
                   ),
 
          (
-                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                       'Giáo án Toán 10 – Hình học phẳng: Vectơ và ứng dụng',
                       'Prompt chuyên sâu tạo giáo án chuẩn Công văn 5512 cho bài Vectơ và các phép toán vectơ – Toán 10 (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
 
@@ -494,7 +494,7 @@ WITH grade_tag AS (
                   ),
 
          (
-                      gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                      gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                       'Bộ tiêu chí chấm điểm (Rubric) chuẩn cho mọi bài kiểm tra Toán 10',
                       'Prompt tạo bộ RUBRIC hoàn chỉnh, công bằng, đo lường được cho mọi dạng bài kiểm tra Toán 10 (trắc nghiệm, tự luận, thực hành khảo sát hàm số, dự án, bài tập lớn), chuẩn Công văn 5512 & định hướng đánh giá năng lực THPT Quốc gia 2025+.',
 

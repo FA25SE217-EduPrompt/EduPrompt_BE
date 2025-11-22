@@ -12,4 +12,5 @@ public record SchoolSubscriptionResponse(
         Instant endDate,
         Instant quotaResetDate,
         boolean isActive
-) {}
+) {
+}

@@ -10,7 +10,10 @@ import java.util.UUID;
 
 public interface TeacherProfileService {
     TeacherProfileResponse createProfile(CreateTeacherProfileRequest request, UserPrincipal currentUser);
+
     TeacherProfileResponse updateProfile(UpdateTeacherProfileRequest request, UserPrincipal currentUser);
+
     TeacherProfileResponse getMyProfile(UserPrincipal currentUser);
+
     TeacherProfileResponse getProfileByUserId(UUID userId, UserPrincipal currentUser);
 }

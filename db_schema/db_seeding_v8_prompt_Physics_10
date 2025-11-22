@@ -19,7 +19,7 @@ inserted_prompts AS (
                  )
     VALUES
     (
-                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                  'Giáo án Vật lí 10 – Chương 1: Động học chất điểm (toàn chương)',
                  'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 & CTGDPT 2018 – Chương 1 Động học chất điểm (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
 
@@ -93,7 +93,7 @@ inserted_prompts AS (
              ),
 
     (
-                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                  'Giáo án Vật lí 10 – Chương 2: Động lực học chất điểm (toàn chương)',
                  'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 – Chương 2 Động lực học chất điểm (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
 
@@ -169,7 +169,7 @@ inserted_prompts AS (
              ),
 
     (
-                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                  'Giáo án Vật lí 10 – Chương 3: Năng lượng, công và công suất (toàn chương)',
                  'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 – Chương 3 Năng lượng, công và công suất (phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo).',
 
@@ -245,7 +245,7 @@ inserted_prompts AS (
              ),
 
     (
-                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                  'Giáo án Vật lí 10 – Chương 4: Dao động cơ học (toàn chương)',
                  'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 – Chương 4 Dao động cơ học (con lắc lò xo, con lắc đơn, dao động tắt dần, cộng hưởng) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
 
@@ -321,7 +321,7 @@ inserted_prompts AS (
              ),
 
     (
-                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                  'Giáo án Vật lí 10 – Chương 5: Sóng cơ học và sóng âm (toàn chương)',
                  'Prompt tạo giáo án Vật lí 10 chuẩn Công văn 5512 – Chương 5 Sóng cơ học và sóng âm (sóng ngang, sóng dọc, giao thoa, sóng dừng, âm thanh, nhạc cụ…) – phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
 
@@ -397,7 +397,7 @@ inserted_prompts AS (
              ),
 
     (
-                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                  'Đề cương ôn tập Vật lí 10 – Cả năm học (chuẩn thi học kỳ & THPT Quốc gia 2025+)',
                  'Prompt tạo đề cương ôn tập Vật lí 10 cực chất, chuẩn kiến thức kỹ năng CTGDPT 2018, sát 100% ma trận đề minh họa THPT Quốc gia (50 câu trắc nghiệm + tự luận thực hành).',
 
@@ -469,7 +469,7 @@ inserted_prompts AS (
                  NULL
              ),
     (
-                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                  'Bộ đề thi Vật lí 10 – Cả năm học (20 đề chuẩn THPT Quốc gia 2025+)',
                  'Prompt tạo bộ 20 đề thi Vật lí 10 cực chất: 8 đề học kỳ 1, 8 đề học kỳ 2, 4 đề tổng ôn cả năm – 100% sát cấu trúc, ma trận và độ khó đề minh họa THPT Quốc gia 2025+, có đáp án + biểu điểm + giải thích chi tiết.',
 
@@ -548,7 +548,7 @@ inserted_prompts AS (
              ),
 
     (
-                 gen_random_uuid(), NULL, '00000000-0000-0000-0000-000000000001', NULL,
+                 gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
                  'Bộ tiêu chí chấm điểm (Rubric) chuẩn cho mọi bài kiểm tra Vật lí 10',
                  'Prompt tạo bộ RUBRIC hoàn chỉnh, công bằng, đo lường được cho mọi dạng kiểm tra Vật lí 10 (trắc nghiệm, tự luận, thực hành thí nghiệm, dự án, đồ thị, xử lý số liệu), chuẩn Công văn 5512 & định hướng đánh giá năng lực THPT Quốc gia 2025+.',
 
