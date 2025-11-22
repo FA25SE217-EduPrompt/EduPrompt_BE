@@ -35,7 +35,7 @@ public class PromptRatingServiceImpl implements PromptRatingService {
 
         User user = userRepository.getReferenceById(userPrincipal.getUserId());
 
-        promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, userPrincipal.getUserId())
+        promptViewLogRepository.findPromptViewLogByPromptIdAndUserId(prompt.getId(), userPrincipal.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("PromptViewLog not found"));
 
         PromptRating rating = promptRatingRepository.findByPromptIdAndUserId(request.promptId(), userPrincipal.getUserId());
