@@ -216,4 +216,16 @@ public class PromptController {
         List<PromptVersionResponse> response = promptService.getPromptVersions(promptId, currentUser);
         return ResponseDto.success(response);
     }
+
+    @PutMapping("/{promptId}/rollback/{versionId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "Rollback prompt to a specific version")
+    public ResponseDto<DetailPromptResponse> rollbackToVersion(
+            @PathVariable UUID promptId,
+            @PathVariable UUID versionId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Rolling back prompt {} to version {} by user: {}", promptId, versionId, currentUser.getUserId());
+        DetailPromptResponse response = promptService.rollbackToVersion(promptId, versionId, currentUser);
+        return ResponseDto.success(response);
+    }
 }

@@ -700,13 +700,6 @@ public class PromptServiceImpl implements PromptService {
             throw new AccessDeniedException("You do not have permission to edit this prompt");
         }
 
-        // Determine next version number
-        // We can query the max version number or just count?
-        // Better to get the latest version number.
-        // But for simplicity, let's assume we can get the list and find max, or use a
-        // custom query.
-        // Let's use the repository method we added:
-        // findByPromptIdOrderByVersionNumberDesc
         List<PromptVersion> versions = promptVersionRepository.findByPromptIdOrderByVersionNumberDesc(promptId);
         int nextVersion = 1;
         if (!versions.isEmpty()) {
@@ -761,6 +754,40 @@ public class PromptServiceImpl implements PromptService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public DetailPromptResponse rollbackToVersion(UUID promptId, UUID versionId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        if (!permissionService.canEditPrompt(currentUser, prompt)) {
+            throw new AccessDeniedException("You do not have permission to edit this prompt");
+        }
+
+        PromptVersion targetVersion = promptVersionRepository.findById(versionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Version not found with ID: " + versionId));
+
+        if (!targetVersion.getPrompt().getId().equals(promptId)) {
+            throw new InvalidActionException("Version does not belong to this prompt");
+        }
+
+        // Update prompt content from version
+        prompt.setInstruction(targetVersion.getInstruction());
+        prompt.setContext(targetVersion.getContext());
+        prompt.setInputExample(targetVersion.getInputExample());
+        prompt.setOutputFormat(targetVersion.getOutputFormat());
+        prompt.setConstraints(targetVersion.getConstraints());
+
+        // Update metadata
+        prompt.setCurrentVersion(targetVersion);
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+
+        Prompt updatedPrompt = promptRepository.save(prompt);
+
+        return buildPromptResponse(updatedPrompt);
+    }
+
     private PromptVersionResponse toPromptVersionResponse(PromptVersion version) {
         return PromptVersionResponse.builder()
                 .id(version.getId())
@@ -774,6 +801,15 @@ public class PromptServiceImpl implements PromptService {
                 .versionNumber(version.getVersionNumber())
                 .isAiGenerated(version.getIsAiGenerated())
                 .createdAt(version.getCreatedAt())
+                .build();
+    }
+
+    private PromptViewLogResponse toResponse(PromptViewLog log) {
+        return PromptViewLogResponse.builder()
+                .id(log.getId())
+                .userId(log.getUser().getId())
+                .promptId(log.getPrompt().getId())
+                .createdAt(log.getCreatedAt())
                 .build();
     }
 
@@ -863,15 +899,6 @@ public class PromptServiceImpl implements PromptService {
                 .collectionName(collectionName)
                 .createdAt(prompt.getCreatedAt())
                 .updatedAt(prompt.getUpdatedAt())
-                .build();
-    }
-
-    private PromptViewLogResponse toResponse(PromptViewLog log) {
-        return PromptViewLogResponse.builder()
-                .id(log.getId())
-                .userId(log.getUser().getId())
-                .promptId(log.getPrompt().getId())
-                .createdAt(log.getCreatedAt())
                 .build();
     }
 

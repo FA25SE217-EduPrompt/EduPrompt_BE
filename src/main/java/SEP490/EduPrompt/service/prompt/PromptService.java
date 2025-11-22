@@ -14,36 +14,40 @@ import java.util.UUID;
 
 public interface PromptService {
 
-    DetailPromptResponse createStandalonePrompt(CreatePromptRequest dto, UserPrincipal currentUser);
+        DetailPromptResponse createStandalonePrompt(CreatePromptRequest dto, UserPrincipal currentUser);
 
-    DetailPromptResponse createPromptInCollection(CreatePromptCollectionRequest dto, UserPrincipal currentUser);
+        DetailPromptResponse createPromptInCollection(CreatePromptCollectionRequest dto, UserPrincipal currentUser);
 
-    PaginatedDetailPromptResponse getMyPrompts(UserPrincipal currentUser, Pageable pageable);
+        PaginatedDetailPromptResponse getMyPrompts(UserPrincipal currentUser, Pageable pageable);
 
-    PaginatedPromptResponse getNonPrivatePrompts(UserPrincipal currentUser, Pageable pageable);
+        PaginatedPromptResponse getNonPrivatePrompts(UserPrincipal currentUser, Pageable pageable);
 
-    PaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId);
+        PaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId);
 
-    PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId);
+        PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable,
+                        UUID collectionId);
 
-    DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
-            UserPrincipal currentUser);
+        DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
+                        UserPrincipal currentUser);
 
-    DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
-            UserPrincipal currentUser);
+        DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
+                        UserPrincipal currentUser);
 
-    void softDeletePrompt(UUID promptId, UserPrincipal currentUser);
+        void softDeletePrompt(UUID promptId, UserPrincipal currentUser);
 
-    PaginatedPromptResponse filterPrompts(PromptFilterRequest request, UserPrincipal currentUser, Pageable pageable);
+        PaginatedPromptResponse filterPrompts(PromptFilterRequest request, UserPrincipal currentUser,
+                        Pageable pageable);
 
-    DetailPromptResponse getPromptById(UUID promptId, UserPrincipal currentUser);
+        DetailPromptResponse getPromptById(UUID promptId, UserPrincipal currentUser);
 
-    boolean hasUserViewedPrompt(UserPrincipal currentUser, UUID promptId);
+        boolean hasUserViewedPrompt(UserPrincipal currentUser, UUID promptId);
 
-    PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request);
+        PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request);
 
-    PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
-            UserPrincipal currentUser);
+        PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
+                        UserPrincipal currentUser);
 
-    List<PromptVersionResponse> getPromptVersions(UUID promptId, UserPrincipal currentUser);
+        List<PromptVersionResponse> getPromptVersions(UUID promptId, UserPrincipal currentUser);
+
+        DetailPromptResponse rollbackToVersion(UUID promptId, UUID versionId, UserPrincipal currentUser);
 }
