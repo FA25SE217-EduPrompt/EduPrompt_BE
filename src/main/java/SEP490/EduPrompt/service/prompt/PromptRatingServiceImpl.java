@@ -5,7 +5,6 @@ import SEP490.EduPrompt.dto.response.prompt.PromptRatingResponse;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.PromptRating;
-import SEP490.EduPrompt.model.PromptViewLog;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.PromptRatingRepository;
 import SEP490.EduPrompt.repo.PromptRepository;
@@ -18,8 +17,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -31,23 +28,15 @@ public class PromptRatingServiceImpl implements PromptRatingService {
     private final PromptViewLogRepository promptViewLogRepository;
 
     @Override
+    @Transactional
     public PromptRatingResponse createPromptRating(PromptRatingCreateRequest request, UserPrincipal userPrincipal) {
-        Prompt prompt = promptRepository.getReferenceById(request.promptId());
-        if  (prompt == null) {
-            throw new ResourceNotFoundException("Prompt not found");
-        }
+        Prompt prompt = promptRepository.findById(request.promptId())
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
         User user = userRepository.getReferenceById(userPrincipal.getUserId());
-        if (user == null) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        Optional<PromptViewLog> promptViewLog = promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, userPrincipal.getUserId());
-        PromptViewLog viewLog = null;
-        if (promptViewLog.isPresent()) {
-            viewLog = promptViewLog.get();
-        }
-        else {
-            throw new ResourceNotFoundException("Prompt view log not found");
-        }
+
+        promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, userPrincipal.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("PromptViewLog not found"));
 
         PromptRating rating = promptRatingRepository.findByPromptIdAndUserId(request.promptId(), userPrincipal.getUserId());
         if (rating == null) {
@@ -59,8 +48,6 @@ public class PromptRatingServiceImpl implements PromptRatingService {
             promptRatingRepository.save(rating);
         }
         else {
-            rating.setUser(user);
-            rating.setPrompt(prompt);
             rating.setRating(request.rating());
             promptRatingRepository.save(rating);
         }
@@ -73,34 +60,21 @@ public class PromptRatingServiceImpl implements PromptRatingService {
      * Runs every day at 02:00 AM server time
      */
      @Scheduled(cron = "0 0 2 * * ?")   // 02:00 AM daily
-    // @Scheduled(fixedRate = 5_000) // FOR TESTING: EVERY 5 SECOND
+//     @Scheduled(fixedRate = 5_000) // FOR TESTING: EVERY 5 SECOND
     @Transactional
     public void recalculateAllAverageRatings() {
-        log.info("Starting daily average rating recalculation job...");
+         log.info("Starting daily average rating recalculation job...");
 
-        var promptIds = promptRatingRepository.findAllDistinctPromptIds();
+         // single bulk update , avoid n+1 query issue
+         int updated = promptRatingRepository.bulkUpdateAverageRatings();
 
-        int updated = 0;
-        int cleared = 0;
+         // clean up prompts that have no ratings
+         int cleared = promptRatingRepository.clearAvgRatingForUnratedPrompts();
 
-        for (var promptId : promptIds) {
-            var avg = promptRatingRepository.calculateAverageRatingByPromptId(promptId);
-
-            // Round to 1 decimal place (e.g., 4.666 → 4.7)
-            var roundedAvg = avg != null
-                    ? Math.round(avg * 10.0) / 10.0
-                    : null;
-
-            updated += promptRepository.updateAvgRatingById(promptId, roundedAvg);
-        }
-
-        // Clean up prompts that have no ratings at all
-        cleared = promptRepository.clearAvgRatingForUnratedPrompts();
-
-        log.info("""
-                Daily average rating job completed
-                 • Prompts with updated avg_rating : {}
-                 • Prompts cleared (no ratings)   : {}
-                """, updated, cleared);
+         log.info("""
+                 Daily average rating job completed
+                  • Prompts with updated avg_rating : {}
+                  • Prompts cleared (no ratings)   : {}
+                 """, updated, cleared);
     }
 }
