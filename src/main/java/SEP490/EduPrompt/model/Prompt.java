@@ -36,6 +36,9 @@ public class Prompt {
     @JoinColumn(name = "collection_id")
     private Collection collection;
 
+    @Column(name = "collection_id", insertable = false, updatable = false)
+    private UUID collectionId;
+
     @Column(name = "title", length = Integer.MAX_VALUE)
     private String title;
 

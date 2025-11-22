@@ -12,7 +12,7 @@ public class PromptResponse {
     private String description;
     private String outputFormat;
     private String visibility;
-    private String fullName;
+    private String fullName; // fullName of the user who created the prompt
     private String collectionName;
     private Instant createdAt;
     private Instant updatedAt;

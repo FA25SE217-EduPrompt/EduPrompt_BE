@@ -27,7 +27,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -44,9 +43,10 @@ public class PromptServiceImpl implements PromptService {
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
     private final PermissionService permissionService;
+    private final PromptVersionRepository promptVersionRepository;
 
-    //======================================================================//
-    //==========================CREATE PROMPT===============================//
+    // ======================================================================//
+    // ==========================CREATE PROMPT===============================//
     @Override
     @Transactional
     public DetailPromptResponse createStandalonePrompt(CreatePromptRequest dto, UserPrincipal currentUser) {
@@ -55,7 +55,7 @@ public class PromptServiceImpl implements PromptService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
-        UserQuota userQuota = null;
+        UserQuota userQuota;
         if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
         } else {
@@ -67,7 +67,8 @@ public class PromptServiceImpl implements PromptService {
         }
 
         if (userQuota.getPromptActionRemaining() <= 0) {
-            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptActionRemaining());
+            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(),
+                    userQuota.getPromptActionRemaining());
         }
 
         String promptVisibility = Visibility.parseVisibility(dto.getVisibility()).name();
@@ -85,10 +86,11 @@ public class PromptServiceImpl implements PromptService {
         // Validate tags
         // Check if the tag id exist in the DB
         /*
-           If the user includes tag IDs in the request, fetch those tags from the database.
-           If any of the tag IDs don’t exist, stop and throw an error —
-           don’t allow the prompt to be created with invalid tags
-        */
+         * If the user includes tag IDs in the request, fetch those tags from the
+         * database.
+         * If any of the tag IDs don’t exist, stop and throw an error —
+         * don’t allow the prompt to be created with invalid tags
+         */
         List<Tag> tags = new ArrayList<>();
         if (dto.getTagIds() != null && !dto.getTagIds().isEmpty()) {
             tags = tagRepository.findAllById(dto.getTagIds());
@@ -147,7 +149,7 @@ public class PromptServiceImpl implements PromptService {
         User user = userRepository.getReferenceById(currentUser.getUserId());
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
-        UserQuota userQuota = null;
+        UserQuota userQuota;
         if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
         } else {
@@ -160,7 +162,8 @@ public class PromptServiceImpl implements PromptService {
         }
 
         if (userQuota.getPromptActionRemaining() <= 0) {
-            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptActionRemaining());
+            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(),
+                    userQuota.getPromptActionRemaining());
         }
 
         // Validate and default visibility
@@ -175,7 +178,8 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Validate visibility rules
-        // Collection Visibility is the highest priority (Prompt must follow collection Visibility)
+        // Collection Visibility is the highest priority (Prompt must follow collection
+        // Visibility)
         permissionService.validateCollectionVisibility(collection, promptVisibility);
 
         // GROUP visibility → check group membership
@@ -252,8 +256,8 @@ public class PromptServiceImpl implements PromptService {
         return buildPromptResponse(savedPrompt);
     }
 
-    //======================================================================//
-    //============================GET PROMPT================================//
+    // ======================================================================//
+    // ============================GET PROMPT================================//
     @Override
     @Transactional(readOnly = true)
     public PaginatedDetailPromptResponse getMyPrompts(UserPrincipal currentUser, Pageable pageable) {
@@ -313,7 +317,8 @@ public class PromptServiceImpl implements PromptService {
     public PaginatedPromptResponse getNonPrivatePrompts(UserPrincipal currentUser, Pageable pageable) {
         Specification<Prompt> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(root.get("visibility").in(Visibility.PUBLIC.name(), Visibility.SCHOOL.name(), Visibility.GROUP.name()));
+            predicates.add(root.get("visibility").in(Visibility.PUBLIC.name(), Visibility.SCHOOL.name(),
+                    Visibility.GROUP.name()));
             predicates.add(cb.equal(root.get("isDeleted"), false));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -348,7 +353,8 @@ public class PromptServiceImpl implements PromptService {
 
     @Override
     @Transactional
-    public PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId) {
+    public PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable,
+            UUID collectionId) {
         if (collectionId == null) {
             throw new InvalidInputException("Collection ID must not be null");
         }
@@ -363,8 +369,8 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional(readOnly = true)
     public PaginatedPromptResponse filterPrompts(PromptFilterRequest request,
-                                                 UserPrincipal currentUser,
-                                                 Pageable pageable) {
+            UserPrincipal currentUser,
+            Pageable pageable) {
 
         // VALIDATION – runs BEFORE any DB call
         validateFilterRequest(request, currentUser);
@@ -408,11 +414,12 @@ public class PromptServiceImpl implements PromptService {
         return buildPromptResponse(prompt);
     }
 
-    //======================================================================//
-    //==========================UPDATE PROMPT===============================//
+    // ======================================================================//
+    // ==========================UPDATE PROMPT===============================//
     @Override
     @Transactional
-    public DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request, UserPrincipal currentUser) {
+    public DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
+            UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found!!"));
@@ -454,7 +461,8 @@ public class PromptServiceImpl implements PromptService {
             // Remove existing PromptTag entries
             promptTagRepository.deleteByPromptId(promptId);
 
-            // If tagIds are provided and not empty, validate and create new PromptTag entries
+            // If tagIds are provided and not empty, validate and create new PromptTag
+            // entries
             if (!request.getTagIds().isEmpty()) {
                 List<Tag> tags = tagRepository.findAllById(request.getTagIds());
                 if (tags.size() != request.getTagIds().size()) {
@@ -485,7 +493,8 @@ public class PromptServiceImpl implements PromptService {
 
     @Override
     @Transactional
-    public DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request, UserPrincipal currentUser) {
+    public DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
+            UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
@@ -513,7 +522,8 @@ public class PromptServiceImpl implements PromptService {
                 try {
                     permissionService.validateCollectionVisibility(collection, newVisibility);
                 } catch (IllegalArgumentException e) {
-                    // If validation fails, automatically remove from collection to make it standalone
+                    // If validation fails, automatically remove from collection to make it
+                    // standalone
                     removeFromCollection = true;
                 }
             }
@@ -521,7 +531,6 @@ public class PromptServiceImpl implements PromptService {
 
         if (removeFromCollection) {
             prompt.setCollection(null);
-            collection = null;
         } else if (newVisibility.equals(Visibility.GROUP.name())) {
             // GROUP visibility requires a collection with a group
             if (collection == null && request.getCollectionId() == null) {
@@ -530,9 +539,11 @@ public class PromptServiceImpl implements PromptService {
             if (request.getCollectionId() != null) {
                 // Move standalone prompt to a collection
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Collection not found with ID: " + request.getCollectionId()));
                 if (collection.getGroup() == null) {
-                    throw new IllegalArgumentException("Collection must be associated with a group for GROUP visibility");
+                    throw new IllegalArgumentException(
+                            "Collection must be associated with a group for GROUP visibility");
                 }
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
@@ -542,7 +553,8 @@ public class PromptServiceImpl implements PromptService {
                 }
                 prompt.setCollection(collection);
             } else if (collection.getGroup() == null) {
-                throw new InvalidActionException("Current collection must be associated with a group for GROUP visibility");
+                throw new InvalidActionException(
+                        "Current collection must be associated with a group for GROUP visibility");
             } else if (!permissionService.isGroupMember(currentUser, collection.getGroup().getId())) {
                 throw new AccessDeniedException("You must be a member of the group to set GROUP visibility");
             }
@@ -559,7 +571,8 @@ public class PromptServiceImpl implements PromptService {
             }
             if (request.getCollectionId() != null) {
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Collection not found with ID: " + request.getCollectionId()));
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
                 }
@@ -572,7 +585,8 @@ public class PromptServiceImpl implements PromptService {
             }
             if (request.getCollectionId() != null) {
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Collection not found with ID: " + request.getCollectionId()));
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
                 }
@@ -593,13 +607,13 @@ public class PromptServiceImpl implements PromptService {
         return buildPromptResponse(updatedPrompt);
     }
 
-    //======================================================================//
-    //========================SOFT DELETE PROMPT============================//
+    // ======================================================================//
+    // ========================SOFT DELETE PROMPT============================//
     @Override
     @Transactional
     public void softDeletePrompt(UUID promptId, UserPrincipal currentUser) {
         // Fetch prompt
-        log.info("User with id " + currentUser.getUserId() + " attempt to delete prompt with id " + promptId);
+        log.info("User with id {} attempt to delete prompt with id {}", currentUser.getUserId(), promptId);
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
 
@@ -619,33 +633,23 @@ public class PromptServiceImpl implements PromptService {
 
         // Save changes
         promptRepository.save(prompt);
-        log.info("Prompt with id " + promptId + " has been successfully deleted");
+        log.info("Prompt with id {} has been successfully deleted", promptId);
     }
 
-    //======================================================================//
-    //===========================PROMPT VIEW LOG============================//
+    // ======================================================================//
+    // ===========================PROMPT VIEW LOG============================//
 
     @Override
     public boolean hasUserViewedPrompt(UserPrincipal currentUser, UUID promptId) {
-        User user = userRepository.getReferenceById(currentUser.getUserId());
-        if (user == null) {
-            throw new ResourceNotFoundException("user not found with ID: " + currentUser.getUserId());
-        }
-
-        Prompt prompt = promptRepository.getReferenceById(promptId);
-        if (prompt == null) {
-            throw new ResourceNotFoundException("Prompt not found with ID: " + promptId);
-        }
-
-        return promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, currentUser.getUserId())
+        return promptViewLogRepository.findPromptViewLogByPromptIdAndUserId(promptId, currentUser.getUserId())
                 .isPresent();
     }
 
     @Override
     public PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request) {
         User user = userRepository.getReferenceById(currentUser.getUserId());
-
-        Prompt prompt = promptRepository.getReferenceById(request.promptId());
+        Prompt prompt = promptRepository.findById(request.promptId())
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + request.promptId()));
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
         UserQuota userQuota;
@@ -655,10 +659,12 @@ public class PromptServiceImpl implements PromptService {
             throw new ResourceNotFoundException("User not register a subscription yet");
         }
 
-        PromptViewLog viewLog = promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, currentUser.getUserId())
+        PromptViewLog viewLog = promptViewLogRepository
+                .findPromptViewLogByPromptIdAndUserId(request.promptId(), currentUser.getUserId())
                 .orElseGet(() -> {
                     if (userQuota.getPromptUnlockRemaining() <= 0) {
-                        throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptUnlockRemaining());
+                        throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(),
+                                userQuota.getPromptUnlockRemaining());
                     }
                     PromptViewLog newLog = PromptViewLog.builder()
                             .user(user)
@@ -672,7 +678,132 @@ public class PromptServiceImpl implements PromptService {
         return toResponse(viewLog);
     }
 
-    //Helper method function
+    @Override
+    @Transactional
+    public PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
+            UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        if (!permissionService.canEditPrompt(currentUser, prompt)) {
+            throw new AccessDeniedException("You do not have permission to edit this prompt");
+        }
+
+        List<PromptVersion> versions = promptVersionRepository.findByPromptIdOrderByVersionNumberDesc(promptId);
+        int nextVersion = 1;
+        if (!versions.isEmpty()) {
+            nextVersion = versions.getFirst().getVersionNumber() + 1;
+        }
+
+        PromptVersion newVersion = PromptVersion.builder()
+                .prompt(prompt)
+                .instruction(request.instruction())
+                .context(request.context())
+                .inputExample(request.inputExample())
+                .outputFormat(request.outputFormat())
+                .constraints(request.constraints())
+                .editorId(currentUser.getUserId())
+                .versionNumber(nextVersion)
+                .isAiGenerated(request.isAiGenerated())
+                .createdAt(Instant.now())
+                .build();
+
+        PromptVersion savedVersion = promptVersionRepository.save(newVersion);
+
+        // Update prompt current version
+        prompt.setCurrentVersion(savedVersion);
+        // Also update the prompt content to match the new version (optional yet it
+        // should be :D, but good
+        // for "current state")
+        prompt.setInstruction(request.instruction());
+        prompt.setContext(request.context());
+        prompt.setInputExample(request.inputExample());
+        prompt.setOutputFormat(request.outputFormat());
+        prompt.setConstraints(request.constraints());
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+
+        promptRepository.save(prompt);
+
+        return toPromptVersionResponse(savedVersion);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PromptVersionResponse> getPromptVersions(UUID promptId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        if (!permissionService.canAccessPrompt(prompt, currentUser)) {
+            throw new AccessDeniedException("You do not have permission to view this prompt");
+        }
+
+        List<PromptVersion> versions = promptVersionRepository.findByPromptIdOrderByVersionNumberDesc(promptId);
+        return versions.stream()
+                .map(this::toPromptVersionResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public DetailPromptResponse rollbackToVersion(UUID promptId, UUID versionId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        if (!permissionService.canEditPrompt(currentUser, prompt)) {
+            throw new AccessDeniedException("You do not have permission to edit this prompt");
+        }
+
+        PromptVersion targetVersion = promptVersionRepository.findById(versionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Version not found with ID: " + versionId));
+
+        if (!targetVersion.getPrompt().getId().equals(promptId)) {
+            throw new InvalidActionException("Version does not belong to this prompt");
+        }
+
+        // Update prompt content from version
+        prompt.setInstruction(targetVersion.getInstruction());
+        prompt.setContext(targetVersion.getContext());
+        prompt.setInputExample(targetVersion.getInputExample());
+        prompt.setOutputFormat(targetVersion.getOutputFormat());
+        prompt.setConstraints(targetVersion.getConstraints());
+
+        // Update metadata
+        prompt.setCurrentVersion(targetVersion);
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+
+        Prompt updatedPrompt = promptRepository.save(prompt);
+
+        return buildPromptResponse(updatedPrompt);
+    }
+
+    private PromptVersionResponse toPromptVersionResponse(PromptVersion version) {
+        return PromptVersionResponse.builder()
+                .id(version.getId())
+                .promptId(version.getPrompt().getId())
+                .instruction(version.getInstruction())
+                .context(version.getContext())
+                .inputExample(version.getInputExample())
+                .outputFormat(version.getOutputFormat())
+                .constraints(version.getConstraints())
+                .editorId(version.getEditorId())
+                .versionNumber(version.getVersionNumber())
+                .isAiGenerated(version.getIsAiGenerated())
+                .createdAt(version.getCreatedAt())
+                .build();
+    }
+
+    private PromptViewLogResponse toResponse(PromptViewLog log) {
+        return PromptViewLogResponse.builder()
+                .id(log.getId())
+                .userId(log.getUser().getId())
+                .promptId(log.getPrompt().getId())
+                .createdAt(log.getCreatedAt())
+                .build();
+    }
+
+    // Helper method function
 
     private PaginatedPromptResponse mapToPaginatedResponse(Page<Prompt> promptPage, UserPrincipal currentUser) {
         List<PromptResponse> promptResponses = promptPage.getContent().stream()
@@ -761,15 +892,6 @@ public class PromptServiceImpl implements PromptService {
                 .build();
     }
 
-    private PromptViewLogResponse toResponse(PromptViewLog log) {
-        return PromptViewLogResponse.builder()
-                .id(log.getId())
-                .userId(log.getUser().getId())
-                .promptId(log.getPrompt().getId())
-                .createdAt(log.getCreatedAt())
-                .build();
-    }
-
     private void validateFilterRequest(PromptFilterRequest req, UserPrincipal user) {
         if (Boolean.TRUE.equals(req.includeDeleted()) && !permissionService.isSystemAdmin(user)) {
             throw new AccessDeniedException("Only SYSTEM_ADMIN can include deleted prompts");
@@ -820,12 +942,10 @@ public class PromptServiceImpl implements PromptService {
             // Visibility: PUBLIC/SCHOOL/GROUP + PRIVATE (if owner)
             Expression<String> visibilityUpper = cb.upper(root.get("visibility"));
             Predicate publicVis = visibilityUpper.in(
-                    Visibility.PUBLIC.name(), Visibility.SCHOOL.name(), Visibility.GROUP.name()
-            );
+                    Visibility.PUBLIC.name(), Visibility.SCHOOL.name(), Visibility.GROUP.name());
             Predicate privateVis = cb.and(
                     visibilityUpper.in(Visibility.PRIVATE.name()),
-                    cb.equal(root.get("createdBy"), user.getUserId())
-            );
+                    cb.equal(root.get("createdBy"), user.getUserId()));
             baseAnd.add(cb.or(publicVis, privateVis));
 
             // isDeleted
@@ -839,14 +959,12 @@ public class PromptServiceImpl implements PromptService {
             if (nonBlank(req.title())) {
                 String pattern = "%" + req.title().toLowerCase() + "%";
                 searchOr.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), pattern)
-                ));
+                        cb.like(cb.lower(root.get("title")), pattern)));
             }
             if (nonBlank(req.collectionName())) {
                 searchOr.add(cb.like(
                         cb.lower(root.get("collection").get("name")),
-                        "%" + req.collectionName().toLowerCase() + "%"
-                ));
+                        "%" + req.collectionName().toLowerCase() + "%"));
             }
             if (nonBlank(req.schoolName())) {
                 Join<Prompt, User> userJoin = root.join("user", JoinType.LEFT);
@@ -878,10 +996,10 @@ public class PromptServiceImpl implements PromptService {
     }
 
     private Predicate buildTagPredicate(Root<Prompt> root,
-                                        CriteriaQuery<?> query,
-                                        CriteriaBuilder cb,
-                                        String field, // "type" or "value"
-                                        List<String> values) {
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            String field, // "type" or "value"
+            List<String> values) {
 
         Subquery<UUID> subquery = query.subquery(UUID.class);
         Root<PromptTag> pt = subquery.from(PromptTag.class);

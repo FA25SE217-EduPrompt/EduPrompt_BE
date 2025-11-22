@@ -27,6 +27,9 @@ public class TeacherProfile {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private UUID userId;
+
     @Column(name = "subject_specialty", length = Integer.MAX_VALUE)
     private String subjectSpecialty;
 
