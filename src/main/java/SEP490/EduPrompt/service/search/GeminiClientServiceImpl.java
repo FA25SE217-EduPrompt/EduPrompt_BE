@@ -328,8 +328,8 @@ public class GeminiClientServiceImpl implements GeminiClientService {
                                             .confidenceScore(score)
                                             .build());
                                 } else {
-                                    log.warn("Could not map Chunk to DB Prompt. Title: '{}', ID in Text: {}",
-                                            documentTitle, matcher.group(1));
+                                    log.warn("Could not map Chunk to DB Prompt. Title: '{}'",
+                                            documentTitle);
                                 }
                             }
                             rank++;
