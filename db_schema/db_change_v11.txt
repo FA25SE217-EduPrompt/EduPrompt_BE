@@ -1,0 +1,3 @@
+--Add new field share_token
+ALTER TABLE prompts
+    ADD COLUMN share_token UUID;
