@@ -678,6 +678,8 @@ public class PromptServiceImpl implements PromptService {
         return toResponse(viewLog);
     }
 
+    // ======================================================================//
+    // ==========================PROMPT VERSIONING===========================//
     @Override
     @Transactional
     public PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
@@ -778,6 +780,58 @@ public class PromptServiceImpl implements PromptService {
         return buildPromptResponse(updatedPrompt);
     }
 
+    // ======================================================================//
+    // ============================PROMPT SHARING============================//
+    @Override
+    public String sharePrompt(UUID promptId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        // Ownership check
+        if (!prompt.getUserId().equals(currentUser.getUserId())) {
+            throw new AccessDeniedException("You do not own this prompt");
+        }
+
+        // Generate token if none exists
+        if (prompt.getShareToken() == null) {
+            prompt.setShareToken(UUID.randomUUID());
+            prompt.setUpdatedAt(Instant.now());
+            prompt.setUpdatedBy(currentUser.getUserId());
+            promptRepository.save(prompt);
+        }
+
+        // Generate shareable link
+        String baseUrl = "https://eduprompt-prod.vercel.app/prompts/shared/";
+        return baseUrl + prompt.getId() + "?token=" + prompt.getShareToken();
+    }
+
+    @Override
+    public PromptShareResponse getSharedPrompt(UUID promptId, UUID token) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        if (prompt.getIsDeleted()) {
+            throw new ResourceNotFoundException("Prompt not found");
+        }
+
+        if (token == null || !token.equals(prompt.getShareToken())) {
+            throw new AccessDeniedException("Access denied");
+        }
+        return PromptShareResponse.builder()
+                .id(prompt.getId())
+                .title(prompt.getTitle())
+                .description(prompt.getDescription())
+                .instruction(prompt.getInstruction())
+                .context(prompt.getContext())
+                .inputExample(prompt.getInputExample())
+                .outputFormat(prompt.getOutputFormat())
+                .constraints(prompt.getConstraints())
+                .shareToke(prompt.getShareToken())
+                .build();
+    }
+
+    // Helper method function
+
     private PromptVersionResponse toPromptVersionResponse(PromptVersion version) {
         return PromptVersionResponse.builder()
                 .id(version.getId())
@@ -802,8 +856,6 @@ public class PromptServiceImpl implements PromptService {
                 .createdAt(log.getCreatedAt())
                 .build();
     }
-
-    // Helper method function
 
     private PaginatedPromptResponse mapToPaginatedResponse(Page<Prompt> promptPage, UserPrincipal currentUser) {
         List<PromptResponse> promptResponses = promptPage.getContent().stream()
