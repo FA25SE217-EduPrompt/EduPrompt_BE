@@ -2,7 +2,6 @@ package SEP490.EduPrompt.service.prompt;
 
 import SEP490.EduPrompt.dto.request.prompt.PromptRatingCreateRequest;
 import SEP490.EduPrompt.dto.response.prompt.PromptRatingResponse;
-import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.PromptRating;
@@ -18,9 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @Service
 @Slf4j
@@ -52,8 +48,7 @@ public class PromptRatingServiceImpl implements PromptRatingService {
                     .rating(request.rating())
                     .build();
             promptRatingRepository.save(rating);
-        }
-        else {
+        } else {
             rating.setRating(request.rating());
             promptRatingRepository.save(rating);
         }
@@ -69,18 +64,18 @@ public class PromptRatingServiceImpl implements PromptRatingService {
     //@Scheduled(fixedRate = 5_000) // FOR TESTING: EVERY 5 SECOND
     @Transactional
     public void recalculateAllAverageRatings() {
-         log.info("Starting daily average rating recalculation job...");
+        log.info("Starting daily average rating recalculation job...");
 
-         // single bulk update , avoid n+1 query issue
-         int updated = promptRatingRepository.bulkUpdateAverageRatings();
+        // single bulk update , avoid n+1 query issue
+        int updated = promptRatingRepository.bulkUpdateAverageRatings();
 
-         // clean up prompts that have no ratings
-         int cleared = promptRatingRepository.clearAvgRatingForUnratedPrompts();
+        // clean up prompts that have no ratings
+        int cleared = promptRatingRepository.clearAvgRatingForUnratedPrompts();
 
-         log.info("""
-                 Daily average rating job completed
-                  • Prompts with updated avg_rating : {}
-                  • Prompts cleared (no ratings)   : {}
-                 """, updated, cleared);
+        log.info("""
+                Daily average rating job completed
+                 • Prompts with updated avg_rating : {}
+                 • Prompts cleared (no ratings)   : {}
+                """, updated, cleared);
     }
 }
