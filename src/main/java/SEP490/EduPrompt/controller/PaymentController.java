@@ -3,11 +3,16 @@ package SEP490.EduPrompt.controller;
 import SEP490.EduPrompt.dto.request.payment.PaymentRequest;
 import SEP490.EduPrompt.dto.response.ErrorMessage;
 import SEP490.EduPrompt.dto.response.ResponseDto;
+import SEP490.EduPrompt.dto.response.payment.PagePaymentHistoryResponse;
 import SEP490.EduPrompt.dto.response.payment.PaymentResponse;
+import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.payment.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +26,7 @@ import static SEP490.EduPrompt.util.SecurityUtil.getClientIp;
 @RestController
 @RequestMapping("/api/payments/vnpay")
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentController {
     private final PaymentService paymentService;
 
@@ -58,5 +64,16 @@ public class PaymentController {
         } else {
             return ResponseDto.error("400", result.getMessage());
         }
+    }
+
+    @GetMapping("/my-payment")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SYSTEM_ADMIN')")
+    public ResponseDto<PagePaymentHistoryResponse> getMyPrompts(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Retrieving private prompts for user: {}", currentUser.getUserId());
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(paymentService.getPaymentHistory(currentUser, pageable));
     }
 }
