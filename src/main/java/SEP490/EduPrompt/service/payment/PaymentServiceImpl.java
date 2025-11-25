@@ -2,9 +2,13 @@ package SEP490.EduPrompt.service.payment;
 
 import SEP490.EduPrompt.config.VnpayConfig;
 import SEP490.EduPrompt.dto.request.payment.PaymentRequest;
+import SEP490.EduPrompt.dto.response.payment.PagePaymentHistoryResponse;
+import SEP490.EduPrompt.dto.response.payment.PaymentHistoryResponse;
 import SEP490.EduPrompt.dto.response.payment.PaymentResponse;
+import SEP490.EduPrompt.enums.PaymentStatus;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
+import SEP490.EduPrompt.model.Payment;
 import SEP490.EduPrompt.model.SubscriptionTier;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.PaymentRepository;
@@ -16,6 +20,8 @@ import SEP490.EduPrompt.util.PayLib;
 import SEP490.EduPrompt.util.SecurityUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +29,12 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +48,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final QuotaService quotaService;
 
     // Generate Payment URL
+    @Override
     public String generatePaymentUrl(PaymentRequest request, HttpServletRequest servletRequest, UserPrincipal userPrincipal) {
         PayLib pay = new PayLib();
         String txnRef = userPrincipal.getUserId() + "_" + request.getSubscriptionTierId() + "_" + System.currentTimeMillis();  // ← EMBED userId
@@ -48,29 +57,9 @@ public class PaymentServiceImpl implements PaymentService {
         return pay.createRequestUrl(vnpayConfig.getUrl(), vnpayConfig.getHashSecret());
     }
 
-    private void addRequestData(PayLib pay, PaymentRequest request, HttpServletRequest servletRequest) {
-        String txnRef = request.getSubscriptionTierId() + "_" + System.currentTimeMillis();
-
-        pay.addRequestData("vnp_Version", vnpayConfig.getVersion() != null ? vnpayConfig.getVersion() : "2.1.0");
-        pay.addRequestData("vnp_Command", "pay");
-        pay.addRequestData("vnp_TmnCode", vnpayConfig.getTmnCode());
-        pay.addRequestData("vnp_Amount", String.valueOf(request.getAmount() * 100));
-        pay.addRequestData("vnp_BankCode", request.getBankCode() != null ? request.getBankCode() : "");
-        pay.addRequestData("vnp_CreateDate", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
-        pay.addRequestData("vnp_CurrCode", "VND");
-
-        // Use real client IP from headers (supports proxy, Cloudflare, Nginx, etc.)
-        pay.addRequestData("vnp_IpAddr", SecurityUtil.getClientIp(servletRequest));
-
-        pay.addRequestData("vnp_Locale", "vn");
-        pay.addRequestData("vnp_OrderInfo", request.getOrderDescription());
-        pay.addRequestData("vnp_OrderType", "billpayment");
-        pay.addRequestData("vnp_ReturnUrl", vnpayConfig.getReturnUrl());
-        pay.addRequestData("vnp_TxnRef", txnRef);
-    }
-
     // Verify Payment Response
     @Override
+    @Transactional
     public PaymentResponse processVnpayReturn(String queryString, UserPrincipal currentUser) {
         if (currentUser == null) {
             return new PaymentResponse(false, "User not authenticated", "99");
@@ -155,7 +144,50 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         // SUCCESS
+        Payment payment = Payment.builder()
+                .txnRef(txnRef)
+                .user(user)
+                .tier(tier)
+                .amount(Long.parseLong(params.get("vnp_Amount")) / 100)  // Divide by 100 to store actual amount
+                .orderInfo(params.get("vnp_OrderInfo"))
+                .status(PaymentStatus.SUCCESS.name())
+                .vnpTransactionNo(params.get("vnp_TransactionNo"))
+                .vnpResponseCode(responseCode)
+                .vnpSecureHash(secureHash)
+                .createdAt(Instant.now())
+                .paidAt(Instant.now())
+                .build();
+
+        paymentRepository.save(payment);
         return new PaymentResponse(true, "Subscription activated successfully", tierId);
+    }
+
+    @Override
+    public PagePaymentHistoryResponse getPaymentHistory(UserPrincipal currentUser, Pageable pageable) {
+        User user = userRepo.findById(currentUser.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        Page<Payment> paymentPage = paymentRepository.findByUserId(currentUser.getUserId(), pageable);
+
+        List<PaymentHistoryResponse> paymentHistoryResponses = paymentPage.getContent().stream()
+                .map(payment -> {
+                    return PaymentHistoryResponse.builder()
+                .id(payment.getId())
+                .txnRef(payment.getTxnRef())
+                .amount(payment.getAmount())
+                .status(payment.getStatus())
+                .createdAt(payment.getCreatedAt())
+                .paidAt(payment.getPaidAt())
+                .tierName(payment.getTier().getName())  // Assuming SubscriptionTier has a 'name' field; adjust as needed
+                .build();
+                })
+                .toList();
+        return PagePaymentHistoryResponse.builder()
+                .content(paymentHistoryResponses)
+                .pageSize(paymentPage.getSize())
+                .pageNumber(paymentPage.getNumber())
+                .totalPages(paymentPage.getTotalPages())
+                .totalElements(paymentPage.getTotalElements())
+                .build();
     }
 
     //====================HELPER==================
@@ -195,7 +227,28 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    public boolean validateSignature(String rspRaw, String inputHash, String secretKey) {
+    private void addRequestData(PayLib pay, PaymentRequest request, HttpServletRequest servletRequest) {
+        String txnRef = request.getSubscriptionTierId() + "_" + System.currentTimeMillis();
+
+        pay.addRequestData("vnp_Version", vnpayConfig.getVersion() != null ? vnpayConfig.getVersion() : "2.1.0");
+        pay.addRequestData("vnp_Command", "pay");
+        pay.addRequestData("vnp_TmnCode", vnpayConfig.getTmnCode());
+        pay.addRequestData("vnp_Amount", String.valueOf(request.getAmount() * 100));
+        pay.addRequestData("vnp_BankCode", request.getBankCode() != null ? request.getBankCode() : "");
+        pay.addRequestData("vnp_CreateDate", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        pay.addRequestData("vnp_CurrCode", "VND");
+
+        // Use real client IP from headers (supports proxy, Cloudflare, Nginx, etc.)
+        pay.addRequestData("vnp_IpAddr", SecurityUtil.getClientIp(servletRequest));
+
+        pay.addRequestData("vnp_Locale", "vn");
+        pay.addRequestData("vnp_OrderInfo", request.getOrderDescription());
+        pay.addRequestData("vnp_OrderType", "billpayment");
+        pay.addRequestData("vnp_ReturnUrl", vnpayConfig.getReturnUrl());
+        pay.addRequestData("vnp_TxnRef", txnRef);
+    }
+
+    private boolean validateSignature(String rspRaw, String inputHash, String secretKey) {
         String myChecksum = PayLib.hmacSHA512(secretKey, rspRaw);
         return myChecksum.equalsIgnoreCase(inputHash);
     }
