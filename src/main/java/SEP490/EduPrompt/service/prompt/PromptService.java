@@ -50,4 +50,6 @@ public interface PromptService {
         String sharePrompt(UUID promptId, UserPrincipal currentUser);
 
         PromptShareResponse getSharedPrompt(UUID promptId, UUID token);
+
+        void revokeShare(UUID promptId, UserPrincipal currentUser);
 }

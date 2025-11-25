@@ -830,6 +830,21 @@ public class PromptServiceImpl implements PromptService {
                 .build();
     }
 
+    @Override
+    public void revokeShare(UUID promptId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        if (!permissionService.canAccessPrompt(prompt, currentUser)) {
+            throw new AccessDeniedException("You do not own this prompt");
+        }
+
+        prompt.setShareToken(null);
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+        promptRepository.save(prompt);
+    }
+
     // Helper method function
 
     private PromptVersionResponse toPromptVersionResponse(PromptVersion version) {
