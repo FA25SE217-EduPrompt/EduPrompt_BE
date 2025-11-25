@@ -224,25 +224,4 @@ public class PromptController {
         DetailPromptResponse response = promptService.rollbackToVersion(promptId, versionId, currentUser);
         return ResponseDto.success(response);
     }
-
-    @PostMapping("/{promptId}/share")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-    @Operation(summary = "Share a prompt and generate a share link")
-    public ResponseDto<String> sharePrompt(
-            @PathVariable UUID promptId,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
-        log.info("Sharing prompt {} by user: {}", promptId, currentUser.getUserId());
-        String shareLink = promptService.sharePrompt(promptId, currentUser);
-        return ResponseDto.success(shareLink);
-    }
-
-    @GetMapping("/shared/{promptId}")
-    @Operation(summary = "Get a shared prompt by ID and token (public access)")
-    public ResponseDto<PromptShareResponse> getSharedPrompt(
-            @PathVariable UUID promptId,
-            @RequestParam UUID token) {
-        log.info("Retrieving shared prompt with ID: {}", promptId);
-        PromptShareResponse response = promptService.getSharedPrompt(promptId, token);
-        return ResponseDto.success(response);
-    }
 }
