@@ -2,6 +2,7 @@ package SEP490.EduPrompt.service.prompt;
 
 import SEP490.EduPrompt.dto.request.prompt.PromptRatingCreateRequest;
 import SEP490.EduPrompt.dto.response.prompt.PromptRatingResponse;
+import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Prompt;
 import SEP490.EduPrompt.model.PromptRating;
@@ -11,11 +12,15 @@ import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.repo.PromptViewLogRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
+import SEP490.EduPrompt.service.permission.PermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -26,6 +31,7 @@ public class PromptRatingServiceImpl implements PromptRatingService {
     private final UserRepository userRepository;
     private final PromptRatingRepository promptRatingRepository;
     private final PromptViewLogRepository promptViewLogRepository;
+    private final PermissionService permissionService;
 
     @Override
     @Transactional
@@ -59,8 +65,8 @@ public class PromptRatingServiceImpl implements PromptRatingService {
     /**
      * Runs every day at 02:00 AM server time
      */
-     @Scheduled(cron = "0 0 2 * * ?")   // 02:00 AM daily
-//     @Scheduled(fixedRate = 5_000) // FOR TESTING: EVERY 5 SECOND
+    @Scheduled(cron = "0 0 2 * * ?")   // 02:00 AM daily
+    //@Scheduled(fixedRate = 5_000) // FOR TESTING: EVERY 5 SECOND
     @Transactional
     public void recalculateAllAverageRatings() {
          log.info("Starting daily average rating recalculation job...");
