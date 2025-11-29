@@ -7,6 +7,4 @@ import SEP490.EduPrompt.service.auth.UserPrincipal;
 public interface PromptRatingService {
 
     PromptRatingResponse createPromptRating(PromptRatingCreateRequest request, UserPrincipal userPrincipal);
-
-
 }

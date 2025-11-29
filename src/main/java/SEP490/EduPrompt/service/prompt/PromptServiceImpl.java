@@ -9,14 +9,15 @@ import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.client.QuotaExceededException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
-import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.model.*;
+import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -44,6 +45,9 @@ public class PromptServiceImpl implements PromptService {
     private final UserRepository userRepository;
     private final PermissionService permissionService;
     private final PromptVersionRepository promptVersionRepository;
+
+    @Value("${share_url}")
+    private String shareUrl;
 
     // ======================================================================//
     // ==========================CREATE PROMPT===============================//
@@ -354,7 +358,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable,
-            UUID collectionId) {
+                                                            UUID collectionId) {
         if (collectionId == null) {
             throw new InvalidInputException("Collection ID must not be null");
         }
@@ -369,8 +373,8 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional(readOnly = true)
     public PaginatedPromptResponse filterPrompts(PromptFilterRequest request,
-            UserPrincipal currentUser,
-            Pageable pageable) {
+                                                 UserPrincipal currentUser,
+                                                 Pageable pageable) {
 
         // VALIDATION – runs BEFORE any DB call
         validateFilterRequest(request, currentUser);
@@ -419,7 +423,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
-            UserPrincipal currentUser) {
+                                                     UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found!!"));
@@ -494,7 +498,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
-            UserPrincipal currentUser) {
+                                                       UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
@@ -678,10 +682,12 @@ public class PromptServiceImpl implements PromptService {
         return toResponse(viewLog);
     }
 
+    // ======================================================================//
+    // ==========================PROMPT VERSIONING===========================//
     @Override
     @Transactional
     public PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
-            UserPrincipal currentUser) {
+                                                     UserPrincipal currentUser) {
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
 
@@ -778,6 +784,73 @@ public class PromptServiceImpl implements PromptService {
         return buildPromptResponse(updatedPrompt);
     }
 
+    // ======================================================================//
+    // ============================PROMPT SHARING============================//
+    @Override
+    public String sharePrompt(UUID promptId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        // Ownership check
+        if (!prompt.getUserId().equals(currentUser.getUserId())) {
+            throw new AccessDeniedException("You do not own this prompt");
+        }
+
+        // Generate token if none exists
+        if (prompt.getShareToken() == null) {
+            prompt.setShareToken(UUID.randomUUID());
+            prompt.setUpdatedAt(Instant.now());
+            prompt.setUpdatedBy(currentUser.getUserId());
+            promptRepository.save(prompt);
+        }
+
+        // Generate shareable link
+        String finalUrl = shareUrl + prompt.getId() + "?token=" + prompt.getShareToken();
+        return finalUrl;
+    }
+
+    @Override
+    public PromptShareResponse getSharedPrompt(UUID promptId, UUID token) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        if (prompt.getIsDeleted()) {
+            throw new ResourceNotFoundException("Prompt not found");
+        }
+
+        if (token == null || !token.equals(prompt.getShareToken())) {
+            throw new AccessDeniedException("Access denied");
+        }
+        return PromptShareResponse.builder()
+                .id(prompt.getId())
+                .title(prompt.getTitle())
+                .description(prompt.getDescription())
+                .instruction(prompt.getInstruction())
+                .context(prompt.getContext())
+                .inputExample(prompt.getInputExample())
+                .outputFormat(prompt.getOutputFormat())
+                .constraints(prompt.getConstraints())
+                .shareToken(prompt.getShareToken())
+                .build();
+    }
+
+    @Override
+    public void revokeShare(UUID promptId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        if (!permissionService.canAccessPrompt(prompt, currentUser)) {
+            throw new AccessDeniedException("You do not own this prompt");
+        }
+
+        prompt.setShareToken(null);
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+        promptRepository.save(prompt);
+    }
+
+    // Helper method function
+
     private PromptVersionResponse toPromptVersionResponse(PromptVersion version) {
         return PromptVersionResponse.builder()
                 .id(version.getId())
@@ -802,8 +875,6 @@ public class PromptServiceImpl implements PromptService {
                 .createdAt(log.getCreatedAt())
                 .build();
     }
-
-    // Helper method function
 
     private PaginatedPromptResponse mapToPaginatedResponse(Page<Prompt> promptPage, UserPrincipal currentUser) {
         List<PromptResponse> promptResponses = promptPage.getContent().stream()
@@ -999,7 +1070,7 @@ public class PromptServiceImpl implements PromptService {
     private Predicate buildTagPredicate(Root<Prompt> root,
                                         CriteriaQuery<?> query,
                                         CriteriaBuilder cb,
-                                        String field,
+                                        String field, // "type" or "value"
                                         List<String> values) {
 
         Subquery<UUID> subquery = query.subquery(UUID.class);

@@ -105,4 +105,6 @@ public class Prompt {
     @Column(name = "indexing_status", length = 50)
     private String indexingStatus;
 
+    @Column(name = "share_token")
+    private UUID shareToken;
 }

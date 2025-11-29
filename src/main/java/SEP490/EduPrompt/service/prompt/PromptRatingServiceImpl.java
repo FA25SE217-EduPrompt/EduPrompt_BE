@@ -11,6 +11,7 @@ import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.repo.PromptViewLogRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
+import SEP490.EduPrompt.service.permission.PermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,6 +27,7 @@ public class PromptRatingServiceImpl implements PromptRatingService {
     private final UserRepository userRepository;
     private final PromptRatingRepository promptRatingRepository;
     private final PromptViewLogRepository promptViewLogRepository;
+    private final PermissionService permissionService;
 
     @Override
     @Transactional
@@ -46,8 +48,7 @@ public class PromptRatingServiceImpl implements PromptRatingService {
                     .rating(request.rating())
                     .build();
             promptRatingRepository.save(rating);
-        }
-        else {
+        } else {
             rating.setRating(request.rating());
             promptRatingRepository.save(rating);
         }
@@ -59,22 +60,22 @@ public class PromptRatingServiceImpl implements PromptRatingService {
     /**
      * Runs every day at 02:00 AM server time
      */
-     @Scheduled(cron = "0 0 2 * * ?")   // 02:00 AM daily
-//     @Scheduled(fixedRate = 5_000) // FOR TESTING: EVERY 5 SECOND
+    @Scheduled(cron = "0 0 2 * * ?")   // 02:00 AM daily
+    //@Scheduled(fixedRate = 5_000) // FOR TESTING: EVERY 5 SECOND
     @Transactional
     public void recalculateAllAverageRatings() {
-         log.info("Starting daily average rating recalculation job...");
+        log.info("Starting daily average rating recalculation job...");
 
-         // single bulk update , avoid n+1 query issue
-         int updated = promptRatingRepository.bulkUpdateAverageRatings();
+        // single bulk update , avoid n+1 query issue
+        int updated = promptRatingRepository.bulkUpdateAverageRatings();
 
-         // clean up prompts that have no ratings
-         int cleared = promptRatingRepository.clearAvgRatingForUnratedPrompts();
+        // clean up prompts that have no ratings
+        int cleared = promptRatingRepository.clearAvgRatingForUnratedPrompts();
 
-         log.info("""
-                 Daily average rating job completed
-                  • Prompts with updated avg_rating : {}
-                  • Prompts cleared (no ratings)   : {}
-                 """, updated, cleared);
+        log.info("""
+                Daily average rating job completed
+                 • Prompts with updated avg_rating : {}
+                 • Prompts cleared (no ratings)   : {}
+                """, updated, cleared);
     }
 }

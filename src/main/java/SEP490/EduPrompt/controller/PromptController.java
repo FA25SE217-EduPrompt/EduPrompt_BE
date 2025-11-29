@@ -2,11 +2,7 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.ResponseDto;
-import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
-import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
-import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
-import SEP490.EduPrompt.dto.response.prompt.PromptVersionResponse;
-import SEP490.EduPrompt.dto.response.prompt.PromptViewLogResponse;
+import SEP490.EduPrompt.dto.response.prompt.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.prompt.PromptService;
 import io.swagger.v3.oas.annotations.Operation;
