@@ -1006,10 +1006,12 @@ public class PromptServiceImpl implements PromptService {
             List<Predicate> baseAnd = new ArrayList<>();
             List<Predicate> searchOr = new ArrayList<>();
 
-            // --- Eager fetch + distinct ---
-            root.fetch("user", JoinType.LEFT);
-            root.fetch("collection", JoinType.LEFT);
-            query.distinct(true);
+            // --- Eager fetch (only if NOT a count query) ---
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                root.fetch("user", JoinType.LEFT);
+                root.fetch("collection", JoinType.LEFT);
+                query.distinct(true);
+            }
 
             // === BASE FILTERS (ALWAYS APPLIED) ===
             // Visibility: PUBLIC/SCHOOL/GROUP + PRIVATE (if owner)
@@ -1031,8 +1033,7 @@ public class PromptServiceImpl implements PromptService {
             }
             if (nonBlank(req.title())) {
                 String pattern = "%" + req.title().toLowerCase() + "%";
-                searchOr.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), pattern)));
+                searchOr.add(cb.like(cb.lower(root.get("title")), pattern));
             }
             if (nonBlank(req.collectionName())) {
                 searchOr.add(cb.like(
@@ -1058,11 +1059,9 @@ public class PromptServiceImpl implements PromptService {
 
             // === COMBINE ===
             if (!searchOr.isEmpty()) {
-                // (base) AND (search filters OR'd)
                 baseAnd.add(cb.or(searchOr.toArray(Predicate[]::new)));
                 return cb.and(baseAnd.toArray(Predicate[]::new));
             } else {
-                // No search → just base filters
                 return cb.and(baseAnd.toArray(Predicate[]::new));
             }
         };
