@@ -14,6 +14,6 @@ public record PromptShareResponse (
         String inputExample,
         String outputFormat,
         String constraints,
-        UUID shareToke
+        UUID shareToken
 ){
 }

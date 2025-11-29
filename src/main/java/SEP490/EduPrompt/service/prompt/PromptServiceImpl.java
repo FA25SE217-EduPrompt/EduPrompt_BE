@@ -17,6 +17,7 @@ import SEP490.EduPrompt.service.permission.PermissionService;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -44,6 +45,9 @@ public class PromptServiceImpl implements PromptService {
     private final UserRepository userRepository;
     private final PermissionService permissionService;
     private final PromptVersionRepository promptVersionRepository;
+
+    @Value("${share_url}")
+    private String shareUrl;
 
     // ======================================================================//
     // ==========================CREATE PROMPT===============================//
@@ -801,8 +805,8 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Generate shareable link
-        String baseUrl = "https://eduprompt-prod.vercel.app/prompts/shared/";
-        return baseUrl + prompt.getId() + "?token=" + prompt.getShareToken();
+        String finalUrl = shareUrl + prompt.getId() + "?token=" + prompt.getShareToken();
+        return finalUrl;
     }
 
     @Override
@@ -826,7 +830,7 @@ public class PromptServiceImpl implements PromptService {
                 .inputExample(prompt.getInputExample())
                 .outputFormat(prompt.getOutputFormat())
                 .constraints(prompt.getConstraints())
-                .shareToke(prompt.getShareToken())
+                .shareToken(prompt.getShareToken())
                 .build();
     }
 

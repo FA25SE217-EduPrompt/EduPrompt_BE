@@ -104,6 +104,9 @@ gemini:
   api-key: ${GEMINI_API_KEY}
   file-search-store: "fileSearchStores/somethin-ewzxgazaxwbo"
 
+#share url for sharing prompt
+share_url: ${SHARE_URL}
+
 ## Postmark Configuration
 #postmark:
 #  api-token: ${POSTMARK_API_KEY}
