@@ -1,11 +1,11 @@
 CREATE TABLE payments (
     id UUID PRIMARY KEY,      -- UUID v4
 
-    txn_ref VARCHAR(255) NOT NULL UNIQUE,               -- vnp_TxnRef (VNPAY yêu cầu duy nhất)
+    txn_ref VARCHAR(255) NOT NULL UNIQUE,
     user_id UUID NOT NULL,
     tier_id UUID NOT NULL,
 
-    amount BIGINT NOT NULL CHECK (amount >= 0),         -- đơn vị VND (ví dụ: 99000)
+    amount BIGINT NOT NULL CHECK (amount >= 0),
     order_info VARCHAR(255),
 
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING'
@@ -18,12 +18,10 @@ CREATE TABLE payments (
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     paid_at TIMESTAMP WITHOUT TIME ZONE,
 
-    -- Ràng buộc khóa ngoại (nếu cần – tùy bạn có muốn cascade không)
     CONSTRAINT fk_payment_user    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_payment_tier    FOREIGN KEY (tier_id) REFERENCES subscription_tiers(id) ON DELETE RESTRICT
 );
 
--- Index cực kỳ quan trọng cho tốc độ webhook
 CREATE INDEX idx_payments_txn_ref ON payments(txn_ref);
 CREATE INDEX idx_payments_user_id ON payments(user_id);
 CREATE INDEX idx_payments_status ON payments(status);
