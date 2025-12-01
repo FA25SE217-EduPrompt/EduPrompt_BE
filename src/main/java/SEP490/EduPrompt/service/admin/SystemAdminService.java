@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.service.admin;
 
+import SEP490.EduPrompt.dto.response.auditLog.PageAuditLogResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
 import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
@@ -15,4 +16,5 @@ public interface SystemAdminService {
     PageGroupResponse listAllGroup(UserPrincipal currentUser, Pageable pageable);
     PageTagResponse listAllTag(UserPrincipal currentUser, Pageable pageable);
     PagePromptAllResponse listAllPrompt(UserPrincipal currentUser, Pageable pageable);
+    PageAuditLogResponse listAllAuditLogs(UserPrincipal currentUser, Pageable pageable);
 }

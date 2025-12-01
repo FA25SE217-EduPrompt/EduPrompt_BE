@@ -1,5 +1,7 @@
 package SEP490.EduPrompt.service.admin;
 
+import SEP490.EduPrompt.dto.response.auditLog.AuditLogResponse;
+import SEP490.EduPrompt.dto.response.auditLog.PageAuditLogResponse;
 import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.group.GroupResponse;
@@ -36,6 +38,8 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private final CollectionTagRepository collectionTagRepository;
     private final PermissionService permissionService;
     private final TagRepository tagRepository;
+    private final AuditLogRepository auditLogRepository;
+
     @Override
     public PageUserResponse listAllUser(UserPrincipal currentUser, Pageable pageable) {
         if (!permissionService.isSystemAdmin(currentUser)) {
@@ -186,6 +190,32 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                         .build())
                 .toList();
         return PagePromptAllResponse.builder()
+                .content(content)
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .build();
+    }
+
+    @Override
+    public PageAuditLogResponse listAllAuditLogs(UserPrincipal currentUser, Pageable pageable) {
+        if (!permissionService.isSystemAdmin(currentUser)) {
+            throw new AccessDeniedException("You do not have permission to do this!!");
+        }
+
+        Page<AuditLog> page = auditLogRepository.findAll(pageable);
+
+        List<AuditLogResponse> content = page.getContent().stream()
+                .map(log -> AuditLogResponse.builder()
+                        .id(log.getId())
+                        .userId(log.getUser() != null ? log.getUser().getId() : null)
+                        .actionLog(log.getActionLog())
+                        .createdAt(log.getCreatedAt())
+                        .build())
+                .toList();
+
+        return PageAuditLogResponse.builder()
                 .content(content)
                 .totalElements(page.getTotalElements())
                 .totalPages(page.getTotalPages())
