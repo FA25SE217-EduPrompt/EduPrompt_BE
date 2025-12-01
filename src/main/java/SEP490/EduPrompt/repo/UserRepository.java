@@ -20,4 +20,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long countBySchoolIdAndRole(UUID schoolId, String role);
 
     Page<User> findBySchoolIdAndRole(UUID schoolId, String role, Pageable pageable);
+
+    Page<User> findAll(Pageable pageable);
 }
