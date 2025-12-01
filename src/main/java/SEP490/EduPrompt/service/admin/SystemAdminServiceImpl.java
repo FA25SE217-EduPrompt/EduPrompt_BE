@@ -151,7 +151,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     }
 
     @Override
-    public PagePromptAllResponse listALlPrompt(UserPrincipal currentUser, Pageable pageable) {
+    public PagePromptAllResponse listAllPrompt(UserPrincipal currentUser, Pageable pageable) {
         if (!permissionService.isSystemAdmin(currentUser)) {
             throw new AccessDeniedException("You do not have permission do this!!");
         }

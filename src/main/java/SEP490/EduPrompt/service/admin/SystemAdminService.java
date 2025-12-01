@@ -14,5 +14,5 @@ public interface SystemAdminService {
     PageCollectionResponse listAllCollection(UserPrincipal currentUser, Pageable pageable);
     PageGroupResponse listAllGroup(UserPrincipal currentUser, Pageable pageable);
     PageTagResponse listAllTag(UserPrincipal currentUser, Pageable pageable);
-    PagePromptAllResponse listALlPrompt(UserPrincipal currentUser, Pageable pageable);
+    PagePromptAllResponse listAllPrompt(UserPrincipal currentUser, Pageable pageable);
 }
