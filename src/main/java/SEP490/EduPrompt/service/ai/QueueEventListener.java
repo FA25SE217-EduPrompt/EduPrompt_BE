@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class QueueEventListener {
 
-    private static final int AI_CALL_TIMEOUT_SECONDS = 30;
+    private static final int AI_CALL_TIMEOUT_SECONDS = 60;
 
     private final OptimizationQueueRepository queueRepository;
     private final PromptUsageRepository usageRepository;
