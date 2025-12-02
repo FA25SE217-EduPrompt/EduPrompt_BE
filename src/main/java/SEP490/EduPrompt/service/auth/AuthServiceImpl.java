@@ -566,6 +566,7 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Return personal info for user : {}", user.getEmail());
         return PersonalInfoResponse.builder()
+                .id(user.getId())
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())

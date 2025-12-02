@@ -3,8 +3,10 @@ package SEP490.EduPrompt.controller;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.quota.UserQuotaResponse;
 import SEP490.EduPrompt.service.ai.QuotaService;
+import SEP490.EduPrompt.service.auth.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,6 +25,14 @@ public class QuotaController {
     @GetMapping("/user/{userId}")
     public ResponseDto<UserQuotaResponse> getUserQuota(@PathVariable UUID userId) {
         UserQuotaResponse result = quotaService.getUserQuota(userId);
+        return ResponseDto.success(result);
+    }
+
+    @GetMapping("/my-quota")
+    public ResponseDto<UserQuotaResponse> getMyQuota(
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        UserQuotaResponse result = quotaService.getUserQuota(currentUser.getUserId());
         return ResponseDto.success(result);
     }
 
