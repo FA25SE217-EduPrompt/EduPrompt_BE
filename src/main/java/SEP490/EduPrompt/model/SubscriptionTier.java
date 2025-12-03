@@ -80,6 +80,10 @@ public class SubscriptionTier {
     @Column(name = "collection_action_limit", nullable = false)
     private Integer collectionActionLimit;
 
+    @ColumnDefault("0")
+    @Column(name = "points_limit")
+    private Long pointsLimit;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();

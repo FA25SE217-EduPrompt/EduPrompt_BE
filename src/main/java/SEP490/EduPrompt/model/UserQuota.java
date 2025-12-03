@@ -110,6 +110,10 @@ public class UserQuota {
     @Column(name = "collection_action_limit", nullable = false)
     private Integer collectionActionLimit;
 
+    @ColumnDefault("0")
+    @Column(name = "points_remaining")
+    private Long pointsRemaining;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
