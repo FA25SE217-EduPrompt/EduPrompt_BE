@@ -107,4 +107,9 @@ public class Prompt {
 
     @Column(name = "share_token")
     private UUID shareToken;
+
+    @ColumnDefault("false")
+    @Column(name = "is_trade")
+    private Boolean isTrade;
+
 }
