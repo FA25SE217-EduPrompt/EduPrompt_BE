@@ -56,6 +56,8 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
     //
     Page<Prompt> findByVisibilityAndIsDeletedFalse(String visibility, Pageable pageable);
 
+    Page<Prompt> findByIsTradeTrue(Pageable pageable);
+
     // Group visibility: Only fetch for collections where user is a group member
     @Query("SELECT p FROM Prompt p JOIN p.collection c JOIN GroupMember gm ON c.group.id = gm.group.id " +
             "WHERE p.visibility = 'GROUP' AND p.isDeleted = false AND gm.user.id = :userId AND gm.status = 'active'")
