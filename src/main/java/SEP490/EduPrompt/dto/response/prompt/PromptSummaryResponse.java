@@ -10,11 +10,7 @@ public record PromptSummaryResponse(
         UUID id,
         String title,
         String description,
-        UUID createdBy,
-        Instant createdAt,
-        String visibility,
-        List<Tag> tags,
-        UUID collectionId,
-        String ownerName
+        String ownerName,
+        Double avgRating
 ) {
 }
