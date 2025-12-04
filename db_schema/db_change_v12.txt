@@ -4,6 +4,9 @@ ALTER TABLE subscription_tiers
 ALTER TABLE user_quota
     ADD COLUMN points_remaining BIGINT DEFAULT 0;
 
+ALTER TABLE prompts
+    ADD COLUMN is_trade BOOLEAN DEFAULT FALSE;
+
 CREATE TABLE point_transactions (
                                     id UUID PRIMARY KEY,
                                     sender_id UUID NOT NULL REFERENCES users(id),
