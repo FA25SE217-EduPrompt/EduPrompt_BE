@@ -1,0 +1,40 @@
+-- ------------------------------------------------------------
+-- Seed the new limit columns for the existing tiers
+-- ------------------------------------------------------------
+
+-- Free tier – very limited actions
+UPDATE subscription_tiers
+SET
+    points_limit = 10
+WHERE name = 'Free';
+
+-- Pro tier – generous but still capped
+UPDATE subscription_tiers
+SET
+    points_limit = 50
+WHERE name = 'Pro';
+
+-- Premium tier – essentially unlimited for most use-cases
+UPDATE subscription_tiers
+SET
+    points_limit = 1_000
+WHERE name = 'Premium';
+
+-- ------------------------------------------------------------
+-- Seed ONLY the new limit/remaining fields in user_quota
+-- ------------------------------------------------------------
+
+WITH tier_limits AS (
+    SELECT
+        id AS tier_id,
+        points_limit
+    FROM subscription_tiers
+    WHERE name IN ('Free', 'Pro', 'Premium')
+)
+
+UPDATE user_quota uq
+SET
+    points_remaining      = tl.points_limit,
+    updated_at = NOW()
+FROM tier_limits tl
+WHERE uq.subscription_tier_id = tl.tier_id
