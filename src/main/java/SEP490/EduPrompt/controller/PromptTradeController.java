@@ -45,4 +45,14 @@ public class PromptTradeController {
         TradePointResponse response = promptTradeService.tradePrompt(promptId, currentUser);
         return ResponseDto.success(response);
     }
+
+    @PutMapping("/tradeable/{promptId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<String> makePromptTradeable(
+            @PathVariable UUID promptId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Making prompt {} tradeable by user: {}", promptId, currentUser.getUserId());
+        promptTradeService.makePromptTradeable(promptId, currentUser);
+        return ResponseDto.success("Prompt is now tradable");
+    }
 }
