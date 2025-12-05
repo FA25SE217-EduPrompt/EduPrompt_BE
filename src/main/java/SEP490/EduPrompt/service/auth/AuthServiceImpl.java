@@ -205,6 +205,7 @@ public class AuthServiceImpl implements AuthService {
                 userQuota.setPromptActionRemaining(2000);
                 userQuota.setCollectionActionLimit(200);
                 userQuota.setCollectionActionRemaining(200);
+                userQuota.setPointsRemaining(50L);
                 userQuota.setUpdatedAt(Instant.now());
             } else {
                 // Fallback to free if no active school subscription
@@ -526,6 +527,7 @@ public class AuthServiceImpl implements AuthService {
                     userQuota.setPromptActionRemaining(2000);
                     userQuota.setCollectionActionLimit(200);
                     userQuota.setCollectionActionRemaining(200);
+                    userQuota.setPointsRemaining(50L);
                     userQuota.setUpdatedAt(Instant.now());
                 } else {
                     // Fallback to free if no active school subscription
@@ -610,6 +612,7 @@ public class AuthServiceImpl implements AuthService {
             userQuota.setPromptActionRemaining(subscriptionTier.getPromptActionLimit());
             userQuota.setCollectionActionLimit(subscriptionTier.getCollectionActionLimit());
             userQuota.setCollectionActionRemaining(subscriptionTier.getCollectionActionLimit());
+            userQuota.setPointsRemaining(userQuota.getPointsRemaining());
             userQuota.setUpdatedAt(Instant.now());
         } else throw new ResourceNotFoundException("No free tier found");
     }

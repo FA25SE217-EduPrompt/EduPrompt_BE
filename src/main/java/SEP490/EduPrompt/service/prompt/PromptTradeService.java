@@ -12,4 +12,6 @@ public interface PromptTradeService {
     PagePromptResponse getTradeablePrompts(Pageable pageable);
 
     TradePointResponse tradePrompt(UUID promptId, UserPrincipal buyer);
+
+    void makePromptTradeable(UUID promptId, UserPrincipal seller);
 }

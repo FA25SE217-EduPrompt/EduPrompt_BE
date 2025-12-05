@@ -15,6 +15,7 @@ import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.repo.UserQuotaRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
+import SEP490.EduPrompt.service.permission.PermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,12 +34,10 @@ public class PromptTradeServiceImpl implements PromptTradeService {
 
 
     private final PromptRepository promptRepository;
-
     private final UserRepository userRepository;
-
     private final PointTransactionRepository pointTransactionRepository;
-
     private final UserQuotaRepository userQuotaRepository;
+    private final PermissionService  permissionService;
 
     @Override
     public PagePromptResponse getTradeablePrompts(Pageable pageable) {
@@ -113,6 +112,24 @@ public class PromptTradeServiceImpl implements PromptTradeService {
                 .message("Trade completed successfully")
                 .promptId(promptId)
                 .build();
+    }
+
+    @Override
+    public void makePromptTradeable(UUID promptId, UserPrincipal seller) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        User owner = prompt.getUser();
+        if (!permissionService.canEditPrompt(seller, prompt)) {
+            throw new InvalidActionException("You must be the owner to make this prompt tradeable");
+        }
+
+        if (prompt.getIsTrade()) {
+            throw new InvalidActionException("Prompt is already tradeable");
+        }
+
+        prompt.setIsTrade(true);
+        promptRepository.save(prompt);
     }
 
     //HELPER
