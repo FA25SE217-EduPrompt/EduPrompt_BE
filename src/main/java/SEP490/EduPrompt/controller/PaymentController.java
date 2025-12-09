@@ -66,11 +66,11 @@ public class PaymentController {
 
     @GetMapping("/my-payment")
     @PreAuthorize("hasAnyRole('TEACHER', 'SYSTEM_ADMIN')")
-    public ResponseDto<PagePaymentHistoryResponse> getMyPrompts(
+    public ResponseDto<PagePaymentHistoryResponse> getMyPayments(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        log.info("Retrieving private prompts for user: {}", currentUser.getUserId());
+        log.info("Retrieving payment history for user: {}", currentUser.getUserId());
         Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(paymentService.getPaymentHistory(currentUser, pageable));
     }
