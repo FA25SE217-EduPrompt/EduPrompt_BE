@@ -30,6 +30,9 @@ public class Collection {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private UUID userId;
+
     @Column(name = "name", nullable = false, length = Integer.MAX_VALUE)
     private String name;
 
@@ -70,6 +73,9 @@ public class Collection {
     @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "group_id")
     private Group group;
+
+    @Column(name = "group_id", insertable = false, updatable = false)
+    private UUID groupId;
 
     @OneToMany(mappedBy = "collection", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<CollectionTag> collectionTags = new LinkedHashSet<>();

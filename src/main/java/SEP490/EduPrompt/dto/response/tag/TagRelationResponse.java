@@ -9,4 +9,5 @@ import java.util.UUID;
 public record TagRelationResponse(
         UUID tagId,
         Instant createdAt
-) {}
+) {
+}

@@ -2,6 +2,7 @@ package SEP490.EduPrompt.service.ai;
 
 import SEP490.EduPrompt.dto.response.quota.UserQuotaResponse;
 import SEP490.EduPrompt.enums.QuotaType;
+import SEP490.EduPrompt.model.User;
 
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ public interface QuotaService {
     void resetExpiredQuotas();
 
     void syncUserQuotaWithSubscriptionTier(UUID userId);
+
+    void syncUserQuotaWithSubscriptionTier(User user);
 
     void refundQuota(UUID userId, QuotaType quotaType, int tokens); // refund tokens + action count
 

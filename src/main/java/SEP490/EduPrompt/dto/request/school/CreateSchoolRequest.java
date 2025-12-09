@@ -21,4 +21,5 @@ public record CreateSchoolRequest(
         @NotBlank(message = "Province must not null")
         @Size(max = 200, message = "Province maximum 200 letter")
         String province
-) {}
+) {
+}

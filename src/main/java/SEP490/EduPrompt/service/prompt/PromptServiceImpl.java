@@ -10,16 +10,14 @@ import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.client.QuotaExceededException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.*;
+import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Subquery;
-import kotlin.jvm.Throws;
+import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -27,12 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
-
 
 @Service
 @Slf4j
@@ -40,7 +34,7 @@ import java.util.stream.Collectors;
 public class PromptServiceImpl implements PromptService {
 
     private final PromptRepository promptRepository;
-    private final PromptViewLogRepository  promptViewLogRepository;
+    private final PromptViewLogRepository promptViewLogRepository;
     private final CollectionRepository collectionRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final UserQuotaRepository userQuotaRepository;
@@ -50,9 +44,13 @@ public class PromptServiceImpl implements PromptService {
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
     private final PermissionService permissionService;
+    private final PromptVersionRepository promptVersionRepository;
 
-    //======================================================================//
-    //==========================CREATE PROMPT===============================//
+    @Value("${share_url}")
+    private String shareUrl;
+
+    // ======================================================================//
+    // ==========================CREATE PROMPT===============================//
     @Override
     @Transactional
     public DetailPromptResponse createStandalonePrompt(CreatePromptRequest dto, UserPrincipal currentUser) {
@@ -61,11 +59,10 @@ public class PromptServiceImpl implements PromptService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
-        UserQuota userQuota = null;
-        if(userQuotaOptional.isPresent()){
+        UserQuota userQuota;
+        if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
-        }
-        else {
+        } else {
             throw new ResourceNotFoundException("User not register a subscription yet");
         }
         // Permission check
@@ -74,7 +71,8 @@ public class PromptServiceImpl implements PromptService {
         }
 
         if (userQuota.getPromptActionRemaining() <= 0) {
-            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptActionRemaining());
+            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(),
+                    userQuota.getPromptActionRemaining());
         }
 
         String promptVisibility = Visibility.parseVisibility(dto.getVisibility()).name();
@@ -92,10 +90,11 @@ public class PromptServiceImpl implements PromptService {
         // Validate tags
         // Check if the tag id exist in the DB
         /*
-           If the user includes tag IDs in the request, fetch those tags from the database.
-           If any of the tag IDs don’t exist, stop and throw an error —
-           don’t allow the prompt to be created with invalid tags
-        */
+         * If the user includes tag IDs in the request, fetch those tags from the
+         * database.
+         * If any of the tag IDs don’t exist, stop and throw an error —
+         * don’t allow the prompt to be created with invalid tags
+         */
         List<Tag> tags = new ArrayList<>();
         if (dto.getTagIds() != null && !dto.getTagIds().isEmpty()) {
             tags = tagRepository.findAllById(dto.getTagIds());
@@ -154,11 +153,10 @@ public class PromptServiceImpl implements PromptService {
         User user = userRepository.getReferenceById(currentUser.getUserId());
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
-        UserQuota userQuota = null;
-        if(userQuotaOptional.isPresent()){
+        UserQuota userQuota;
+        if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
-        }
-        else {
+        } else {
             throw new ResourceNotFoundException("User Subscription was not available");
         }
 
@@ -168,7 +166,8 @@ public class PromptServiceImpl implements PromptService {
         }
 
         if (userQuota.getPromptActionRemaining() <= 0) {
-            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptActionRemaining());
+            throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(),
+                    userQuota.getPromptActionRemaining());
         }
 
         // Validate and default visibility
@@ -183,7 +182,8 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Validate visibility rules
-        // Collection Visibility is the highest priority (Prompt must follow collection Visibility)
+        // Collection Visibility is the highest priority (Prompt must follow collection
+        // Visibility)
         permissionService.validateCollectionVisibility(collection, promptVisibility);
 
         // GROUP visibility → check group membership
@@ -260,8 +260,8 @@ public class PromptServiceImpl implements PromptService {
         return buildPromptResponse(savedPrompt);
     }
 
-    //======================================================================//
-    //============================GET PROMPT================================//
+    // ======================================================================//
+    // ============================GET PROMPT================================//
     @Override
     @Transactional(readOnly = true)
     public PaginatedDetailPromptResponse getMyPrompts(UserPrincipal currentUser, Pageable pageable) {
@@ -321,7 +321,8 @@ public class PromptServiceImpl implements PromptService {
     public PaginatedPromptResponse getNonPrivatePrompts(UserPrincipal currentUser, Pageable pageable) {
         Specification<Prompt> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(root.get("visibility").in(Visibility.PUBLIC.name(), Visibility.SCHOOL.name(), Visibility.GROUP.name()));
+            predicates.add(root.get("visibility").in(Visibility.PUBLIC.name(), Visibility.SCHOOL.name(),
+                    Visibility.GROUP.name()));
             predicates.add(cb.equal(root.get("isDeleted"), false));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -356,7 +357,8 @@ public class PromptServiceImpl implements PromptService {
 
     @Override
     @Transactional
-    public PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable, UUID collectionId) {
+    public PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable,
+                                                            UUID collectionId) {
         if (collectionId == null) {
             throw new InvalidInputException("Collection ID must not be null");
         }
@@ -369,147 +371,27 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional
-    public PaginatedPromptResponse filterPrompts(PromptFilterRequest request, UserPrincipal currentUser, Pageable pageable) {
-// Validate inputs
-        if (request.includeDeleted() != null && request.includeDeleted() && !permissionService.isSystemAdmin(currentUser)) {
-            throw new AccessDeniedException("Only SYSTEM_ADMIN can include deleted prompts");
-        }
-        if (request.collectionName() != null && request.collectionName().length() > 1 && !collectionRepository.existsByNameIgnoreCase(request.collectionName())) {
-            throw new ResourceNotFoundException("Collection not found with name: " + request.collectionName());
-        }
-        if (request.tagTypes() != null && !request.tagTypes().isEmpty()) {
-            boolean allSingleLetter = request.tagTypes().stream().allMatch(s -> s.length() == 1);
-            if (!allSingleLetter) {
-                List<String> foundTagTypes = tagRepository.findAllByTypeIn(request.tagTypes()).stream()
-                        .map(Tag::getType)
-                        .distinct()
-                        .toList();
-                if (foundTagTypes.size() != request.tagTypes().size()) {
-                    throw new ResourceNotFoundException("One or more tag types not found");
-                }
-            }
-        }
-        if (request.tagValues() != null && !request.tagValues().isEmpty()) {
-            boolean allSingleLetter = request.tagValues().stream().allMatch(s -> s.length() == 1);
-            if (!allSingleLetter) {
-                List<String> foundTagValues = tagRepository.findAllByValueIn(request.tagValues()).stream()
-                        .map(Tag::getValue)
-                        .distinct()
-                        .toList();
-                if (foundTagValues.size() != request.tagValues().size()) {
-                    throw new ResourceNotFoundException("One or more tag values not found");
-                }
-            }
-        }
-        if (request.schoolName() != null && request.schoolName().length() > 1 && !schoolRepository.existsByNameIgnoreCase(request.schoolName())) {
-            throw new ResourceNotFoundException("School not found with name: " + request.schoolName());
-        }
-        if (request.groupName() != null && request.groupName().length() > 1 && !groupRepository.existsByNameIgnoreCase(request.groupName())) {
-            throw new ResourceNotFoundException("Group not found with name: " + request.groupName());
-        }
-// Build Specification
-        Specification<Prompt> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
+    @Transactional(readOnly = true)
+    public PaginatedPromptResponse filterPrompts(PromptFilterRequest request,
+                                                 UserPrincipal currentUser,
+                                                 Pageable pageable) {
 
-            // Ensure related entities are fetched to avoid lazy loading
-            root.fetch("user");
-            root.fetch("collection", jakarta.persistence.criteria.JoinType.LEFT);
+        // VALIDATION – runs BEFORE any DB call
+        validateFilterRequest(request, currentUser);
 
-            // OR group for all filter fields
-            List<Predicate> orPredicates = new ArrayList<>();
+        // BUILD SPECIFICATION – pure OR logic
+        Specification<Prompt> spec = buildCorrectSpecification(request, currentUser);
 
-            // Filter by createdBy
-            if (request.createdBy() != null) {
-                orPredicates.add(cb.equal(root.get("createdBy"), request.createdBy()));
-            }
-
-            // Filter by collectionName
-            if (request.collectionName() != null) {
-                String searchPattern = "%" + request.collectionName().toLowerCase() + "%";
-                orPredicates.add(cb.like(cb.lower(root.get("collection").get("name")), searchPattern));
-            }
-
-            // Filter by tagTypes
-            if (request.tagTypes() != null && !request.tagTypes().isEmpty()) {
-                assert query != null;
-                Subquery<UUID> subquery = query.subquery(UUID.class);
-                jakarta.persistence.criteria.Root<PromptTag> promptTagRoot = subquery.from(PromptTag.class);
-                if (request.tagTypes().stream().allMatch(s -> s.length() == 1)) {
-                    String searchPattern = "%" + request.tagTypes().getFirst().toLowerCase() + "%";
-                    subquery.select(promptTagRoot.get("prompt").get("id"))
-                            .where(cb.like(cb.lower(promptTagRoot.get("tag").get("type")), searchPattern));
-                } else {
-                    subquery.select(promptTagRoot.get("prompt").get("id"))
-                            .where(promptTagRoot.get("tag").get("type").in(request.tagTypes()));
-                }
-                orPredicates.add(root.get("id").in(subquery));
-            }
-
-            // Filter by tagValues
-            if (request.tagValues() != null && !request.tagValues().isEmpty()) {
-                assert query != null;
-                Subquery<UUID> subquery = query.subquery(UUID.class);
-                jakarta.persistence.criteria.Root<PromptTag> promptTagRoot = subquery.from(PromptTag.class);
-                if (request.tagValues().stream().allMatch(s -> s.length() == 1)) {
-                    String searchPattern = "%" + request.tagValues().getFirst().toLowerCase() + "%";
-                    subquery.select(promptTagRoot.get("prompt").get("id"))
-                            .where(cb.like(cb.lower(promptTagRoot.get("tag").get("value")), searchPattern));
-                } else {
-                    subquery.select(promptTagRoot.get("prompt").get("id"))
-                            .where(promptTagRoot.get("tag").get("value").in(request.tagValues()));
-                }
-                orPredicates.add(root.get("id").in(subquery));
-            }
-
-            // Filter by schoolName
-            if (request.schoolName() != null) {
-                Join<Prompt, User> userJoin = root.join("user");
-                Join<User, School> schoolJoin = userJoin.join("school");
-                String searchPattern = "%" + request.schoolName().toLowerCase() + "%";
-                orPredicates.add(cb.like(cb.lower(schoolJoin.get("name")), searchPattern));
-            }
-
-            // Filter by groupName
-            if (request.groupName() != null) {
-                Join<Prompt, Collection> collectionJoin = root.join("collection", jakarta.persistence.criteria.JoinType.LEFT);
-                Join<Collection, Group> groupJoin = collectionJoin.join("group", jakarta.persistence.criteria.JoinType.LEFT);
-                String searchPattern = "%" + request.groupName().toLowerCase() + "%";
-                orPredicates.add(cb.like(cb.lower(groupJoin.get("name")), searchPattern));
-            }
-
-            // Filter by title
-            if (request.title() != null && !request.title().isBlank()) {
-                String searchPattern = "%" + request.title().toLowerCase() + "%";
-                orPredicates.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), searchPattern),
-                        cb.like(cb.lower(root.get("description")), searchPattern)
-                ));
-            }
-
-            // Add OR condition if any filter is provided
-            if (!orPredicates.isEmpty()) {
-                predicates.add(cb.or(orPredicates.toArray(new Predicate[0])));
-            }
-
-            // Filter by isDeleted
-            if (request.includeDeleted() != null && request.includeDeleted()) {
-                predicates.add(cb.equal(root.get("isDeleted"), true));
-            } else {
-                predicates.add(cb.equal(root.get("isDeleted"), false));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-
+        // EXECUTE – single paginated query
         Page<Prompt> promptPage = promptRepository.findAll(spec, pageable);
 
-        List<PromptResponse> promptResponses = promptPage.getContent().stream()
+        // MAP
+        List<PromptResponse> responses = promptPage.getContent().stream()
                 .map(this::buildGetPromptResponse)
-                .collect(Collectors.toList());
+                .toList();
 
         return PaginatedPromptResponse.builder()
-                .content(promptResponses)
+                .content(responses)
                 .page(promptPage.getNumber())
                 .size(promptPage.getSize())
                 .totalElements(promptPage.getTotalElements())
@@ -536,11 +418,12 @@ public class PromptServiceImpl implements PromptService {
         return buildPromptResponse(prompt);
     }
 
-    //======================================================================//
-    //==========================UPDATE PROMPT===============================//
+    // ======================================================================//
+    // ==========================UPDATE PROMPT===============================//
     @Override
     @Transactional
-    public DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request, UserPrincipal currentUser) {
+    public DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
+                                                     UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found!!"));
@@ -582,7 +465,8 @@ public class PromptServiceImpl implements PromptService {
             // Remove existing PromptTag entries
             promptTagRepository.deleteByPromptId(promptId);
 
-            // If tagIds are provided and not empty, validate and create new PromptTag entries
+            // If tagIds are provided and not empty, validate and create new PromptTag
+            // entries
             if (!request.getTagIds().isEmpty()) {
                 List<Tag> tags = tagRepository.findAllById(request.getTagIds());
                 if (tags.size() != request.getTagIds().size()) {
@@ -613,7 +497,8 @@ public class PromptServiceImpl implements PromptService {
 
     @Override
     @Transactional
-    public DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request, UserPrincipal currentUser) {
+    public DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
+                                                       UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
@@ -641,7 +526,8 @@ public class PromptServiceImpl implements PromptService {
                 try {
                     permissionService.validateCollectionVisibility(collection, newVisibility);
                 } catch (IllegalArgumentException e) {
-                    // If validation fails, automatically remove from collection to make it standalone
+                    // If validation fails, automatically remove from collection to make it
+                    // standalone
                     removeFromCollection = true;
                 }
             }
@@ -649,7 +535,6 @@ public class PromptServiceImpl implements PromptService {
 
         if (removeFromCollection) {
             prompt.setCollection(null);
-            collection = null;
         } else if (newVisibility.equals(Visibility.GROUP.name())) {
             // GROUP visibility requires a collection with a group
             if (collection == null && request.getCollectionId() == null) {
@@ -658,9 +543,11 @@ public class PromptServiceImpl implements PromptService {
             if (request.getCollectionId() != null) {
                 // Move standalone prompt to a collection
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Collection not found with ID: " + request.getCollectionId()));
                 if (collection.getGroup() == null) {
-                    throw new IllegalArgumentException("Collection must be associated with a group for GROUP visibility");
+                    throw new IllegalArgumentException(
+                            "Collection must be associated with a group for GROUP visibility");
                 }
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
@@ -670,7 +557,8 @@ public class PromptServiceImpl implements PromptService {
                 }
                 prompt.setCollection(collection);
             } else if (collection.getGroup() == null) {
-                throw new InvalidActionException("Current collection must be associated with a group for GROUP visibility");
+                throw new InvalidActionException(
+                        "Current collection must be associated with a group for GROUP visibility");
             } else if (!permissionService.isGroupMember(currentUser, collection.getGroup().getId())) {
                 throw new AccessDeniedException("You must be a member of the group to set GROUP visibility");
             }
@@ -687,7 +575,8 @@ public class PromptServiceImpl implements PromptService {
             }
             if (request.getCollectionId() != null) {
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Collection not found with ID: " + request.getCollectionId()));
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
                 }
@@ -700,7 +589,8 @@ public class PromptServiceImpl implements PromptService {
             }
             if (request.getCollectionId() != null) {
                 collection = collectionRepository.findById(request.getCollectionId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + request.getCollectionId()));
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Collection not found with ID: " + request.getCollectionId()));
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
                 }
@@ -721,13 +611,13 @@ public class PromptServiceImpl implements PromptService {
         return buildPromptResponse(updatedPrompt);
     }
 
-    //======================================================================//
-    //========================SOFT DELETE PROMPT============================//
+    // ======================================================================//
+    // ========================SOFT DELETE PROMPT============================//
     @Override
     @Transactional
     public void softDeletePrompt(UUID promptId, UserPrincipal currentUser) {
         // Fetch prompt
-        log.info("User with id " + currentUser.getUserId() + " attempt to delete prompt with id " + promptId);
+        log.info("User with id {} attempt to delete prompt with id {}", currentUser.getUserId(), promptId);
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
 
@@ -747,46 +637,38 @@ public class PromptServiceImpl implements PromptService {
 
         // Save changes
         promptRepository.save(prompt);
-        log.info("Prompt with id " + promptId + " has been successfully deleted");
+        log.info("Prompt with id {} has been successfully deleted", promptId);
     }
 
-    //======================================================================//
-    //===========================PROMPT VIEW LOG============================//
+    // ======================================================================//
+    // ===========================PROMPT VIEW LOG============================//
 
     @Override
     public boolean hasUserViewedPrompt(UserPrincipal currentUser, UUID promptId) {
-        User user = userRepository.getReferenceById(currentUser.getUserId());
-        if (user == null) {
-            throw new ResourceNotFoundException("user not found with ID: " + currentUser.getUserId());
-        }
-
-        Prompt prompt = promptRepository.getReferenceById(promptId);
-        if (prompt == null) {
-            throw new ResourceNotFoundException("Prompt not found with ID: " + promptId);
-        }
-
-        return promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, currentUser.getUserId())
+        return promptViewLogRepository.findPromptViewLogByPromptIdAndUserId(promptId, currentUser.getUserId())
                 .isPresent();
     }
 
     @Override
     public PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request) {
         User user = userRepository.getReferenceById(currentUser.getUserId());
-
-        Prompt prompt = promptRepository.getReferenceById(request.promptId());
+        Prompt prompt = promptRepository.findById(request.promptId())
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + request.promptId()));
 
         Optional<UserQuota> userQuotaOptional = userQuotaRepository.findByUserId(currentUser.getUserId());
         UserQuota userQuota;
-        if(userQuotaOptional.isPresent()){
+        if (userQuotaOptional.isPresent()) {
             userQuota = userQuotaOptional.get();
         } else {
             throw new ResourceNotFoundException("User not register a subscription yet");
         }
 
-        PromptViewLog viewLog = promptViewLogRepository.findPromptViewLogByPromptAndUserId(prompt, currentUser.getUserId())
+        PromptViewLog viewLog = promptViewLogRepository
+                .findPromptViewLogByPromptIdAndUserId(request.promptId(), currentUser.getUserId())
                 .orElseGet(() -> {
-                    if(userQuota.getPromptUnlockRemaining() <= 0) {
-                        throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), userQuota.getPromptUnlockRemaining());
+                    if (userQuota.getPromptUnlockRemaining() <= 0) {
+                        throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(),
+                                userQuota.getPromptUnlockRemaining());
                     }
                     PromptViewLog newLog = PromptViewLog.builder()
                             .user(user)
@@ -800,7 +682,199 @@ public class PromptServiceImpl implements PromptService {
         return toResponse(viewLog);
     }
 
-    //Helper method function
+    // ======================================================================//
+    // ==========================PROMPT VERSIONING===========================//
+    @Override
+    @Transactional
+    public PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
+                                                     UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        if (!permissionService.canEditPrompt(currentUser, prompt)) {
+            throw new AccessDeniedException("You do not have permission to edit this prompt");
+        }
+
+        List<PromptVersion> versions = promptVersionRepository.findByPromptIdOrderByVersionNumberDesc(promptId);
+        int nextVersion = 1;
+        if (!versions.isEmpty()) {
+            nextVersion = versions.getFirst().getVersionNumber() + 1;
+        }
+
+        PromptVersion newVersion = PromptVersion.builder()
+                .prompt(prompt)
+                .instruction(request.instruction())
+                .context(request.context())
+                .inputExample(request.inputExample())
+                .outputFormat(request.outputFormat())
+                .constraints(request.constraints())
+                .editorId(currentUser.getUserId())
+                .versionNumber(nextVersion)
+                .isAiGenerated(request.isAiGenerated())
+                .createdAt(Instant.now())
+                .build();
+
+        PromptVersion savedVersion = promptVersionRepository.save(newVersion);
+
+        // Update prompt current version
+        prompt.setCurrentVersion(savedVersion);
+        // Also update the prompt content to match the new version (optional yet it
+        // should be :D, but good
+        // for "current state")
+        prompt.setInstruction(request.instruction());
+        prompt.setContext(request.context());
+        prompt.setInputExample(request.inputExample());
+        prompt.setOutputFormat(request.outputFormat());
+        prompt.setConstraints(request.constraints());
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+
+        promptRepository.save(prompt);
+
+        return toPromptVersionResponse(savedVersion);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PromptVersionResponse> getPromptVersions(UUID promptId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        if (!permissionService.canAccessPrompt(prompt, currentUser)) {
+            throw new AccessDeniedException("You do not have permission to view this prompt");
+        }
+
+        List<PromptVersion> versions = promptVersionRepository.findByPromptIdOrderByVersionNumberDesc(promptId);
+        return versions.stream()
+                .map(this::toPromptVersionResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public DetailPromptResponse rollbackToVersion(UUID promptId, UUID versionId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        if (!permissionService.canEditPrompt(currentUser, prompt)) {
+            throw new AccessDeniedException("You do not have permission to edit this prompt");
+        }
+
+        PromptVersion targetVersion = promptVersionRepository.findById(versionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Version not found with ID: " + versionId));
+
+        if (!targetVersion.getPrompt().getId().equals(promptId)) {
+            throw new InvalidActionException("Version does not belong to this prompt");
+        }
+
+        // Update prompt content from version
+        prompt.setInstruction(targetVersion.getInstruction());
+        prompt.setContext(targetVersion.getContext());
+        prompt.setInputExample(targetVersion.getInputExample());
+        prompt.setOutputFormat(targetVersion.getOutputFormat());
+        prompt.setConstraints(targetVersion.getConstraints());
+
+        // Update metadata
+        prompt.setCurrentVersion(targetVersion);
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+
+        Prompt updatedPrompt = promptRepository.save(prompt);
+
+        return buildPromptResponse(updatedPrompt);
+    }
+
+    // ======================================================================//
+    // ============================PROMPT SHARING============================//
+    @Override
+    public String sharePrompt(UUID promptId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        // Ownership check
+        if (!prompt.getUserId().equals(currentUser.getUserId())) {
+            throw new AccessDeniedException("You do not own this prompt");
+        }
+
+        // Generate token if none exists
+        if (prompt.getShareToken() == null) {
+            prompt.setShareToken(UUID.randomUUID());
+            prompt.setUpdatedAt(Instant.now());
+            prompt.setUpdatedBy(currentUser.getUserId());
+            promptRepository.save(prompt);
+        }
+
+        // Generate shareable link
+        String finalUrl = shareUrl + prompt.getId() + "?token=" + prompt.getShareToken();
+        return finalUrl;
+    }
+
+    @Override
+    public PromptShareResponse getSharedPrompt(UUID promptId, UUID token) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        if (prompt.getIsDeleted()) {
+            throw new ResourceNotFoundException("Prompt not found");
+        }
+
+        if (token == null || !token.equals(prompt.getShareToken())) {
+            throw new AccessDeniedException("Access denied");
+        }
+        return PromptShareResponse.builder()
+                .id(prompt.getId())
+                .title(prompt.getTitle())
+                .description(prompt.getDescription())
+                .instruction(prompt.getInstruction())
+                .context(prompt.getContext())
+                .inputExample(prompt.getInputExample())
+                .outputFormat(prompt.getOutputFormat())
+                .constraints(prompt.getConstraints())
+                .shareToken(prompt.getShareToken())
+                .build();
+    }
+
+    @Override
+    public void revokeShare(UUID promptId, UserPrincipal currentUser) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+        if (!permissionService.canAccessPrompt(prompt, currentUser)) {
+            throw new AccessDeniedException("You do not own this prompt");
+        }
+
+        prompt.setShareToken(null);
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+        promptRepository.save(prompt);
+    }
+
+    // Helper method function
+
+    private PromptVersionResponse toPromptVersionResponse(PromptVersion version) {
+        return PromptVersionResponse.builder()
+                .id(version.getId())
+                .promptId(version.getPrompt().getId())
+                .instruction(version.getInstruction())
+                .context(version.getContext())
+                .inputExample(version.getInputExample())
+                .outputFormat(version.getOutputFormat())
+                .constraints(version.getConstraints())
+                .editorId(version.getEditorId())
+                .versionNumber(version.getVersionNumber())
+                .isAiGenerated(version.getIsAiGenerated())
+                .createdAt(version.getCreatedAt())
+                .build();
+    }
+
+    private PromptViewLogResponse toResponse(PromptViewLog log) {
+        return PromptViewLogResponse.builder()
+                .id(log.getId())
+                .userId(log.getUser().getId())
+                .promptId(log.getPrompt().getId())
+                .createdAt(log.getCreatedAt())
+                .build();
+    }
 
     private PaginatedPromptResponse mapToPaginatedResponse(Page<Prompt> promptPage, UserPrincipal currentUser) {
         List<PromptResponse> promptResponses = promptPage.getContent().stream()
@@ -814,6 +888,7 @@ public class PromptServiceImpl implements PromptService {
                             : null;
 
                     return PromptResponse.builder()
+                            .id(prompt.getId())
                             .title(prompt.getTitle())
                             .description(prompt.getDescription())
                             .outputFormat(prompt.getOutputFormat())
@@ -878,8 +953,10 @@ public class PromptServiceImpl implements PromptService {
                 ? prompt.getCollection().getName()
                 : null;
         return PromptResponse.builder()
+                .id(prompt.getId())
                 .title(prompt.getTitle())
                 .description(prompt.getDescription())
+                .outputFormat(prompt.getOutputFormat())
                 .visibility(prompt.getVisibility())
                 .fullName(userName)
                 .collectionName(collectionName)
@@ -888,12 +965,137 @@ public class PromptServiceImpl implements PromptService {
                 .build();
     }
 
-    private PromptViewLogResponse toResponse(PromptViewLog log) {
-        return PromptViewLogResponse.builder()
-                .id(log.getId())
-                .userId(log.getUser().getId())
-                .promptId(log.getPrompt().getId())
-                .createdAt(log.getCreatedAt())
-                .build();
+    private void validateFilterRequest(PromptFilterRequest req, UserPrincipal user) {
+        if (Boolean.TRUE.equals(req.includeDeleted()) && !permissionService.isSystemAdmin(user)) {
+            throw new AccessDeniedException("Only SYSTEM_ADMIN can include deleted prompts");
+        }
+
+        if (nonBlank(req.collectionName()) && !collectionRepository.existsByNameIgnoreCase(req.collectionName())) {
+            throw new ResourceNotFoundException("Collection not found: " + req.collectionName());
+        }
+
+        if (nonBlank(req.schoolName()) && !schoolRepository.existsByNameIgnoreCase(req.schoolName())) {
+            throw new ResourceNotFoundException("School not found: " + req.schoolName());
+        }
+
+        if (nonBlank(req.groupName()) && !groupRepository.existsByNameIgnoreCase(req.groupName())) {
+            throw new ResourceNotFoundException("Group not found: " + req.groupName());
+        }
+
+        if (req.tagTypes() != null && !req.tagTypes().isEmpty() && !allSingleLetter(req.tagTypes())) {
+            Set<String> existing = tagRepository.findAllByTypeIn(req.tagTypes()).stream()
+                    .map(Tag::getType)
+                    .collect(Collectors.toSet());
+            if (!existing.containsAll(req.tagTypes())) {
+                throw new ResourceNotFoundException("One or more tag types not found");
+            }
+        }
+
+        if (req.tagValues() != null && !req.tagValues().isEmpty() && !allSingleLetter(req.tagValues())) {
+            Set<String> existing = tagRepository.findAllByValueIn(req.tagValues()).stream()
+                    .map(Tag::getValue)
+                    .collect(Collectors.toSet());
+            if (!existing.containsAll(req.tagValues())) {
+                throw new ResourceNotFoundException("One or more tag values not found");
+            }
+        }
+    }
+
+    private Specification<Prompt> buildCorrectSpecification(PromptFilterRequest req, UserPrincipal user) {
+        return (root, query, cb) -> {
+            List<Predicate> baseAnd = new ArrayList<>();
+            List<Predicate> searchOr = new ArrayList<>();
+
+            // --- Eager fetch (only if NOT a count query) ---
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                root.fetch("user", JoinType.LEFT);
+                root.fetch("collection", JoinType.LEFT);
+                query.distinct(true);
+            }
+
+            // === BASE FILTERS (ALWAYS APPLIED) ===
+            // Visibility: PUBLIC/SCHOOL/GROUP + PRIVATE (if owner)
+            Expression<String> visibilityUpper = cb.upper(root.get("visibility"));
+            Predicate publicVis = visibilityUpper.in(
+                    Visibility.PUBLIC.name(), Visibility.SCHOOL.name(), Visibility.GROUP.name());
+            Predicate privateVis = cb.and(
+                    visibilityUpper.in(Visibility.PRIVATE.name()),
+                    cb.equal(root.get("createdBy"), user.getUserId()));
+            baseAnd.add(cb.or(publicVis, privateVis));
+
+            // isDeleted
+            boolean includeDeleted = Boolean.TRUE.equals(req.includeDeleted());
+            baseAnd.add(cb.equal(root.get("isDeleted"), includeDeleted));
+
+            // === SEARCH FILTERS (OR'd together) ===
+            if (req.createdBy() != null) {
+                searchOr.add(cb.equal(root.get("createdBy"), req.createdBy()));
+            }
+            if (nonBlank(req.title())) {
+                String pattern = "%" + req.title().toLowerCase() + "%";
+                searchOr.add(cb.like(cb.lower(root.get("title")), pattern));
+            }
+            if (nonBlank(req.collectionName())) {
+                searchOr.add(cb.like(
+                        cb.lower(root.get("collection").get("name")),
+                        "%" + req.collectionName().toLowerCase() + "%"));
+            }
+            if (nonBlank(req.schoolName())) {
+                Join<Prompt, User> userJoin = root.join("user", JoinType.LEFT);
+                Join<User, School> schoolJoin = userJoin.join("school", JoinType.LEFT);
+                searchOr.add(cb.like(cb.lower(schoolJoin.get("name")), "%" + req.schoolName().toLowerCase() + "%"));
+            }
+            if (nonBlank(req.groupName())) {
+                Join<Prompt, Collection> collJoin = root.join("collection", JoinType.LEFT);
+                Join<Collection, Group> groupJoin = collJoin.join("group", JoinType.LEFT);
+                searchOr.add(cb.like(cb.lower(groupJoin.get("name")), "%" + req.groupName().toLowerCase() + "%"));
+            }
+            if (req.tagTypes() != null && !req.tagTypes().isEmpty()) {
+                searchOr.add(buildTagPredicate(root, query, cb, "type", req.tagTypes()));
+            }
+            if (req.tagValues() != null && !req.tagValues().isEmpty()) {
+                searchOr.add(buildTagPredicate(root, query, cb, "value", req.tagValues()));
+            }
+
+            // === COMBINE ===
+            if (!searchOr.isEmpty()) {
+                baseAnd.add(cb.or(searchOr.toArray(Predicate[]::new)));
+                return cb.and(baseAnd.toArray(Predicate[]::new));
+            } else {
+                return cb.and(baseAnd.toArray(Predicate[]::new));
+            }
+        };
+    }
+
+    private Predicate buildTagPredicate(Root<Prompt> root,
+                                        CriteriaQuery<?> query,
+                                        CriteriaBuilder cb,
+                                        String field, // "type" or "value"
+                                        List<String> values) {
+
+        Subquery<UUID> subquery = query.subquery(UUID.class);
+        Root<PromptTag> pt = subquery.from(PromptTag.class);
+        Path<String> tagPath = pt.get("tag").get(field);
+
+        Predicate tagCond;
+        if (allSingleLetter(values)) {
+            Predicate[] likes = values.stream()
+                    .map(v -> cb.like(cb.lower(tagPath), "%" + v.toLowerCase() + "%"))
+                    .toArray(Predicate[]::new);
+            tagCond = cb.or(likes);
+        } else {
+            tagCond = tagPath.in(values);
+        }
+
+        subquery.select(pt.get("prompt").get("id")).where(tagCond);
+        return root.get("id").in(subquery);
+    }
+
+    private boolean nonBlank(String s) {
+        return s != null && !s.isBlank();
+    }
+
+    private boolean allSingleLetter(List<String> list) {
+        return list != null && list.stream().allMatch(s -> s.length() == 1);
     }
 }

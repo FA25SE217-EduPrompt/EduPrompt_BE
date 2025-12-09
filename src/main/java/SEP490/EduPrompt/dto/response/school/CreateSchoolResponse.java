@@ -15,4 +15,5 @@ public record CreateSchoolResponse(
         String province,
         Instant createdAt,
         Instant updatedAt
-) {}
+) {
+}

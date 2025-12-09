@@ -20,7 +20,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class PromptUsageServiceImpl implements PromptUsageService{
+public class PromptUsageServiceImpl implements PromptUsageService {
     private final PromptUsageRepository promptUsageRepository;
     private final UserRepository userRepository;
 

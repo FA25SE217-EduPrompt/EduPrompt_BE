@@ -42,4 +42,8 @@ public class PromptRating {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @PrePersist
+    public void onCreate() {
+        this.createdAt = Instant.now();
+    }
 }

@@ -18,6 +18,7 @@ public class TestController {
 
     private final RedisTemplate<String, String> redisTemplate;
     private final SpringTemplateEngine templateEngine;
+//    private final GeminiClientService service;
 
     @GetMapping("/redis")
     public String testRedis() {
@@ -44,5 +45,21 @@ public class TestController {
         return templateEngine.process("account-verification-email", context);
     }
 
-
+//    @GetMapping("/get-file")
+//    public String testGetFile(@RequestParam String fileName) {
+//        String name = fileName == null ? "files/r2zn0sr9aeg3" : fileName;
+//        File file = service.getFile(name);
+//        return file.toJson();
+//    }
+//
+//    @PostMapping("/store")
+//    public String createStore() {
+//        FileSearchStore store = service.createPromptStore("eduprompt");
+//        return store.toJson();
+//    }
+//    @PostMapping("/import-file")
+//    public String importFileToStore(@RequestParam String fileName) {
+//        String name = fileName == null ? "files/r2zn0sr9aeg3" : fileName;
+//        return service.importFileToStore(name);
+//    }
 }
