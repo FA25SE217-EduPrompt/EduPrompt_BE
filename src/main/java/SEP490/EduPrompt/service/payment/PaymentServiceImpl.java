@@ -219,7 +219,7 @@ public class PaymentServiceImpl implements PaymentService {
             return null;
         }
         String[] parts = txnRef.split("_");
-        if (parts.length < 3) return null;
+        if (parts.length < 4) return null;
         try {
             return UUID.fromString(parts[1]);
         } catch (IllegalArgumentException e) {
@@ -228,7 +228,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private UUID extractUserIdFromTxnRef(String txnRef) {
-        if (txnRef == null || txnRef.split("_").length < 3) return null;
+        if (txnRef == null || txnRef.split("_").length < 4) return null;
         try {
             return UUID.fromString(txnRef.split("_")[0]);
         } catch (IllegalArgumentException e) {
@@ -237,7 +237,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private UUID extractPaymentIdFromTxnRef(String txnRef) {
-        if (txnRef == null || txnRef.split("_").length < 3) return null;
+        if (txnRef == null || txnRef.split("_").length < 4) return null;
         try {
             return UUID.fromString(txnRef.split("_")[3]);
         } catch (IllegalArgumentException e) {
