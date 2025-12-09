@@ -67,6 +67,5 @@ public class Payment {
     public void onCreate()
     {
         this.createdAt = Instant.now();
-        this.paidAt = Instant.now();
     }
 }

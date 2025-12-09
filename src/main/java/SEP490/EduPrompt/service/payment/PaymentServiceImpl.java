@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -142,26 +143,32 @@ public class PaymentServiceImpl implements PaymentService {
         User user = userRepo.findById(embeddedUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         if (tierId == null) {
+            payment.setStatus(PaymentStatus.FAILED.name());
+            paymentRepository.save(payment);
             return new PaymentResponse(false, "Cannot identify subscription tier", responseCode);
         }
 
         Optional<SubscriptionTier> tierOpt = tierRepo.findById(tierId);
         if (tierOpt.isEmpty()) {
+            payment.setStatus(PaymentStatus.FAILED.name());
+            paymentRepository.save(payment);
             return new PaymentResponse(false, "Tier not found", responseCode);
         }
         SubscriptionTier tier = tierOpt.get();
         try {
             user.setSubscriptionTier(tier);
-            userRepo.save(user);
             quotaService.syncUserQuotaWithSubscriptionTier(user.getId());
+            userRepo.save(user);
         } catch (Exception e) {
             payment.setStatus(PaymentStatus.FAILED.name());
             paymentRepository.save(payment);
+            user.setSubscriptionTier(user.getSubscriptionTier());
             return new PaymentResponse(false, "Failed to activate subscription", responseCode);
         }
         // best case
         payment.setStatus(PaymentStatus.SUCCESS.name());
         payment.setTier(tier);
+        payment.setPaidAt(Instant.now());
         paymentRepository.save(payment);
         return new PaymentResponse(true, "Subscription activated successfully", tierId);
     }
