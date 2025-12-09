@@ -145,7 +145,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     public boolean canViewCollection(UserPrincipal userPrincipal, Collection collection) {
         if (collection.getIsDeleted() != null && collection.getIsDeleted()) {
-            return isAdmin(userPrincipal);
+            return isSystemAdmin(userPrincipal);
         }
         switch (Visibility.valueOf(collection.getVisibility())) {
             case PRIVATE:
@@ -215,7 +215,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         return canViewCollection(currentUser, collection) ||
                 (collection.getUserId() != null && collection.getUserId().equals(currentUser.getUserId())) ||
-                isAdmin(currentUser);
+                isSystemAdmin(currentUser);
     }
 
     @Override

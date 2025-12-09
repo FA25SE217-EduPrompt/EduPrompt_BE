@@ -95,7 +95,7 @@ public class CollectionServiceImpl implements CollectionService {
         }
 
         // admin bypass
-        if (isAdmin(currentUser)) return;
+        if (isSystemAdmin(currentUser.getRole())) return;
 
 
         Visibility vis = parseVisibility(collection.getVisibility());
@@ -214,11 +214,8 @@ public class CollectionServiceImpl implements CollectionService {
 
     @Override
     public CollectionResponse getCollectionById(UUID id, UserPrincipal currentUser) {
-        Collection collection = collectionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
-        if (!collection.getUserId().equals(currentUser.getUserId())
-                && !currentUser.getRole().equalsIgnoreCase(Role.SYSTEM_ADMIN.name())) {
-            throw new AccessDeniedException("You are not owner of this collection");
-        }
+        Collection collection = collectionRepository.findByIdAndIsDeletedFalse(id).orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
+        validateAccess(collection, currentUser);
         return CollectionResponse.builder()
                 .id(collection.getId())
                 .name(collection.getName())
