@@ -43,7 +43,11 @@ public class PaymentController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     public ResponseDto<PaymentDetailedResponse> getPayment(@PathVariable UUID id) {
-        return ResponseDto.success(paymentService.getPaymentById(id));
+        PaymentDetailedResponse payment = paymentService.getPaymentById(id);
+        if (payment == null) {
+            return ResponseDto.error("404", "Payment not found");
+        }
+        return ResponseDto.success(payment);
     }
 
 
