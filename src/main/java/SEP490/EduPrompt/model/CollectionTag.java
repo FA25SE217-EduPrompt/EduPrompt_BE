@@ -27,7 +27,7 @@ public class CollectionTag {
     private Collection collection;
 
     @MapsId("tagId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "tag_id", nullable = false)
     private Tag tag;
