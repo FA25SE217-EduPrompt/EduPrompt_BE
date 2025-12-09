@@ -13,6 +13,10 @@ public record PersonalInfoResponse(
         String phoneNumber,
         boolean isVerified,
         boolean isActive,
+        boolean isFreeTier,
+        boolean isProTier,
+        boolean isPremiumTier,
+        boolean hasSchoolSubscription,
         boolean isSystemAdmin,
         boolean isSchoolAdmin,
         boolean isTeacher

@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -563,6 +564,12 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userAuth.getUser();
         Role userRole = Role.parseRole(user.getRole());
+        UUID userTierId = user.getSubscriptionTierId();
+
+        boolean isFreeTier = userTierId.equals(subscriptionTierRepository.findByNameIgnoreCase("free").get().getId());
+        boolean isProTier = userTierId.equals(subscriptionTierRepository.findByNameIgnoreCase("pro").get().getId());
+        boolean isPremiumTier = userTierId.equals(subscriptionTierRepository.findByNameIgnoreCase("premium").get().getId());
+        boolean hasSchoolSubscription = schoolSubscriptionRepository.findActiveBySchoolId(user.getSchoolId()).isPresent();
 
         log.info("Return personal info for user : {}", user.getEmail());
         return PersonalInfoResponse.builder()
@@ -573,6 +580,10 @@ public class AuthServiceImpl implements AuthService {
                 .phoneNumber(user.getPhoneNumber())
                 .isActive(user.getIsActive())
                 .isVerified(user.getIsVerified())
+                .isFreeTier(isFreeTier)
+                .isProTier(isProTier)
+                .isPremiumTier(isPremiumTier)
+                .hasSchoolSubscription(hasSchoolSubscription)
                 .isTeacher(userRole.equals(Role.TEACHER))
                 .isSchoolAdmin(userRole.equals(Role.SCHOOL_ADMIN))
                 .isSystemAdmin(userRole.equals(Role.SYSTEM_ADMIN))
