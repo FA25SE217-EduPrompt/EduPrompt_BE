@@ -175,19 +175,18 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public PagePaymentHistoryResponse getPaymentHistory(UserPrincipal currentUser, Pageable pageable) {
-        User user = userRepo.findById(currentUser.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Page<Payment> paymentPage = paymentRepository.findByUserId(currentUser.getUserId(), pageable);
 
         List<PaymentHistoryResponse> paymentHistoryResponses = paymentPage.getContent().stream()
                 .map(payment -> {
+                    String tierName = payment.getTier() != null ? payment.getTier().getName() : null;
                     return PaymentHistoryResponse.builder()
                 .id(payment.getId())
                 .amount(payment.getAmount())
                 .status(payment.getStatus())
                 .createdAt(payment.getCreatedAt())
                 .paidAt(payment.getPaidAt())
-                .tierName(payment.getTier().getName())  // Assuming SubscriptionTier has a 'name' field; adjust as needed
+                            .tierName(tierName)
                 .build();
                 })
                 .toList();
