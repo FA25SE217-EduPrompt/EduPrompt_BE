@@ -116,3 +116,10 @@ share_url: ${SHARE_URL}
 #    password-reset: ${POSTMARK_PASSWORD_RESET_TEMPLATE_ID}
 #    welcome: ${POSTMARK_WELCOME_TEMPLATE_ID}
 
+vnpay:
+  tmncode: ${TMN_CODE}
+  hash_secret: ${HASH_SECRET}
+  url: ${PAYMENT_URL}
+  return_url: ${RETURN_URL}
+  version: ${VNPAY_VERSION}
+

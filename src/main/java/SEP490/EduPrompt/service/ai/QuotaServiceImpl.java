@@ -271,7 +271,7 @@ public class QuotaServiceImpl implements QuotaService {
                 .collectionActionRemaining(tier.getCollectionActionLimit())
                 .promptActionLimit(tier.getPromptActionLimit())
                 .promptActionRemaining(tier.getPromptActionLimit())
-                .promptUnlockRemaining(tier.getPromptUnlockLimit())
+                .promptUnlockLimit(tier.getPromptUnlockLimit())
                 .promptUnlockRemaining(tier.getPromptUnlockLimit())
                 .quotaResetDate(calculateNextResetDate())
                 .createdAt(userQuota.getCreatedAt())

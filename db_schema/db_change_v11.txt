@@ -1,3 +1,22 @@
+CREATE TABLE payments (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    tier_id UUID,
+
+    amount BIGINT NOT NULL CHECK (amount >= 0),
+    order_info VARCHAR(255),
+
+    status VARCHAR(20) DEFAULT 'PENDING',
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
+    paid_at TIMESTAMP WITHOUT TIME ZONE,
+
+    CONSTRAINT fk_payment_user    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_payment_tier    FOREIGN KEY (tier_id) REFERENCES subscription_tiers(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_payments_user_id ON payments(user_id);
+CREATE INDEX idx_payments_status ON payments(status);
+CREATE INDEX idx_payments_created_at ON payments(created_at DESC);
 --Add new field share_token
 ALTER TABLE prompts
     ADD COLUMN share_token UUID;
