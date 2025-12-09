@@ -1,18 +1,21 @@
 package SEP490.EduPrompt.dto.response.payment;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.UUID;
 
+@Getter
 @Builder
 @AllArgsConstructor
-@Getter
 @Setter
 public class PaymentResponse {
-    private final boolean success;               // true only if payment valid AND subscription applied
-    private final String message;                // for frontend
-    private final String vnpResponseCode;
-    private final UUID subscriptionTierId;       // only present if success = true
+    private boolean success;               // true only if payment valid AND subscription applied
+    private String message;                // for frontend
+    private String vnpResponseCode;
+    private UUID subscriptionTierId;       // only present if success = true
 
     // Success case
     public PaymentResponse(boolean success, String message, UUID subscriptionTierId) {
@@ -29,10 +32,4 @@ public class PaymentResponse {
         this.vnpResponseCode = vnpResponseCode;
         this.subscriptionTierId = null;
     }
-
-    // getters
-    public boolean isSuccess() { return success; }
-    public String getMessage() { return message; }
-    public String getVnpResponseCode() { return vnpResponseCode; }
-    public UUID getSubscriptionTierId() { return subscriptionTierId; }
 }
