@@ -49,6 +49,7 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html")
                         .permitAll()
+                        .requestMatchers("/api/payments/vnpay/vnpay-return").permitAll()
                         .requestMatchers("/test/preview/**").authenticated()
                         .anyRequest().authenticated()
                 )

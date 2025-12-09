@@ -1,11 +1,10 @@
 package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.payment.PaymentRequest;
-import SEP490.EduPrompt.dto.response.ErrorMessage;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.payment.PagePaymentHistoryResponse;
+import SEP490.EduPrompt.dto.response.payment.PaymentDetailedResponse;
 import SEP490.EduPrompt.dto.response.payment.PaymentResponse;
-import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.payment.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,15 +12,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 import java.util.UUID;
-
-import static SEP490.EduPrompt.util.SecurityUtil.getClientIp;
 
 @RestController
 @RequestMapping("/api/payments/vnpay")
@@ -31,11 +26,11 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @PostMapping("/vnpay")
-    @PreAuthorize("hasAnyRole('TEACHER', 'SYSTEM_ADMIN')")  // ← Add auth if not already
+    @PreAuthorize("hasAnyRole('TEACHER', 'SYSTEM_ADMIN')")
     public ResponseDto<String> createPayment(
             @RequestBody PaymentRequest request,
             HttpServletRequest servletRequest,
-            @AuthenticationPrincipal UserPrincipal userPrincipal  // ← ADD THIS
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
         try {
             String paymentUrl = paymentService.generatePaymentUrl(request, servletRequest, userPrincipal);
@@ -45,18 +40,21 @@ public class PaymentController {
         }
     }
 
-    @GetMapping("/vnpay-return")
-    @PreAuthorize("permitAll()")
-    public ResponseDto<PaymentResponse> handlePaymentResponse(
-            HttpServletRequest servletRequest,  // ← ADD THIS
-            @AuthenticationPrincipal(expression = "#this == null ? null : this")
-            UserPrincipal userPrincipal) {
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<PaymentDetailedResponse> getPayment(@PathVariable UUID id) {
+        return ResponseDto.success(paymentService.getPaymentById(id));
+    }
 
-        String queryString = servletRequest.getQueryString();  // ← USE THIS
+
+    @GetMapping("/vnpay-return")
+    public ResponseDto<PaymentResponse> handlePaymentResponse(
+            HttpServletRequest servletRequest) {
+
+        String queryString = servletRequest.getQueryString();
 
         PaymentResponse result = paymentService.processVnpayReturn(
-                queryString,
-                userPrincipal
+                queryString
         );
 
         if (result.isSuccess()) {

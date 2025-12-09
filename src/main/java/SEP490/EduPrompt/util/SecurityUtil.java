@@ -12,13 +12,13 @@ public class SecurityUtil {
             ip = request.getHeader("X-Real-IP");
         }
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("CF-Connecting-IP");        // Cloudflare
+            ip = request.getHeader("CF-Connecting-IP");
         }
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
             ip = request.getHeader("X-Forwarded-Proto");
         }
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();                      // cuối cùng mới dùng cái này
+            ip = request.getRemoteAddr();
         }
 
         // X-Forwarded-For có thể là chuỗi: client, proxy1, proxy2

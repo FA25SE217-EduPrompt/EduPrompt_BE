@@ -46,11 +46,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        if (path.startsWith("/api/payments/vnpay/vnpay-return")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
+
 
         final String jwt = authHeader.substring(7);
         String email = null;

@@ -24,22 +24,22 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Size(max = 255)
-    @NotNull
-    @Column(name = "txn_ref", nullable = false)
-    private String txnRef;
-
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @NotNull
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private UUID userId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.RESTRICT)
-    @JoinColumn(name = "tier_id", nullable = false)
+    @JoinColumn(name = "tier_id")
     private SubscriptionTier tier;
+
+    @Column(name = "tier_id", insertable = false, updatable = false)
+    private UUID subscriptionTierId;
 
     @NotNull
     @Column(name = "amount", nullable = false)
@@ -55,20 +55,9 @@ public class Payment {
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
-    @Size(max = 50)
-    @Column(name = "vnp_transaction_no", length = 50)
-    private String vnpTransactionNo;
-
-    @Size(max = 10)
-    @Column(name = "vnp_response_code", length = 10)
-    private String vnpResponseCode;
-
-    @Column(name = "vnp_secure_hash", length = Integer.MAX_VALUE)
-    private String vnpSecureHash;
-
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at")
     private Instant createdAt;
 
     @Column(name = "paid_at")

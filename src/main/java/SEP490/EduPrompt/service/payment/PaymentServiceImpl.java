@@ -3,10 +3,10 @@ package SEP490.EduPrompt.service.payment;
 import SEP490.EduPrompt.config.VnpayConfig;
 import SEP490.EduPrompt.dto.request.payment.PaymentRequest;
 import SEP490.EduPrompt.dto.response.payment.PagePaymentHistoryResponse;
+import SEP490.EduPrompt.dto.response.payment.PaymentDetailedResponse;
 import SEP490.EduPrompt.dto.response.payment.PaymentHistoryResponse;
 import SEP490.EduPrompt.dto.response.payment.PaymentResponse;
 import SEP490.EduPrompt.enums.PaymentStatus;
-import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.Payment;
 import SEP490.EduPrompt.model.SubscriptionTier;
@@ -25,16 +25,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.math.BigDecimal;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -51,19 +47,44 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public String generatePaymentUrl(PaymentRequest request, HttpServletRequest servletRequest, UserPrincipal userPrincipal) {
         PayLib pay = new PayLib();
-        String txnRef = userPrincipal.getUserId() + "_" + request.getSubscriptionTierId() + "_" + System.currentTimeMillis();  // ← EMBED userId
+        User user = userRepo.getReferenceById(userPrincipal.getUserId());
+
+        Payment payment = Payment.builder()
+                .user(user)
+                .amount(request.getAmount())
+                .tier(null)
+                .status(PaymentStatus.PENDING.name())
+                .orderInfo(request.getOrderDescription())
+                .build();
+
+        paymentRepository.saveAndFlush(payment);
+        String txnRef = userPrincipal.getUserId() + "_" + request.getSubscriptionTierId() + "_" + System.currentTimeMillis() + "_" + payment.getId();  // ← EMBED userId
         addRequestData(pay, request, servletRequest);
-        pay.addRequestData("vnp_TxnRef", txnRef);  // Override with new txnRef
+        pay.addRequestData("vnp_TxnRef", txnRef);
         return pay.createRequestUrl(vnpayConfig.getUrl(), vnpayConfig.getHashSecret());
+    }
+
+    @Override
+    public PaymentDetailedResponse getPaymentById(UUID paymentId) {
+        Payment payment = paymentRepository.findById(paymentId).orElse(null);
+        if (payment == null) {
+            return null;
+        }
+        return PaymentDetailedResponse.builder()
+                .paymentId(payment.getId())
+                .userId(payment.getUserId())
+                .tierId(payment.getSubscriptionTierId())
+                .amount(payment.getAmount())
+                .status(payment.getStatus())
+                .orderInfo(payment.getOrderInfo())
+                .createdAt(payment.getCreatedAt())
+                .build();
     }
 
     // Verify Payment Response
     @Override
     @Transactional
-    public PaymentResponse processVnpayReturn(String queryString, UserPrincipal currentUser) {
-        if (currentUser == null) {
-            return new PaymentResponse(false, "User not authenticated", "99");
-        }
+    public PaymentResponse processVnpayReturn(String queryString) {
         if (queryString == null || queryString.isEmpty()) {
             return new PaymentResponse(false, "Invalid callback", "99");
         }
@@ -72,7 +93,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         String txnRef          = params.get("vnp_TxnRef");
         String responseCode    = params.getOrDefault("vnp_ResponseCode", "");
-        String secureHash      = params.remove("vnp_SecureHash");  // ← REMOVE to exclude from signing
+        String secureHash = params.remove("vnp_SecureHash");
         String tmnCode         = params.get("vnp_TmnCode");
 
         // 1. Rebuild sorted sign data (order-independent)
@@ -87,77 +108,60 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
         if (!signData.isEmpty()) {
-            signData.setLength(signData.length() - 1);  // Remove trailing '&'
+            signData.setLength(signData.length() - 1);
         }
 
         boolean validSignature = validateSignature(signData.toString(), secureHash, vnpayConfig.getHashSecret());
 
-        // 2. Verify merchant code
         boolean validTmnCode = vnpayConfig.getTmnCode().equals(tmnCode);
 
+        UUID paymentId = extractPaymentIdFromTxnRef(txnRef);
+
+        Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+
         if (!validSignature || !validTmnCode) {
+            payment.setStatus(PaymentStatus.FAILED.name());
+            paymentRepository.save(payment);
             return new PaymentResponse(false, "Invalid signature or merchant", responseCode);
         }
 
         if (!"00".equals(responseCode)) {
+            payment.setStatus(PaymentStatus.FAILED.name());
+            paymentRepository.save(payment);
             return new PaymentResponse(false, "Payment failed at VNPAY", responseCode);
         }
 
-        // 3. Extract subscriptionTierId from vnp_TxnRef → format: tierUuid_timestamp
         UUID tierId = extractTierIdFromTxnRef(txnRef);
         UUID embeddedUserId = extractUserIdFromTxnRef(txnRef);
-        if (embeddedUserId == null || !embeddedUserId.equals(currentUser.getUserId())) {
+        if (embeddedUserId == null) {
+            payment.setStatus(PaymentStatus.FAILED.name());
+            paymentRepository.save(payment);
             return new PaymentResponse(false, "User mismatch or invalid transaction", responseCode);
         }
 
-        User user = userRepo.findById(embeddedUserId)  // Use embedded ID
+        User user = userRepo.findById(embeddedUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         if (tierId == null) {
             return new PaymentResponse(false, "Cannot identify subscription tier", responseCode);
         }
 
-        // 4. Validate tier exists
-        if (tierRepo.findById(tierId).isEmpty()) {
-            return new PaymentResponse(false, "Subscription tier not found", responseCode);
-        }
         Optional<SubscriptionTier> tierOpt = tierRepo.findById(tierId);
         if (tierOpt.isEmpty()) {
             return new PaymentResponse(false, "Tier not found", responseCode);
         }
         SubscriptionTier tier = tierOpt.get();
-        BigDecimal priceBd = BigDecimal.valueOf(tier.getPrice());
-        long expectedAmount = priceBd.multiply(BigDecimal.valueOf(100)).longValueExact();
-
-        long returnedAmount = Long.parseLong(params.getOrDefault("vnp_Amount", "0"));
-        if (returnedAmount != expectedAmount) {
-            return new PaymentResponse(false, "Amount mismatch", responseCode);
-        }
-
-        // 5. APPLY SUBSCRIPTION – this is the real business action
         try {
-            user.setSubscriptionTier(tierRepo.findById(tierId).get());
+            user.setSubscriptionTier(tier);
             userRepo.save(user);
-            quotaService.syncUserQuotaWithSubscriptionTier(currentUser.getUserId());
+            quotaService.syncUserQuotaWithSubscriptionTier(user.getId());
         } catch (Exception e) {
-            // Log this in real project
+            payment.setStatus(PaymentStatus.FAILED.name());
+            paymentRepository.save(payment);
             return new PaymentResponse(false, "Failed to activate subscription", responseCode);
         }
-
-        // SUCCESS
-        Payment payment = Payment.builder()
-                .txnRef(txnRef)
-                .user(user)
-                .tier(tier)
-                .amount(Long.parseLong(params.get("vnp_Amount")) / 100)  // Divide by 100 to store actual amount
-                .orderInfo(params.get("vnp_OrderInfo"))
-                .status(PaymentStatus.SUCCESS.name())
-                .vnpTransactionNo(params.get("vnp_TransactionNo"))
-                .vnpResponseCode(responseCode)
-                .vnpSecureHash(secureHash)
-                .createdAt(Instant.now())
-                .paidAt(Instant.now())
-                .build();
-
+        // best case
+        payment.setStatus(PaymentStatus.SUCCESS.name());
+        payment.setTier(tier);
         paymentRepository.save(payment);
         return new PaymentResponse(true, "Subscription activated successfully", tierId);
     }
@@ -172,7 +176,6 @@ public class PaymentServiceImpl implements PaymentService {
                 .map(payment -> {
                     return PaymentHistoryResponse.builder()
                 .id(payment.getId())
-                .txnRef(payment.getTxnRef())
                 .amount(payment.getAmount())
                 .status(payment.getStatus())
                 .createdAt(payment.getCreatedAt())
@@ -222,6 +225,15 @@ public class PaymentServiceImpl implements PaymentService {
         if (txnRef == null || txnRef.split("_").length < 3) return null;
         try {
             return UUID.fromString(txnRef.split("_")[0]);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private UUID extractPaymentIdFromTxnRef(String txnRef) {
+        if (txnRef == null || txnRef.split("_").length < 3) return null;
+        try {
+            return UUID.fromString(txnRef.split("_")[3]);
         } catch (IllegalArgumentException e) {
             return null;
         }
