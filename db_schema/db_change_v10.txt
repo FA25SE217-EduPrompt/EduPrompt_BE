@@ -1,0 +1,7 @@
+-- Add average rating to prompt
+
+ALTER TABLE prompts
+    ADD COLUMN avg_rating DOUBLE PRECISION CHECK (avg_rating >= 1 AND avg_rating <= 5);
+
+-- Ensure a user can only rate a prompt once
+ALTER TABLE prompt_ratings ADD CONSTRAINT uq_prompt_rating_user UNIQUE (prompt_id, user_id);

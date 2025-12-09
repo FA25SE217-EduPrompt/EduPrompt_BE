@@ -18,4 +18,5 @@ public record PromptVersionResponse(
         Integer versionNumber,
         Boolean isAiGenerated,
         Instant createdAt
-) {}
+) {
+}

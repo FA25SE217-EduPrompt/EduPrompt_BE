@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -50,6 +51,12 @@ public class QuotaServiceImpl implements QuotaService {
                 .testingQuotaLimit(userQuota.getTestingQuotaLimit())
                 .optimizationQuotaRemaining(userQuota.getOptimizationQuotaRemaining())
                 .optimizationQuotaLimit(userQuota.getOptimizationQuotaLimit())
+                .promptActionLimit(userQuota.getPromptActionLimit())
+                .promptActionRemaining(userQuota.getCollectionActionRemaining())
+                .collectionActionLimit(userQuota.getCollectionActionLimit())
+                .collectionActionRemaining(userQuota.getCollectionActionRemaining())
+                .promptUnlockLimit(userQuota.getPromptUnlockLimit())
+                .promptUnlockRemaining(userQuota.getPromptUnlockRemaining())
                 .quotaResetDate(userQuota.getQuotaResetDate())
                 .build();
     }
@@ -240,7 +247,7 @@ public class QuotaServiceImpl implements QuotaService {
         log.info("Syncing quota for user: {} with subscription: {}", userId, subscriptionTierId);
 
         SubscriptionTier tier = subscriptionTierRepository.findById(subscriptionTierId)
-                .orElseThrow(() -> new ResourceNotFoundException("Subscription tier not found with id : " + subscriptionTierId));
+                .orElse(getFreeTier().orElseThrow());
 
 
         UserQuota userQuota = userQuotaRepository.findByUserId(userId)
@@ -273,6 +280,55 @@ public class QuotaServiceImpl implements QuotaService {
 
         userQuotaRepository.save(updatedQuota);
         log.info("Quota synced successfully for user: {}", userId);
+    }
+
+    @Override
+    @Transactional
+    public void syncUserQuotaWithSubscriptionTier(User user) {
+
+        UUID subscriptionTierId = user.getSubscriptionTierId();
+        UUID userId = user.getId();
+
+        log.info("Sync quota for user: {} with subscription: {}", userId, subscriptionTierId);
+
+        SubscriptionTier tier = subscriptionTierRepository.findById(subscriptionTierId)
+                .orElse(getFreeTier().orElseThrow());
+
+
+        UserQuota userQuota = userQuotaRepository.findByUserId(userId)
+                .orElseGet(() -> UserQuota.builder()
+                        .userId(userId)
+                        .subscriptionTier(tier)
+                        .createdAt(Instant.now())
+                        .build());
+
+        UserQuota updatedQuota = UserQuota.builder()
+                .id(userQuota.getId())
+                .user(user)
+                .subscriptionTier(tier)
+                .individualTokenLimit(tier.getIndividualTokenLimit())
+                .individualTokenRemaining(tier.getIndividualTokenLimit())
+                .testingQuotaLimit(tier.getTestingQuotaLimit())
+                .testingQuotaRemaining(tier.getTestingQuotaLimit())
+                .optimizationQuotaLimit(tier.getOptimizationQuotaLimit())
+                .optimizationQuotaRemaining(tier.getOptimizationQuotaLimit())
+                .collectionActionLimit(tier.getCollectionActionLimit())
+                .collectionActionRemaining(tier.getCollectionActionLimit())
+                .promptActionLimit(tier.getPromptActionLimit())
+                .promptActionRemaining(tier.getPromptActionLimit())
+                .promptUnlockRemaining(tier.getPromptUnlockLimit())
+                .promptUnlockLimit(tier.getPromptUnlockLimit())
+                .quotaResetDate(calculateNextResetDate())
+                .createdAt(userQuota.getCreatedAt())
+                .updatedAt(Instant.now())
+                .build();
+
+        userQuotaRepository.save(updatedQuota);
+        log.info("Quota synced successfully for user: {}", userId);
+    }
+
+    private Optional<SubscriptionTier> getFreeTier() {
+        return subscriptionTierRepository.findByNameIgnoreCase("free");
     }
 
     @Override
@@ -333,6 +389,9 @@ public class QuotaServiceImpl implements QuotaService {
         userQuota.setTestingQuotaRemaining(userQuota.getTestingQuotaLimit());
         userQuota.setOptimizationQuotaRemaining(userQuota.getOptimizationQuotaLimit());
         userQuota.setIndividualTokenRemaining(userQuota.getIndividualTokenLimit());
+        userQuota.setPromptActionRemaining(userQuota.getPromptActionLimit());
+        userQuota.setPromptUnlockRemaining(userQuota.getPromptUnlockLimit());
+        userQuota.setCollectionActionRemaining(userQuota.getCollectionActionLimit());
         userQuota.setQuotaResetDate(calculateNextResetDate());
         userQuota.setUpdatedAt(Instant.now());
 

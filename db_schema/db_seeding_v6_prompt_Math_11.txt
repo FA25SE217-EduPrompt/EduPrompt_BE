@@ -1,0 +1,106 @@
+w-- INSERT 10 PROMPT TIN HỌC 10
+WITH grade_tag AS (SELECT id FROM tags WHERE type = 'khối' AND value = '11'),
+     subject_tag AS (SELECT id FROM tags WHERE type = 'môn' AND value = 'toán học'),
+
+     inserted_prompts AS (
+         INSERT INTO prompts (
+                              id,
+                              user_id,
+                              created_by,
+                              updated_by,
+                              title,
+                              description,
+                              instruction,
+                              context,
+                              input_example,
+                              output_format,
+                              constraints,
+                              visibility,
+                              current_version_id
+             )
+             VALUES (
+                        gen_random_uuid(), '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000023',
+                        'Đề cương ôn tập Toán 11 – Học kỳ 1 (chuẩn khung THPT Quốc gia)',
+                        'Prompt chuyên tạo đề cương ôn tập học kỳ 1 Toán 11 cực chất, chuẩn ma trận đề minh họa THPT Quốc gia 2025+, phù hợp mọi sách KNTT, Cánh Diều, Chân Trời Sáng Tạo.',
+
+                        -- INSTRUCTION
+                        'Bạn là tổ trưởng chuyên môn Toán THPT cấp tỉnh, 18+ năm kinh nghiệm ra đề thi học kỳ và đề tham khảo kỳ thi THPT Quốc gia.
+
+           Nhiệm vụ: Soạn ĐỀ CƯƠNG ÔN TẬP HỌC KỲ 1 môn Toán lớp 11 hoàn chỉnh, khoa học, sát đề chính thức nhất có thể.
+
+           Yêu cầu bắt buộc:
+           - Phân bổ tỷ lệ chính xác: Đại số & Giải tích 70–75%, Hình học 25–30%
+           - Chia rõ 4 mức độ theo đúng ma trận đề minh họa của Bộ GD&ĐT (Nhận biết 25–30%, Thông hiểu 35–40%, Vận dụng 20–25%, Vận dụng cao 10–15%)
+           - Mỗi chuyên đề có: bảng tóm tắt lý thuyết trọng tâm + công thức then chốt (highlight) + phân dạng bài điển hình (4 mức) + ví dụ chọn lọc + bài tập tự luyện có đáp án chi tiết
+           - Đặc biệt chú trọng các dạng bài vận dụng cao thường xuất hiện trong đề THPT Quốc gia gần đây
+           - Có phần “Mẹo hay – Bẫy thường gặp – Cách xử lý nhanh”
+           - Độ dài 18–25 trang A4, định dạng Word chuyên nghiệp, dễ in photo đen trắng',
+
+                        -- CONTEXT
+                        'Phạm vi ôn tập học kỳ 1 Toán 11 (CT 2018):
+           - Chương 1: Hàm số lượng giác và phương trình lượng giác
+           - Chương 2: Tổ hợp – Xác suất
+           - Chương 3: Dãy số – Cấp số cộng, cấp số nhân
+           - Chương 4: Giới hạn – Liên tục
+           - Chương 5: Đạo hàm (nâng cao) và ứng dụng khảo sát hàm số
+
+           Ma trận đề tham chiếu THPT Quốc gia:
+           - 50 câu trắc nghiệm (90 phút)
+           - Tỷ lệ vận dụng & vận dụng cao: ≥ 35%
+           - Có ít nhất 4–6 câu “phân hóa cực mạnh”',
+
+                        -- INPUT_EXAMPLE
+                        'ky: "Học kỳ 1"
+           nam_hoc: "2025-2026"
+           sach_giao_khoa: "Cánh Diều"
+           cac_chuong:
+             - "Chương 1: Hàm số lượng giác và phương trình lượng giác"
+             - "Chương 2: Tổ hợp – Xác suất"
+             - "Chương 3: Dãy số – Cấp số cộng và cấp số nhân"
+             - "Chương 4: Giới hạn và liên tục"
+             - "Chương 5: Đạo hàm và khảo sát hàm số"
+           loai_de: "Đề chuẩn thi THPT Quốc gia (50 câu trắc nghiệm + tự luận nếu cần)"
+           dinh_dang: "Word đẹp, mục lục tự động, bảng biểu rõ ràng, dễ photo"',
+
+                        -- OUTPUT_FORMAT
+                        'Cấu trúc file Word đề cương ôn tập (18–25 trang):
+
+           TRANG BÌA + LỜI NÓI ĐẦU + HƯỚNG DẪN SỬ DỤNG
+
+           I. Ma trận chuyên đề & tỷ lệ điểm dự kiến kỳ thi THPT Quốc gia
+           II. Hướng dẫn phương pháp ôn tập hiệu quả lớp 11
+           III. Nội dung chi tiết từng chương
+              Mỗi chương gồm:
+              1. Tóm tắt lý thuyết trọng tâm (bảng, sơ đồ tư duy)
+              2. Công thức – định lý cần nhớ (highlight vàng)
+              3. Phân dạng bài điển hình (4 mức độ + đánh dấu dạng hay ra đề THPTQG)
+              4. Ví dụ minh họa chọn lọc (có lời giải chi tiết)
+              5. Bài tập tự luyện (15–25 câu/chương) + đáp án + hướng dẫn nhanh
+              6. Mẹo hay & bẫy thường gặp
+
+           IV. 300–400 câu trắc nghiệm chọn lọc theo từng chuyên đề
+           V. 8 đề thi thử học kỳ 1 (có đáp án & biểu điểm chi tiết)
+           VI. Phụ lục:
+              - Bảng công thức tổng hợp Toán 11 HK1
+              - Các bất đẳng thức thường dùng
+              - Mẹo tính nhanh tổ hợp – xác suất – giới hạn đặc biệt',
+
+                        -- CONSTRAINTS
+                        '- 100% chính xác theo SGK hiện hành và đề minh họa 2025+
+           - Không sai công thức, định lý, cách viết
+           - Có đủ dạng vận dụng cao (đặc biệt lượng giác, tổ hợp, giới hạn, khảo sát hàm số)
+           - Đề thử phải đạt độ khó tương đương hoặc nhỉnh hơn đề chính thức
+           - Bắt buộc có mục lục tự động, đánh số trang, đánh số câu hỏi liên tục
+           - Định dạng đẹp, font thống nhất, bảng biểu dễ đọc khi photo đen trắng',
+
+                        'PUBLIC',
+                        NULL
+                    )
+             RETURNING id
+     )
+
+-- GẮN TAG: grade:11 + subject: Toan
+INSERT INTO prompt_tags (prompt_id, tag_id, created_at)
+SELECT p.id, g.id, now() FROM inserted_prompts p, grade_tag g
+UNION ALL
+SELECT p.id, s.id, now() FROM inserted_prompts p, subject_tag s;

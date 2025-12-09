@@ -17,3 +17,6 @@ CREATE TABLE payments (
 CREATE INDEX idx_payments_user_id ON payments(user_id);
 CREATE INDEX idx_payments_status ON payments(status);
 CREATE INDEX idx_payments_created_at ON payments(created_at DESC);
+--Add new field share_token
+ALTER TABLE prompts
+    ADD COLUMN share_token UUID;

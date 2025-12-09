@@ -14,4 +14,5 @@ public record SchoolWithEmailsResponse(
         Instant createdAt,
         Instant updatedAt,
         Set<SchoolEmailResponse> emails
-) {}
+) {
+}

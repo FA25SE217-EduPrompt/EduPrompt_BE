@@ -1,0 +1,23 @@
+ALTER TABLE prompts
+ADD COLUMN gemini_file_id VARCHAR(255),
+ADD COLUMN last_indexed_at TIMESTAMP WITHOUT TIME ZONE NULL,
+ADD COLUMN indexing_status VARCHAR(50) DEFAULT 'PENDING'; -- pending, indexed, failed, skipped
+
+-- Create index for efficient lookup
+CREATE INDEX idx_prompts_gemini_file ON prompts(gemini_file_id) WHERE gemini_file_id IS NOT NULL;
+CREATE INDEX idx_prompts_indexing_status ON prompts(indexing_status) WHERE indexing_status != 'indexed';
+
+-- Table to track semantic search usage (for quota and analytics)
+CREATE TABLE semantic_search_logs (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  query TEXT NULL,
+  filters JSONB,  -- store tags, context for debugging
+  results_count INT,
+  execution_time_ms INT,
+  created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT fk_semantic_search_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_semantic_search_user ON semantic_search_logs(user_id, created_at);
+CREATE INDEX idx_semantic_search_created ON semantic_search_logs(created_at);

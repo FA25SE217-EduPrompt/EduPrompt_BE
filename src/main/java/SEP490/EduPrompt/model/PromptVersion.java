@@ -50,10 +50,14 @@ public class PromptVersion {
 
     @ColumnDefault("false")
     @Column(name = "is_ai_generated", nullable = false)
-    private Boolean isAiGenerated = false;
+    private Boolean isAiGenerated;
 
     @ColumnDefault("now()")
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+    }
 }

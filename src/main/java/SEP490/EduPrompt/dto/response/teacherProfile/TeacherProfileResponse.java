@@ -13,4 +13,5 @@ public record TeacherProfileResponse(
         String teachingStyle,
         Instant createdAt,
         Instant updatedAt
-) {}
+) {
+}
