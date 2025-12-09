@@ -87,7 +87,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public PaymentResponse processVnpayReturn(String queryString) {
         if (queryString == null || queryString.isEmpty()) {
-            return new PaymentResponse(false, "Invalid callback", "99");
+            return new PaymentResponse("99", "Invalid callback");
         }
 
         Map<String, String> params = parseQueryString(queryString);
@@ -123,13 +123,13 @@ public class PaymentServiceImpl implements PaymentService {
         if (!validSignature || !validTmnCode) {
             payment.setStatus(PaymentStatus.FAILED.name());
             paymentRepository.save(payment);
-            return new PaymentResponse(false, "Invalid signature or merchant", responseCode);
+            return new PaymentResponse(responseCode, "Invalid signature or merchant");
         }
 
         if (!"00".equals(responseCode)) {
             payment.setStatus(PaymentStatus.FAILED.name());
             paymentRepository.save(payment);
-            return new PaymentResponse(false, "Payment failed at VNPAY", responseCode);
+            return new PaymentResponse(responseCode, "Payment failed at VNPAY");
         }
 
         UUID tierId = extractTierIdFromTxnRef(txnRef);
@@ -137,7 +137,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (embeddedUserId == null) {
             payment.setStatus(PaymentStatus.FAILED.name());
             paymentRepository.save(payment);
-            return new PaymentResponse(false, "User mismatch or invalid transaction", responseCode);
+            return new PaymentResponse(responseCode, "User mismatch or invalid transaction");
         }
 
         User user = userRepo.findById(embeddedUserId)
@@ -145,14 +145,14 @@ public class PaymentServiceImpl implements PaymentService {
         if (tierId == null) {
             payment.setStatus(PaymentStatus.FAILED.name());
             paymentRepository.save(payment);
-            return new PaymentResponse(false, "Cannot identify subscription tier", responseCode);
+            return new PaymentResponse(responseCode, "Cannot identify subscription tier");
         }
 
         Optional<SubscriptionTier> tierOpt = tierRepo.findById(tierId);
         if (tierOpt.isEmpty()) {
             payment.setStatus(PaymentStatus.FAILED.name());
             paymentRepository.save(payment);
-            return new PaymentResponse(false, "Tier not found", responseCode);
+            return new PaymentResponse(responseCode, "Tier not found");
         }
         SubscriptionTier tier = tierOpt.get();
         try {
@@ -163,14 +163,14 @@ public class PaymentServiceImpl implements PaymentService {
             payment.setStatus(PaymentStatus.FAILED.name());
             paymentRepository.save(payment);
             user.setSubscriptionTier(user.getSubscriptionTier());
-            return new PaymentResponse(false, "Failed to activate subscription", responseCode);
+            return new PaymentResponse(responseCode, "Failed to activate subscription");
         }
         // best case
         payment.setStatus(PaymentStatus.SUCCESS.name());
         payment.setTier(tier);
         payment.setPaidAt(Instant.now());
         paymentRepository.save(payment);
-        return new PaymentResponse(true, "Subscription activated successfully", tierId);
+        return new PaymentResponse("00", "Confirm Success");
     }
 
     @Override

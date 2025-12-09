@@ -52,20 +52,14 @@ public class PaymentController {
 
 
     @GetMapping("/vnpay-return")
-    public ResponseDto<PaymentResponse> handlePaymentResponse(
+    public PaymentResponse handlePaymentResponse(
             HttpServletRequest servletRequest) {
 
         String queryString = servletRequest.getQueryString();
 
-        PaymentResponse result = paymentService.processVnpayReturn(
+        return paymentService.processVnpayReturn(
                 queryString
         );
-
-        if (result.isSuccess()) {
-            return ResponseDto.success(result);
-        } else {
-            return ResponseDto.error("400", result.getMessage());
-        }
     }
 
     @GetMapping("/my-payment")
