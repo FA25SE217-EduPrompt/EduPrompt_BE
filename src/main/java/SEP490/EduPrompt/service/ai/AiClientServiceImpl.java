@@ -102,7 +102,7 @@ public class AiClientServiceImpl implements AiClientService {
 
             // Build the chat completion request
             ChatCompletionCreateParams.Builder requestBuilder = ChatCompletionCreateParams.builder()
-                    .model(ChatModel.GPT_4O_MINI)
+                    .model(ChatModel.GPT_4O)
                     .addMessage(ChatCompletionUserMessageParam.builder()
                             .content(ChatCompletionUserMessageParam.Content.ofText(prompt))
                             .build()
@@ -358,26 +358,36 @@ public class AiClientServiceImpl implements AiClientService {
     private String buildOptimizationPrompt(Prompt prompt, String optimizationInput) {
         String currentPrompt = buildFullPrompt(prompt, null);
 
+        int minChars = Math.max(800, currentPrompt.length());
+        int minWords = Math.max(120, currentPrompt.split("\\s+").length);
+
         return String.format(
                 """
-                        You are an expert prompt engineer. Your task is to optimize the following prompt for high school teachers with better clarity, effectiveness, and results.
-                                        
-                        Current Prompt:
+                        System: You are an expert prompt engineer. Strict rules:
+                         - Preserve all intent and requirements from the Current Prompt.
+                         - Expand and improve the prompt for clarity, pedagogy, and concrete instructions for a high school teacher audience.
+                         - Do NOT shorten or remove details. The optimized prompt MUST be AT LEAST %d characters and AT LEAST %d words.
+                         - Keep or expand examples, constraints, and formatting. Add step-by-step instructions, examples, and explicit output format if missing.
+                         - Follow prompt-engineering best practices: explicit goal, role, audience, constraints, examples, desired output shape.
+                         - Return ONLY the optimized prompt text (no commentary, no meta, no labels). If you produce anything else, the response will be discarded.
+                                
+                        === Current Prompt ===
                         %s
-                                        
-                        Optimization Request:
+                                
+                        === Optimization Request ===
                         %s
-                                        
-                        Please provide an improved version of the prompt that:
-                        1. Maintains the original intent and requirements
-                        2. Improves clarity and structure
-                        3. Follows best practices for prompt engineering
-                        4. Addresses the specific optimization request
-                                        
-                        Return only the optimized prompt without explanations.
+                                
+                        Output requirements (IMPORTANT):
+                        1) Return a single block of plain text (the new prompt).
+                        2) The prompt must be ready-to-use — teacher can paste it into an LLM as-is.
+                        3) The prompt must be at least %d characters and at least %d words.
+                        4) Do not include any preamble like "Here is the optimized prompt:".
                         """,
+                minChars, minWords,
                 currentPrompt,
-                optimizationInput
+                optimizationInput,
+                minChars, minWords
         );
     }
+
 }
