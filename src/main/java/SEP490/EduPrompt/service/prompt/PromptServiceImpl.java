@@ -9,8 +9,8 @@ import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.client.QuotaExceededException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
-import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.model.Collection;
+import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
@@ -285,6 +285,7 @@ public class PromptServiceImpl implements PromptService {
 
                     return DetailPromptResponse.builder()
                             .id(prompt.getId())
+                            .ownerId(prompt.getUserId())
                             .title(prompt.getTitle())
                             .instruction(prompt.getInstruction())
                             .description(prompt.getDescription())
@@ -805,8 +806,7 @@ public class PromptServiceImpl implements PromptService {
         }
 
         // Generate shareable link
-        String finalUrl = shareUrl + prompt.getId() + "?token=" + prompt.getShareToken();
-        return finalUrl;
+        return shareUrl + prompt.getId() + "?token=" + prompt.getShareToken();
     }
 
     @Override
@@ -923,6 +923,7 @@ public class PromptServiceImpl implements PromptService {
 
         return DetailPromptResponse.builder()
                 .id(prompt.getId())
+                .ownerId(prompt.getUserId())
                 .title(prompt.getTitle())
                 .instruction(prompt.getInstruction())
                 .description(prompt.getDescription())

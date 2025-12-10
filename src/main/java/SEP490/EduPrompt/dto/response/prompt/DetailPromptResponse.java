@@ -11,6 +11,7 @@ import java.util.UUID;
 @Builder
 public class DetailPromptResponse {
     private UUID id;
+    private UUID ownerId;
     private String title;
     private String description;
     private String instruction;
