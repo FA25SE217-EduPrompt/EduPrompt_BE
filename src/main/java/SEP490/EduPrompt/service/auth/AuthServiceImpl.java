@@ -194,19 +194,7 @@ public class AuthServiceImpl implements AuthService {
                 SchoolSubscription schoolSub = schoolSubOpt.get();
                 userQuota.setSchoolSubscription(schoolSub);
                 // For school subscriptions, individual limits are typically 0 as they use the shared pool
-                userQuota.setIndividualTokenLimit(0);
-                userQuota.setIndividualTokenRemaining(0);
-                userQuota.setTestingQuotaLimit(0);
-                userQuota.setTestingQuotaRemaining(0);
-                userQuota.setOptimizationQuotaLimit(0);
-                userQuota.setOptimizationQuotaRemaining(0);
-                userQuota.setPromptUnlockLimit(100); // equivalent to pro tier
-                userQuota.setPromptUnlockRemaining(100);
-                userQuota.setPromptActionLimit(100);
-                userQuota.setPromptActionRemaining(2000);
-                userQuota.setCollectionActionLimit(200);
-                userQuota.setCollectionActionRemaining(200);
-                userQuota.setUpdatedAt(Instant.now());
+                setFreeTierQuota(userQuota);
             } else {
                 // Fallback to free if no active school subscription
                 setFreeTierQuota(userQuota);
