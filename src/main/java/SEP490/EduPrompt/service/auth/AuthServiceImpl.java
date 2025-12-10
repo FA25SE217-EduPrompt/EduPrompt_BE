@@ -203,6 +203,8 @@ public class AuthServiceImpl implements AuthService {
         } else {
             setFreeTierQuota(userQuota);
         }
+        user.setSubscriptionTier(subscriptionTierRepository.findByNameIgnoreCase("free").orElseThrow());
+        userRepository.save(user);
 
         userQuotaRepository.save(userQuota);
 
@@ -460,6 +462,7 @@ public class AuthServiceImpl implements AuthService {
             userAuthRepository.save(auth);
         } else {
             user = User.builder()
+                    .subscriptionTier(subscriptionTierRepository.findByNameIgnoreCase("free").orElseThrow())
                     .email(email)
                     .firstName((String) payload.get("given_name"))
                     .lastName((String) payload.get("family_name"))
