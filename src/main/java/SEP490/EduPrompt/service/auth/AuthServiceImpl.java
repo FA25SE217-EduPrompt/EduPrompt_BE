@@ -460,7 +460,7 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Google login - email: {}, googleId: {}", email, googleId);
 
-        Optional<UserAuth> existingAuth = userAuthRepository.findByGoogleUserId(googleId);
+        Optional<UserAuth> existingAuth = userAuthRepository.findByEmail(email);
 
         User user;
         if (existingAuth.isPresent()) {
