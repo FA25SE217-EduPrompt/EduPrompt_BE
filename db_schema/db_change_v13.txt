@@ -1,2 +1,5 @@
 ALTER TABLE users
     DROP COLUMN IF EXISTS subscription_id;
+
+ALTER TABLE user_quota
+    DROP CONSTRAINT chk_userquota_subscription_type;
