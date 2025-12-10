@@ -33,10 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,6 +48,8 @@ public class AdminServiceImpl implements AdminService {
     private final UserAuthRepository userAuthRepo;
     private final SchoolEmailRepository schoolEmailRepo;
     private final QuotaService quotaService;
+    private final SubscriptionTierRepository subscriptionTierRepo;
+    private final UserQuotaRepository userQuotaRepository;
 
     //============Helper============
     private static Set<String> validateRole(BulkAssignTeachersRequest request, User admin) {
@@ -184,9 +183,37 @@ public class AdminServiceImpl implements AdminService {
 
         userAuthRepo.save(userAuth);
 
+        UserQuota userQuota = UserQuota.builder()
+                .user(user)
+                .build();
+        setFreeTierQuota(userQuota);
+        userQuotaRepository.save(userQuota);
+
         return RegisterResponse.builder()
                 .message("Create school admin successfully")
                 .build();
+    }
+
+    private void setFreeTierQuota(UserQuota userQuota) {
+        Optional<SubscriptionTier> freeTier = subscriptionTierRepo.findByNameIgnoreCase("free");
+        SubscriptionTier subscriptionTier;
+        if (freeTier.isPresent()) {
+            subscriptionTier = freeTier.get();
+            userQuota.setSubscriptionTier(subscriptionTier);
+            userQuota.setIndividualTokenLimit(subscriptionTier.getIndividualTokenLimit());
+            userQuota.setIndividualTokenRemaining(subscriptionTier.getIndividualTokenLimit());
+            userQuota.setTestingQuotaLimit(subscriptionTier.getTestingQuotaLimit());
+            userQuota.setTestingQuotaRemaining(subscriptionTier.getTestingQuotaLimit());
+            userQuota.setOptimizationQuotaLimit(subscriptionTier.getOptimizationQuotaLimit());
+            userQuota.setOptimizationQuotaRemaining(subscriptionTier.getOptimizationQuotaLimit());
+            userQuota.setPromptUnlockLimit(subscriptionTier.getPromptUnlockLimit());
+            userQuota.setPromptUnlockRemaining(subscriptionTier.getPromptUnlockLimit());
+            userQuota.setPromptActionLimit(subscriptionTier.getPromptActionLimit());
+            userQuota.setPromptActionRemaining(subscriptionTier.getPromptActionLimit());
+            userQuota.setCollectionActionLimit(subscriptionTier.getCollectionActionLimit());
+            userQuota.setCollectionActionRemaining(subscriptionTier.getCollectionActionLimit());
+            userQuota.setUpdatedAt(Instant.now());
+        } else throw new ResourceNotFoundException("No free tier found");
     }
 
     @Override
