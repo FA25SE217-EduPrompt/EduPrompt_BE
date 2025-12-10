@@ -167,6 +167,7 @@ public class AdminServiceImpl implements AdminService {
                 .role(Role.SCHOOL_ADMIN.name())
                 .isActive(true)
                 .isVerified(true)
+                .schoolId(registerRequest.getSchoolId())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
