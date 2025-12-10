@@ -480,7 +480,7 @@ public class CollectionServiceImpl implements CollectionService {
 
     @Override
     public long countMyCollections(UserPrincipal currentUser) {
-        return 0;
+        return collectionRepository.countByCreatedByAndIsDeletedFalse(currentUser.getUserId());
     }
 
     // Helper method

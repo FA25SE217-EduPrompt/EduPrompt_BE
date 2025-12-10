@@ -23,6 +23,8 @@ public interface CollectionRepository extends JpaRepository<Collection, UUID> {
 
     Page<Collection> findAllByIsDeletedFalseOrderByCreatedAtDesc(Pageable pageable);
 
+    int countByCreatedByAndIsDeletedFalse(UUID createdBy);
+
     Optional<Collection> findByIdAndIsDeletedFalse(UUID id);
 
     @Query("SELECT c FROM Collection c WHERE c.id = :id AND c.user.id = :userId")
