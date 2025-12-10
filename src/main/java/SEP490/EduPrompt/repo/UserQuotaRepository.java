@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,4 +30,6 @@ public interface UserQuotaRepository extends JpaRepository<UserQuota, UUID> {
             @Param("userId") UUID userId,
             @Param("subscriptionTierId") UUID subscriptionTierId
     );
+
+    List<UserQuota> findAllByUserIdIn(Collection<UUID> userIds);
 }

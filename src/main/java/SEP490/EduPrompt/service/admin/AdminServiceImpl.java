@@ -25,6 +25,7 @@ import SEP490.EduPrompt.service.ai.QuotaService;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminServiceImpl implements AdminService {
 
     private final SchoolSubscriptionRepository schoolSubRepo;
@@ -106,14 +108,22 @@ public class AdminServiceImpl implements AdminService {
     public SchoolWithEmailsResponse addEmailsToSchool(UserPrincipal currentUser, SchoolEmailRequest request) {
         UUID schoolId = currentUser.getSchoolId();
 
+        log.info("Adding emails to school. SchoolId: {}, RequestedBy: {}, EmailCount: {}",
+                schoolId, currentUser.getUserId(), request.emails().size());
+
         if (!permissionService.isSchoolAdmin(currentUser)) {
+            log.warn("Access denied: User {} attempted to add emails without SCHOOL_ADMIN role", currentUser.getUserId());
             throw new AccessDeniedException("Only SCHOOL_ADMIN can add school emails");
         }
 
         School school = schoolRepo.findById(schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("School not found with id: " + schoolId));
 
-        // Normalize emails (trim + lowercase for duplicate check)
+        // Check school subscription early to avoid partial saves
+        SchoolSubscription schoolSubscription = schoolSubRepo.findActiveBySchoolId(schoolId)
+                .orElseThrow(() -> new ResourceNotFoundException("Active school subscription not found for school id: " + schoolId));
+
+        // Normalize emails
         Set<String> normalizedNewEmails = request.emails().stream()
                 .map(String::trim)
                 .map(String::toLowerCase)
@@ -125,10 +135,11 @@ public class AdminServiceImpl implements AdminService {
                 .toList();
 
         if (!duplicates.isEmpty()) {
+            log.warn("Duplicate emails detected for school {}: {}", schoolId, duplicates);
             throw new InvalidActionException("Duplicate emails: " + String.join(", ", duplicates));
         }
 
-        // Create new email entities
+        // Create and save new email entities
         List<SchoolEmail> newEmails = normalizedNewEmails.stream()
                 .map(email -> SchoolEmail.builder()
                         .school(school)
@@ -138,9 +149,26 @@ public class AdminServiceImpl implements AdminService {
                 .toList();
 
         schoolEmailRepo.saveAll(newEmails);
+        log.info("Saved {} new school emails for school {}", newEmails.size(), schoolId);
 
-        // Refresh school with updated emails
-        school.getSchoolEmails().addAll(newEmails);
+        List<User> usersToUpdate = userRepo.findAllByEmailIn(normalizedNewEmails);
+
+        if (!usersToUpdate.isEmpty()) {
+            usersToUpdate.forEach(user -> user.setSchoolId(schoolId));
+
+            // Batch fetch user quotas
+            List<UUID> userIds = usersToUpdate.stream().map(User::getId).toList();
+            List<UserQuota> quotasToUpdate = userQuotaRepository.findAllByUserIdIn(userIds);
+
+            // Update school subscription for quotas
+            quotasToUpdate.forEach(quota -> quota.setSchoolSubscription(schoolSubscription));
+
+            userRepo.saveAll(usersToUpdate);
+            userQuotaRepository.saveAll(quotasToUpdate);
+
+            log.info("Updated {} users and {} quotas with school subscription for school {}",
+                    usersToUpdate.size(), quotasToUpdate.size(), schoolId);
+        }
 
         return mapToSchoolWithEmailsResponse(school);
     }
@@ -319,7 +347,9 @@ public class AdminServiceImpl implements AdminService {
         teacher.setSchoolId(null);
         userRepo.save(teacher);
 
-        quotaService.syncUserQuotaWithSubscriptionTier(teacher);
+        UserQuota userQuota = userQuotaRepository.findByUserId(teacherId).orElseThrow(() -> new ResourceNotFoundException("user quota not found"));
+        userQuota.setSchoolSubscription(null);
+        userQuotaRepository.save(userQuota);
     }
 
     private SchoolSubscriptionResponse toSubscriptionResponse(SchoolSubscription sub) {
