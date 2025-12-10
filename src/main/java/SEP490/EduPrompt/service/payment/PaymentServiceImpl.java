@@ -178,17 +178,14 @@ public class PaymentServiceImpl implements PaymentService {
         Page<Payment> paymentPage = paymentRepository.findByUserId(currentUser.getUserId(), pageable);
 
         List<PaymentHistoryResponse> paymentHistoryResponses = paymentPage.getContent().stream()
-                .map(payment -> {
-                    String tierName = payment.getTier() != null ? payment.getTier().getName() : null;
-                    return PaymentHistoryResponse.builder()
-                .id(payment.getId())
-                .amount(payment.getAmount())
-                .status(payment.getStatus())
-                .createdAt(payment.getCreatedAt())
-                .paidAt(payment.getPaidAt())
-                            .tierName(tierName)
-                .build();
-                })
+                .map(payment -> PaymentHistoryResponse.builder()
+                        .id(payment.getId())
+                        .amount(payment.getAmount())
+                        .status(payment.getStatus())
+                        .createdAt(payment.getCreatedAt())
+                        .paidAt(payment.getPaidAt())
+                        .tierId(payment.getSubscriptionTierId())
+                        .build())
                 .toList();
         return PagePaymentHistoryResponse.builder()
                 .content(paymentHistoryResponses)

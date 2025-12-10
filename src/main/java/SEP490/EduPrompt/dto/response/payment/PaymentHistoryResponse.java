@@ -13,6 +13,6 @@ public record PaymentHistoryResponse (
         String status,
         Instant createdAt,
         Instant paidAt,
-        String tierName
+        UUID tierId
 ){
 }

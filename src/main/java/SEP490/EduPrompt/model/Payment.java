@@ -33,7 +33,7 @@ public class Payment {
     @Column(name = "user_id", insertable = false, updatable = false)
     private UUID userId;
 
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.RESTRICT)
     @JoinColumn(name = "tier_id")
     private SubscriptionTier tier;
