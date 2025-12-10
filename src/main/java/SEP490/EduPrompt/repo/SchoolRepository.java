@@ -1,6 +1,9 @@
 package SEP490.EduPrompt.repo;
 
 import SEP490.EduPrompt.model.School;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,4 +17,8 @@ public interface SchoolRepository extends JpaRepository<School, UUID> {
     Optional<School> findByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCaseAndDistrictIgnoreCaseAndProvinceIgnoreCase(String name, String district, String province);
+
+    @NotNull
+    Page<School> findAll(@NotNull Pageable pageable);
+
 }

@@ -44,7 +44,7 @@ public class School {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @OneToMany(mappedBy = "school")
+    @OneToMany(mappedBy = "school", fetch = FetchType.EAGER)
     private Set<SchoolEmail> schoolEmails;
 
     @PrePersist
