@@ -159,6 +159,7 @@ public class AdminServiceImpl implements AdminService {
         Instant now = Instant.now();
 
         User user = User.builder()
+                .subscriptionTier(subscriptionTierRepo.findByNameIgnoreCase("free").orElse(null))
                 .firstName(registerRequest.getFirstName())
                 .lastName(registerRequest.getLastName())
                 .phoneNumber(registerRequest.getPhoneNumber())
