@@ -25,7 +25,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/school-admin")
-@PreAuthorize("hasAnyRole('SYSTEM_ADMIN')")
+@PreAuthorize("hasAnyRole('SCHOOL_ADMIN')")
 @RequiredArgsConstructor
 public class SchoolAdminController {
 
@@ -55,7 +55,9 @@ public class SchoolAdminController {
     @GetMapping("/teachers/all")
     public ResponseDto<Page<SchoolAdminTeacherResponse>> getTeachers(
             @AuthenticationPrincipal UserPrincipal principal,
-            Pageable pageable) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(adminService.getTeachersInSchool(principal.getUserId(), pageable));
     }
 
