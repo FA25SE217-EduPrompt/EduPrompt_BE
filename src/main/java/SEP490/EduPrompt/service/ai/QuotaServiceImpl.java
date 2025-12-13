@@ -5,14 +5,8 @@ import SEP490.EduPrompt.enums.QuotaType;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.client.QuotaExceededException;
-import SEP490.EduPrompt.model.SchoolSubscription;
-import SEP490.EduPrompt.model.SubscriptionTier;
-import SEP490.EduPrompt.model.User;
-import SEP490.EduPrompt.model.UserQuota;
-import SEP490.EduPrompt.repo.SchoolSubscriptionRepository;
-import SEP490.EduPrompt.repo.SubscriptionTierRepository;
-import SEP490.EduPrompt.repo.UserQuotaRepository;
-import SEP490.EduPrompt.repo.UserRepository;
+import SEP490.EduPrompt.model.*;
+import SEP490.EduPrompt.repo.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -34,6 +28,7 @@ public class QuotaServiceImpl implements QuotaService {
     private final UserRepository userRepository;
     private final SubscriptionTierRepository subscriptionTierRepository;
     private final SchoolSubscriptionRepository schoolSubscriptionRepository;
+    private final TeacherTokenUsageLogRepository teacherTokenUsageLogRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -210,6 +205,97 @@ public class QuotaServiceImpl implements QuotaService {
             }
 
             userQuota.setIndividualTokenRemaining(indvTokensLeft - tokenUsed);
+            log.info("Decremented individual quota pools for user {} by {} token(s); action: {}", userId, tokenUsed, quotaType);
+        }
+
+        userQuota.setUpdatedAt(Instant.now());
+        userQuotaRepository.save(userQuota);
+    }
+
+    @Override
+    @Transactional
+    public void newValidateAndDecrementQuota(UUID userId, QuotaType quotaType, int tokenUsed) {
+        log.info("Validating {} quota for user: {}", quotaType, userId);
+
+        // prevent concurrent quota
+        UserQuota userQuota = userQuotaRepository.findByUserIdWithLock(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("user not found"));
+
+        User user = userRepository.getReferenceById(userId);
+
+        // Auto-reset if quota period expired
+        if (Instant.now().isAfter(userQuota.getQuotaResetDate())) {
+            log.info("Quota expired for user: {}, resetting...", userId);
+            resetUserQuota(userQuota);
+        }
+
+        // if user have school sub, count token used toward school token pool, ignore test/optimize quota limit
+        if (userQuota.getSchoolSubscriptionId() != null) {
+            SchoolSubscription schoolSub = userQuota.getSchoolSubscription();
+
+            int schoolTokensLeft = schoolSub.getSchoolTokenRemaining();
+            if (schoolTokensLeft < tokenUsed) {
+                throw new QuotaExceededException(QuotaType.SCHOOL, userQuota.getQuotaResetDate(), schoolTokensLeft);
+            }
+            schoolSub.setSchoolTokenRemaining(schoolTokensLeft - tokenUsed);
+            schoolSub.setUpdatedAt(Instant.now());
+            schoolSubscriptionRepository.save(schoolSub);
+
+            TeacherTokenUsageLog usageLog = TeacherTokenUsageLog.builder()
+                    .user(user)
+                    .schoolSubscriptionId(schoolSub.getId())
+                    .subscriptionTierId(null)
+                    .tokensUsed(tokenUsed)
+                    .usedAt(Instant.now())
+                    .build();
+            log.info("Decremented school pool for user {} by {}, remaining: {}", userId, tokenUsed, schoolTokensLeft);
+        }
+        // if user dont have school sub, then proceed as normal
+        else {
+            int indvTokensLeft = userQuota.getIndividualTokenRemaining();
+            if (indvTokensLeft < tokenUsed) {
+                throw new QuotaExceededException(
+                        QuotaType.INDIVIDUAL,
+                        userQuota.getQuotaResetDate(),
+                        userQuota.getIndividualTokenRemaining()
+                );
+            }
+
+            switch (quotaType) {
+                case TEST -> {
+                    int testQuotaLeft = userQuota.getTestingQuotaRemaining();
+                    if (testQuotaLeft < 1) {
+                        throw new QuotaExceededException(
+                                QuotaType.TEST,
+                                userQuota.getQuotaResetDate(),
+                                testQuotaLeft
+                        );
+                    }
+                    userQuota.setTestingQuotaRemaining(testQuotaLeft - 1);
+                }
+                case OPTIMIZATION -> {
+                    int optQuotaLeft = userQuota.getOptimizationQuotaRemaining();
+                    if (optQuotaLeft < 1) {
+                        throw new QuotaExceededException(
+                                QuotaType.OPTIMIZATION,
+                                userQuota.getQuotaResetDate(),
+                                optQuotaLeft
+                        );
+                    }
+                    userQuota.setOptimizationQuotaRemaining(optQuotaLeft - 1);
+                }
+                default -> throw new InvalidInputException("Unknown quota type");
+            }
+
+            userQuota.setIndividualTokenRemaining(indvTokensLeft - tokenUsed);
+            TeacherTokenUsageLog usageLog = TeacherTokenUsageLog.builder()
+                    .user(user)
+                    .schoolSubscriptionId(null)
+                    .subscriptionTierId(userQuota.getSubscriptionTier().getId())
+                    .tokensUsed(tokenUsed)
+                    .usedAt(Instant.now())
+                    .build();
+            teacherTokenUsageLogRepository.save(usageLog);
             log.info("Decremented individual quota pools for user {} by {} token(s); action: {}", userId, tokenUsed, quotaType);
         }
 

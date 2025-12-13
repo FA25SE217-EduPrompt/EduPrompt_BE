@@ -1,9 +1,7 @@
 package SEP490.EduPrompt.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
@@ -13,16 +11,21 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "school_token_usage_log")
-public class SchoolTokenUsageLog {
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "teacher_token_usage_log")
+public class TeacherTokenUsageLog {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "school_subscription_id")
-    private SchoolSubscription schoolSubscription;
+    @Column(name = "school_subscription_id")
+    private UUID schoolSubscriptionId;
+
+    @Column(name = "subscription_tier_id")
+    private UUID subscriptionTierId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -31,17 +34,13 @@ public class SchoolTokenUsageLog {
     @Column(name = "tokens_used")
     private Integer tokensUsed;
 
-    @Size(max = 50)
-    @Column(name = "action_type", length = 50)
-    private String actionType;
-
     @ColumnDefault("now()")
     @Column(name = "used_at")
     private Instant usedAt;
 
     @PrePersist
-    public void onCreate()
-    {
+    public void onCreate() {
         this.usedAt = Instant.now();
     }
+
 }

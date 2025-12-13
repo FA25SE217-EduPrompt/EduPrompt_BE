@@ -15,6 +15,8 @@ public interface QuotaService {
 
     void validateAndDecrementQuota(UUID userId, QuotaType quotaType, int tokenUsed);
 
+    void newValidateAndDecrementQuota(UUID userId, QuotaType quotaType, int tokenUsed);
+
     void resetExpiredQuotas();
 
     void syncUserQuotaWithSubscriptionTier(UUID userId);
