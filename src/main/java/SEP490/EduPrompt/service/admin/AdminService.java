@@ -11,6 +11,8 @@ import SEP490.EduPrompt.dto.response.school.SchoolWithEmailsResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolAdminTeacherResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolSubscriptionUsageResponse;
 import SEP490.EduPrompt.dto.response.systemAdmin.SchoolSubscriptionResponse;
+import SEP490.EduPrompt.dto.response.teacherTokenUsed.PaginatedTeacherTokenUsageLogResponse;
+import SEP490.EduPrompt.dto.response.teacherTokenUsed.SchoolUsageSummaryResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,4 +37,10 @@ public interface AdminService {
     void removeTeacherFromSchool(UUID adminUserId, RemoveTeacherFromSchoolRequest request);
 
     SchoolWithEmailsResponse addEmailsToSchool(UserPrincipal currentUser, SchoolEmailRequest request);
+
+    SchoolUsageSummaryResponse getSchoolTeachersUsage(UUID schoolAdminId);
+
+    PaginatedTeacherTokenUsageLogResponse getTokenUsageLogsBySchool(UUID adminId, Pageable pageable);
+
+    PaginatedTeacherTokenUsageLogResponse getTokenUsageLogsBySchoolAndUser(UUID adminId, UUID userId, Pageable pageable);
 }
