@@ -2,17 +2,24 @@ package SEP490.EduPrompt.service.admin;
 
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.group.CreateGroupRequest;
+import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
+import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
+import SEP490.EduPrompt.dto.request.tag.CreateTagBatchRequest;
 import SEP490.EduPrompt.dto.response.auditLog.PageAuditLogResponse;
 import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
+import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
+import SEP490.EduPrompt.dto.response.tag.TagResponse;
 import SEP490.EduPrompt.dto.response.user.PageUserResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface SystemAdminService {
     //List all
@@ -25,4 +32,7 @@ public interface SystemAdminService {
     //Create
     CreateCollectionResponse createCollection(CreateCollectionRequest req, UserPrincipal currentUser);
     CreateGroupResponse createGroup(CreateGroupRequest req, UserPrincipal currentUser);
+    DetailPromptResponse createStandalonePrompt(CreatePromptRequest dto, UserPrincipal currentUser);
+    DetailPromptResponse createPromptInCollection(CreatePromptCollectionRequest dto, UserPrincipal currentUser);
+    List<TagResponse> createBatch(CreateTagBatchRequest request);
 }
