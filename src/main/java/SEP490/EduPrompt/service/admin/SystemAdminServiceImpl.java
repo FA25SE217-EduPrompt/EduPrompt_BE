@@ -1,9 +1,13 @@
 package SEP490.EduPrompt.service.admin;
 
+import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
+import SEP490.EduPrompt.dto.request.group.CreateGroupRequest;
 import SEP490.EduPrompt.dto.response.auditLog.AuditLogResponse;
 import SEP490.EduPrompt.dto.response.auditLog.PageAuditLogResponse;
 import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
+import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
+import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.GroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
 import SEP490.EduPrompt.dto.response.prompt.*;
@@ -11,23 +15,33 @@ import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
 import SEP490.EduPrompt.dto.response.tag.TagResponse;
 import SEP490.EduPrompt.dto.response.user.PageUserResponse;
 import SEP490.EduPrompt.dto.response.user.UserResponse;
+import SEP490.EduPrompt.enums.Role;
+import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
+import SEP490.EduPrompt.exception.auth.InvalidInputException;
+import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static SEP490.EduPrompt.enums.Visibility.parseVisibility;
+
 @Service
 @RequiredArgsConstructor
-
+@Slf4j
 public class SystemAdminServiceImpl implements SystemAdminService {
 
     private final UserRepository userRepository;
@@ -38,8 +52,10 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private final CollectionTagRepository collectionTagRepository;
     private final PermissionService permissionService;
     private final TagRepository tagRepository;
-    private final AuditLogRepository auditLogRepository;
+    private final GroupMemberRepository  groupMemberRepository;
 
+    //========================================================
+    //======================LIST ALL==========================
     @Override
     public PageUserResponse listAllUser(UserPrincipal currentUser, Pageable pageable) {
         if (!permissionService.isSystemAdmin(currentUser)) {
@@ -195,6 +211,128 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .totalPages(page.getTotalPages())
                 .pageNumber(page.getNumber())
                 .pageSize(page.getSize())
+                .build();
+    }
+
+    //========================================================
+    //======================= CREATE =========================
+    @Override
+    @Transactional
+    public CreateCollectionResponse createCollection(CreateCollectionRequest request, UserPrincipal currentUser) {
+        UUID currentUserId = currentUser.getUserId();
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Visibility vis = parseVisibility(request.visibility());
+
+        Group group = null;
+        if (vis == Visibility.GROUP) {
+            if (request.groupId() == null) {
+                throw new InvalidInputException("Group ID required for group visibility");
+            }
+            group = groupRepository.findById(request.groupId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
+        }
+        List<Tag> tags = new ArrayList<>();
+        if (request.tags() != null && !request.tags().isEmpty()) {
+            tags = tagRepository.findAllById(request.tags());
+            if (tags.size() != request.tags().size()) {
+                throw new ResourceNotFoundException("One or more tags not found");
+            }
+        }
+
+        Collection collection = Collection.builder()
+                .user(user)
+                .name(request.name())
+                .description(request.description())
+                .visibility(request.visibility().toUpperCase())
+                .createdBy(currentUserId)
+                .updatedBy(currentUserId)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .isDeleted(false)
+                .group(group)
+                .build();
+        Collection saved = collectionRepository.save(collection);
+
+        // Create PromptTag entries
+        if (!tags.isEmpty()) {
+            List<CollectionTag> collectionTags = tags.stream()
+                    .map(tag -> CollectionTag.builder()
+                            .id(CollectionTagId.builder()
+                                    .collectionId(saved.getId())
+                                    .tagId(tag.getId())
+                                    .build())
+                            .collection(saved)
+                            .tag(tag)
+                            .createdAt(Instant.now())
+                            .build())
+                    .collect(Collectors.toList());
+            collectionTagRepository.saveAll(collectionTags);
+        }
+        log.info("Collection created: {} by user: {}", saved.getId(), currentUserId);
+
+        return CreateCollectionResponse.builder()
+                .id(collection.getId())
+                .name(collection.getName())
+                .description(collection.getDescription())
+                .visibility(collection.getVisibility().toUpperCase())
+                .tags(tags.stream()
+                        .map(tag -> TagDTO.builder()
+                                .type(tag.getType())
+                                .value(tag.getValue())
+                                .build())
+                        .collect(Collectors.toList()))
+                .createdAt(collection.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public CreateGroupResponse createGroup(CreateGroupRequest req, UserPrincipal currentUser) {
+        UUID currentUserId = currentUser.getUserId();
+        User creator = userRepository.getReferenceById(currentUserId);
+
+
+//        // SCHOOL_ADMIN and TEACHER must belong to a school
+//        UUID schoolId = currentUser.getSchoolId();
+//        if (schoolId == null && !Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
+//            throw new AccessDeniedException("You must be associated with a school to create a group");
+//        }
+//        School school = null;
+//        if (schoolId != null) {
+//            school = schoolRepository.findById(schoolId)
+//                    .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+//        }
+
+        Group group = Group.builder()
+                .name(req.name())
+                .school(null)
+                .createdBy(creator)
+                .updatedBy(creator)
+                .isActive(true)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        Group saved = groupRepository.save(group);
+        log.info("Group created: {} by user: {}", saved.getId(), currentUserId);
+
+        // Automatically add creator as group admin
+        groupMemberRepository.save(GroupMember.builder()
+                .group(saved)
+                .user(creator)
+                .role("admin")
+                .status("active")
+                .joinedAt(Instant.now())
+                .build());
+
+        return CreateGroupResponse.builder()
+                .id(saved.getId())
+                .name(saved.getName())
+                .schoolId(saved.getSchool() != null ? saved.getSchool().getId() : null)
+                .isActive(saved.getIsActive())
+                .createdAt(saved.getCreatedAt())
                 .build();
     }
 
