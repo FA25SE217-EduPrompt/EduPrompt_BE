@@ -8,7 +8,6 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
-import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -77,7 +76,7 @@ public class Collection {
     @Column(name = "group_id", insertable = false, updatable = false)
     private UUID groupId;
 
-    @OneToMany(mappedBy = "collection", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<CollectionTag> collectionTags = new LinkedHashSet<>();
+    @OneToMany(mappedBy = "collection", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<CollectionTag> collectionTags;
 
 }

@@ -114,6 +114,7 @@ public class UserQuota {
     protected void onCreate() {
         createdAt = Instant.now();
         updatedAt = Instant.now();
+        quotaResetDate = Instant.now().plusSeconds(2592000); //30 days
     }
 
     @PreUpdate

@@ -2,6 +2,7 @@ package SEP490.EduPrompt.service.collection;
 
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
+import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
@@ -13,6 +14,8 @@ import java.util.UUID;
 public interface CollectionService {
 
     CreateCollectionResponse createCollection(CreateCollectionRequest req, UserPrincipal currentUser);
+
+    CollectionResponse getCollectionById(UUID id, UserPrincipal currentUser);
 
     UpdateCollectionResponse updateCollection(UUID id, UpdateCollectionRequest request, UserPrincipal currentUser);
 

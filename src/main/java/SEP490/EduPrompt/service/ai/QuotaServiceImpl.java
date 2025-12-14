@@ -51,6 +51,12 @@ public class QuotaServiceImpl implements QuotaService {
                 .testingQuotaLimit(userQuota.getTestingQuotaLimit())
                 .optimizationQuotaRemaining(userQuota.getOptimizationQuotaRemaining())
                 .optimizationQuotaLimit(userQuota.getOptimizationQuotaLimit())
+                .promptActionLimit(userQuota.getPromptActionLimit())
+                .promptActionRemaining(userQuota.getCollectionActionRemaining())
+                .collectionActionLimit(userQuota.getCollectionActionLimit())
+                .collectionActionRemaining(userQuota.getCollectionActionRemaining())
+                .promptUnlockLimit(userQuota.getPromptUnlockLimit())
+                .promptUnlockRemaining(userQuota.getPromptUnlockRemaining())
                 .quotaResetDate(userQuota.getQuotaResetDate())
                 .build();
     }
@@ -265,7 +271,7 @@ public class QuotaServiceImpl implements QuotaService {
                 .collectionActionRemaining(tier.getCollectionActionLimit())
                 .promptActionLimit(tier.getPromptActionLimit())
                 .promptActionRemaining(tier.getPromptActionLimit())
-                .promptUnlockRemaining(tier.getPromptUnlockLimit())
+                .promptUnlockLimit(tier.getPromptUnlockLimit())
                 .promptUnlockRemaining(tier.getPromptUnlockLimit())
                 .quotaResetDate(calculateNextResetDate())
                 .createdAt(userQuota.getCreatedAt())
@@ -383,6 +389,9 @@ public class QuotaServiceImpl implements QuotaService {
         userQuota.setTestingQuotaRemaining(userQuota.getTestingQuotaLimit());
         userQuota.setOptimizationQuotaRemaining(userQuota.getOptimizationQuotaLimit());
         userQuota.setIndividualTokenRemaining(userQuota.getIndividualTokenLimit());
+        userQuota.setPromptActionRemaining(userQuota.getPromptActionLimit());
+        userQuota.setPromptUnlockRemaining(userQuota.getPromptUnlockLimit());
+        userQuota.setCollectionActionRemaining(userQuota.getCollectionActionLimit());
         userQuota.setQuotaResetDate(calculateNextResetDate());
         userQuota.setUpdatedAt(Instant.now());
 

@@ -4,9 +4,11 @@ import SEP490.EduPrompt.model.PromptRating;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 
+@Repository
 public interface PromptRatingRepository extends JpaRepository<PromptRating, UUID> {
     PromptRating findByPromptIdAndUserId(UUID promptId, UUID userId);
 

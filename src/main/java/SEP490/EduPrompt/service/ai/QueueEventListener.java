@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class QueueEventListener {
 
-    private static final int AI_CALL_TIMEOUT_SECONDS = 30;
+    private static final int AI_CALL_TIMEOUT_SECONDS = 60;
 
     private final OptimizationQueueRepository queueRepository;
     private final PromptUsageRepository usageRepository;
@@ -75,65 +75,77 @@ public class QueueEventListener {
     }
 
     /**
-     * Process optimization item in isolated transaction
+     * Process optimization item - Load data in transaction, then call AI
      */
     private void processOptimizationItem(UUID queueId) {
-        transactionTemplate.executeWithoutResult(status -> {
-            try {
-                // Reload item with pessimistic lock to prevent duplicate processing
-                OptimizationQueue item = queueRepository.findById(queueId)
-                        .orElse(null);
-
-                if (item == null) {
-                    log.warn("Optimization queue item not found: {}", queueId);
-                    return;
-                }
-
-                // Check if already processed
-                if (!QueueStatus.PENDING.name().equals(item.getStatus())) {
-                    log.info("Item {} already processed, status: {}", queueId, item.getStatus());
-                    return;
-                }
-
-                // Mark as PROCESSING
-                item.setStatus(QueueStatus.PROCESSING.name());
-                item.setUpdatedAt(Instant.now());
-                queueRepository.saveAndFlush(item);
-
-                log.info("Processing optimization item: {}", queueId);
-
-                // Process outside transaction (AI call)
-                processOptimizationLogic(item);
-
-            } catch (Exception e) {
-                log.error("Failed to process optimization: {}", queueId, e);
-                handleOptimizationFailure(queueId, e.getMessage());
+        // load data and update status in transaction
+        OptimizationQueueData queueData = transactionTemplate.execute(status -> {
+            OptimizationQueue item = queueRepository.findById(queueId).orElse(null);
+            if (item == null) {
+                log.warn("Optimization queue item not found: {}", queueId);
+                return null;
             }
+
+            // Check if already processed
+            if (!QueueStatus.PENDING.name().equals(item.getStatus())) {
+                log.info("Item {} already processed, status: {}", queueId, item.getStatus());
+                return null;
+            }
+
+            // Mark as PROCESSING
+            item.setStatus(QueueStatus.PROCESSING.name());
+            item.setUpdatedAt(Instant.now());
+            queueRepository.saveAndFlush(item);
+
+            // Fetch prompt inside transaction
+            Prompt prompt = promptRepository.findById(item.getPromptId())
+                    .orElseThrow(() -> new ResourceNotFoundException("prompt not found"));
+
+            log.info("Processing optimization item: {}", queueId);
+
+            // Return data transfer object
+            return OptimizationQueueData.builder()
+                    .queueId(item.getId())
+                    .userId(item.getRequestedById())
+                    .promptId(prompt.getId())
+                    .prompt(prompt) // Pass the loaded entity
+                    .input(item.getInput())
+                    .temperature(item.getTemperature())
+                    .maxTokens(item.getMaxTokens())
+                    .aiModel(item.getAiModel())
+                    .build();
         });
+
+        if (queueData == null) {
+            return; // Already processed or not found
+        }
+
+        // process outside transaction
+        try {
+            processOptimizationLogic(queueData);
+        } catch (Exception e) {
+            log.error("Failed to process optimization: {}", queueId, e);
+            handleOptimizationFailure(queueId, e.getMessage());
+        }
     }
 
     /**
-     * Core optimization logic (outside main transaction)
+     * Core optimization logic (outside transaction)
      */
-    private void processOptimizationLogic(OptimizationQueue item) {
-        UUID userId = item.getRequestedById();
-        int reservedTokens = item.getMaxTokens();
+    private void processOptimizationLogic(OptimizationQueueData data) {
+        int reservedTokens = data.maxTokens;
 
         try {
             // Reserve quota
-            quotaService.validateAndDecrementQuota(userId, QuotaType.OPTIMIZATION, reservedTokens);
-
-            // Fetch prompt
-            Prompt prompt = promptRepository.findById(item.getPromptId())
-                    .orElseThrow(() -> new ResourceNotFoundException("prompt not found"));
+            quotaService.validateAndDecrementQuota(data.userId, QuotaType.OPTIMIZATION, reservedTokens);
 
             // Call AI with timeout
             ClientPromptResponse response = callAiWithTimeout(() ->
                     aiClientService.optimizePrompt(
-                            prompt,
-                            item.getInput(),
-                            item.getTemperature(),
-                            item.getMaxTokens()
+                            data.prompt,
+                            data.input,
+                            data.temperature,
+                            data.maxTokens
                     )
             );
 
@@ -142,20 +154,26 @@ public class QueueEventListener {
             // Refund unused tokens
             int tokensToRefund = reservedTokens - tokensUsed;
             if (tokensToRefund > 0) {
-                quotaService.refundTokens(userId, tokensToRefund);
+                quotaService.refundTokens(data.userId, tokensToRefund);
                 log.debug("Refunded {} unused tokens", tokensToRefund);
             }
 
-            // Save results in new transaction
+            // save results in new transaction
             transactionTemplate.executeWithoutResult(status -> {
+                OptimizationQueue item = queueRepository.findById(data.queueId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Queue not found"));
+
+                Prompt prompt = promptRepository.findById(data.promptId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
                 // Save suggestion log
                 AiSuggestionLog suggestionLog = AiSuggestionLog.builder()
                         .prompt(prompt)
                         .promptId(prompt.getId())
-                        .requestedBy(userId)
-                        .input(item.getInput())
+                        .requestedBy(data.userId)
+                        .input(data.input)
                         .output(response.content())
-                        .aiModel(item.getAiModel())
+                        .aiModel(data.aiModel)
                         .status(QueueStatus.COMPLETED.name())
                         .optimizationQueue(item)
                         .createdAt(Instant.now())
@@ -170,78 +188,91 @@ public class QueueEventListener {
                 queueRepository.save(item);
             });
 
-            log.info("Optimization completed: {}", item.getId());
+            log.info("Optimization completed: {}", data.queueId);
 
         } catch (Exception e) {
             log.error("AI call failed, refunding quota", e);
-            quotaService.refundQuota(userId, QuotaType.OPTIMIZATION, reservedTokens);
+            quotaService.refundQuota(data.userId, QuotaType.OPTIMIZATION, reservedTokens);
             throw e;
         }
     }
 
     /**
-     * Process test item in isolated transaction
+     * Process test item - Load data in transaction, then call AI
      */
     private void processTestItem(UUID usageId) {
-        transactionTemplate.executeWithoutResult(status -> {
-            try {
-                // Reload item
-                PromptUsage usage = usageRepository.findById(usageId)
-                        .orElse(null);
-
-                if (usage == null) {
-                    log.warn("Test usage not found: {}", usageId);
-                    return;
-                }
-
-                // Check if already processed
-                if (!QueueStatus.PENDING.name().equals(usage.getStatus())) {
-                    log.info("Usage {} already processed, status: {}", usageId, usage.getStatus());
-                    return;
-                }
-
-                // Mark as PROCESSING
-                usage.setStatus(QueueStatus.PROCESSING.name());
-                usage.setUpdatedAt(Instant.now());
-                usageRepository.saveAndFlush(usage);
-
-                log.info("Processing test item: {}", usageId);
-
-                // Process outside transaction
-                processTestLogic(usage);
-
-            } catch (Exception e) {
-                log.error("Failed to process test: {}", usageId, e);
-                handleTestFailure(usageId, e.getMessage());
+        // load data and update status in transaction
+        TestUsageData usageData = transactionTemplate.execute(status -> {
+            PromptUsage usage = usageRepository.findById(usageId).orElse(null);
+            if (usage == null) {
+                log.warn("Test usage not found: {}", usageId);
+                return null;
             }
+
+            // Check if already processed
+            if (!QueueStatus.PENDING.name().equals(usage.getStatus())) {
+                log.info("Usage {} already processed, status: {}", usageId, usage.getStatus());
+                return null;
+            }
+
+            // Mark as PROCESSING
+            usage.setStatus(QueueStatus.PROCESSING.name());
+            usage.setUpdatedAt(Instant.now());
+            usageRepository.saveAndFlush(usage);
+
+            // Fetch prompt inside transaction
+            Prompt prompt = promptRepository.findById(usage.getPromptId())
+                    .orElseThrow(() -> new ResourceNotFoundException("prompt not found"));
+
+            log.info("Processing test item: {}", usageId);
+
+            // Return data transfer object
+            return TestUsageData.builder()
+                    .usageId(usage.getId())
+                    .userId(usage.getUserId())
+                    .promptId(prompt.getId())
+                    .prompt(prompt) // Pass the loaded entity
+                    .aiModel(usage.getAiModel())
+                    .inputText(usage.getInputText())
+                    .temperature(usage.getTemperature())
+                    .maxTokens(usage.getMaxTokens())
+                    .topP(usage.getTopP())
+                    .build();
         });
+
+        if (usageData == null) {
+            return; // Already processed or not found
+        }
+
+        // process outside transaction
+        try {
+            processTestLogic(usageData);
+        } catch (Exception e) {
+            log.error("Failed to process test: {}", usageId, e);
+            handleTestFailure(usageId, e.getMessage());
+        }
     }
 
     /**
-     * Core test logic (outside main transaction)
+     * Core test logic (outside transaction)
      */
-    private void processTestLogic(PromptUsage usage) {
-        UUID userId = usage.getUserId();
-        int reservedTokens = usage.getMaxTokens();
+    private void processTestLogic(TestUsageData data) {
+        int reservedTokens = data.maxTokens;
 
         try {
             // Reserve quota
-            quotaService.validateAndDecrementQuota(userId, QuotaType.TEST, reservedTokens);
-
-            // Fetch prompt
-            Prompt prompt = promptRepository.findById(usage.getPromptId())
-                    .orElseThrow(() -> new ResourceNotFoundException("prompt not found"));
+            quotaService.validateAndDecrementQuota(data.userId, QuotaType.TEST, reservedTokens);
 
             // Call AI with timeout
             long startTime = System.currentTimeMillis();
             ClientPromptResponse response = callAiWithTimeout(() ->
                     aiClientService.testPrompt(
-                            prompt,
-                            AiModel.parseAiModel(usage.getAiModel()),
-                            usage.getInputText(),
-                            usage.getTemperature(),
-                            usage.getMaxTokens(),
-                            usage.getTopP()
+                            data.prompt,
+                            AiModel.parseAiModel(data.aiModel),
+                            data.inputText,
+                            data.temperature,
+                            data.maxTokens,
+                            data.topP
                     )
             );
 
@@ -251,11 +282,14 @@ public class QueueEventListener {
             // Refund unused tokens
             int tokensToRefund = reservedTokens - tokensUsed;
             if (tokensToRefund > 0) {
-                quotaService.refundTokens(userId, tokensToRefund);
+                quotaService.refundTokens(data.userId, tokensToRefund);
             }
 
-            // Save results in new transaction
+            // save results in new transaction
             transactionTemplate.executeWithoutResult(status -> {
+                PromptUsage usage = usageRepository.findById(data.usageId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Usage not found"));
+
                 usage.setOutput(response.content());
                 usage.setTokensUsed(tokensUsed);
                 usage.setExecutionTimeMs(executionTime);
@@ -264,11 +298,11 @@ public class QueueEventListener {
                 usageRepository.save(usage);
             });
 
-            log.info("Test completed: {}", usage.getId());
+            log.info("Test completed: {}", data.usageId);
 
         } catch (Exception e) {
             log.error("AI call failed, refunding quota", e);
-            quotaService.refundQuota(userId, QuotaType.TEST, reservedTokens);
+            quotaService.refundQuota(data.userId, QuotaType.TEST, reservedTokens);
             throw e;
         }
     }
@@ -291,7 +325,6 @@ public class QueueEventListener {
             } else {
                 log.info("Retry {}/{} for: {}", item.getRetryCount(), item.getMaxRetries(), queueId);
                 item.setStatus(QueueStatus.PENDING.name());
-                // Note: Will need manual re-trigger or fallback scheduler for retries
             }
 
             queueRepository.save(item);
@@ -338,5 +371,34 @@ public class QueueEventListener {
     @FunctionalInterface
     private interface AiCallSupplier {
         ClientPromptResponse get() throws Exception;
+    }
+
+    // ===== Data Transfer Objects =====
+
+    @lombok.Builder
+    @lombok.Getter
+    private static class OptimizationQueueData {
+        UUID queueId;
+        UUID userId;
+        UUID promptId;
+        Prompt prompt;
+        String input;
+        Double temperature;
+        int maxTokens;
+        String aiModel;
+    }
+
+    @lombok.Builder
+    @lombok.Getter
+    private static class TestUsageData {
+        UUID usageId;
+        UUID userId;
+        UUID promptId;
+        Prompt prompt;
+        String aiModel;
+        String inputText;
+        Double temperature;
+        int maxTokens;
+        Double topP;
     }
 }

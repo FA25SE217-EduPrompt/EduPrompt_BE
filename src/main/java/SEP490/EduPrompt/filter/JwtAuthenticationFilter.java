@@ -46,6 +46,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        if (path.startsWith("/api/payments/vnpay/vnpay-return")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (path.startsWith("/api/prompts-share/shared")) {
             log.debug("Skipping JWT validation for public endpoint: {}", path);
@@ -57,6 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+
 
         final String jwt = authHeader.substring(7);
         String email = null;

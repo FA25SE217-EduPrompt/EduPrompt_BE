@@ -108,15 +108,15 @@ public class CollectionController {
 //        return ResponseDto.success(collectionService.updateCollection(id, request, currentUser));
 //    }
 //
-//    @GetMapping("/{id}")
-//    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-//    public ResponseDto<?> getCollectionById(
-//            @PathVariable UUID id,
-//            @AuthenticationPrincipal UserPrincipal currentUser) {
-//        log.info("Fetching collection: {} by user: {}", id, currentUser.getUserId());
-//        return ResponseDto.success(collectionService.getCollectionById(id, currentUser));
-//    }
-//
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<?> getCollectionById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Fetching collection: {} by user: {}", id, currentUser.getUserId());
+        return ResponseDto.success(collectionService.getCollectionById(id, currentUser));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     public ResponseDto<String> softDeleteCollection(
@@ -148,11 +148,11 @@ public class CollectionController {
 //        return ResponseDto.success(collectionService.listPublicCollections(pageable));
 //    }
 //
-//    @GetMapping("/my-collections/count")
-//    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-//    public ResponseDto<?> countMyCollections(
-//            @AuthenticationPrincipal UserPrincipal currentUser) {
-//        log.info("Counting collections for user: {}", currentUser.getUserId());
-//        return ResponseDto.success(collectionService.countMyCollections(currentUser));
-//    }
+@GetMapping("/my-collections/count")
+@PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+public ResponseDto<?> countMyCollections(
+        @AuthenticationPrincipal UserPrincipal currentUser) {
+    log.info("Counting collections for user: {}", currentUser.getUserId());
+    return ResponseDto.success(collectionService.countMyCollections(currentUser));
+}
 }

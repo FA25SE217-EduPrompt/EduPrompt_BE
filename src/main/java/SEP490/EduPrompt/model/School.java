@@ -5,7 +5,6 @@ import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
-import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,7 +44,16 @@ public class School {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @OneToMany(mappedBy = "school")
-    private Set<SchoolEmail> schoolEmails = new LinkedHashSet<>();
+    @OneToMany(mappedBy = "school", fetch = FetchType.EAGER)
+    private Set<SchoolEmail> schoolEmails;
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
+    }
 }

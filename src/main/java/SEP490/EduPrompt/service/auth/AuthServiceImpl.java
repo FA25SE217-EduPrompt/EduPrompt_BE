@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -193,19 +194,7 @@ public class AuthServiceImpl implements AuthService {
                 SchoolSubscription schoolSub = schoolSubOpt.get();
                 userQuota.setSchoolSubscription(schoolSub);
                 // For school subscriptions, individual limits are typically 0 as they use the shared pool
-                userQuota.setIndividualTokenLimit(0);
-                userQuota.setIndividualTokenRemaining(0);
-                userQuota.setTestingQuotaLimit(0);
-                userQuota.setTestingQuotaRemaining(0);
-                userQuota.setOptimizationQuotaLimit(0);
-                userQuota.setOptimizationQuotaRemaining(0);
-                userQuota.setPromptUnlockLimit(100); // equivalent to pro tier
-                userQuota.setPromptUnlockRemaining(100);
-                userQuota.setPromptActionLimit(100);
-                userQuota.setPromptActionRemaining(2000);
-                userQuota.setCollectionActionLimit(200);
-                userQuota.setCollectionActionRemaining(200);
-                userQuota.setUpdatedAt(Instant.now());
+                setFreeTierQuota(userQuota);
             } else {
                 // Fallback to free if no active school subscription
                 setFreeTierQuota(userQuota);
@@ -214,6 +203,8 @@ public class AuthServiceImpl implements AuthService {
         } else {
             setFreeTierQuota(userQuota);
         }
+        user.setSubscriptionTier(subscriptionTierRepository.findByNameIgnoreCase("free").orElseThrow());
+        userRepository.save(user);
 
         userQuotaRepository.save(userQuota);
 
@@ -459,7 +450,7 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Google login - email: {}, googleId: {}", email, googleId);
 
-        Optional<UserAuth> existingAuth = userAuthRepository.findByGoogleUserId(googleId);
+        Optional<UserAuth> existingAuth = userAuthRepository.findByEmail(email);
 
         User user;
         if (existingAuth.isPresent()) {
@@ -471,6 +462,7 @@ public class AuthServiceImpl implements AuthService {
             userAuthRepository.save(auth);
         } else {
             user = User.builder()
+                    .subscriptionTier(subscriptionTierRepository.findByNameIgnoreCase("free").orElseThrow())
                     .email(email)
                     .firstName((String) payload.get("given_name"))
                     .lastName((String) payload.get("family_name"))
@@ -514,19 +506,7 @@ public class AuthServiceImpl implements AuthService {
                     SchoolSubscription schoolSub = schoolSubOpt.get();
                     userQuota.setSchoolSubscription(schoolSub);
                     // For school subscriptions, individual limits are typically 0 as they use the shared pool
-                    userQuota.setIndividualTokenLimit(0);
-                    userQuota.setIndividualTokenRemaining(0);
-                    userQuota.setTestingQuotaLimit(0);
-                    userQuota.setTestingQuotaRemaining(0);
-                    userQuota.setOptimizationQuotaLimit(0);
-                    userQuota.setOptimizationQuotaRemaining(0);
-                    userQuota.setPromptUnlockLimit(100);
-                    userQuota.setPromptUnlockRemaining(100);
-                    userQuota.setPromptActionLimit(100);
-                    userQuota.setPromptActionRemaining(2000);
-                    userQuota.setCollectionActionLimit(200);
-                    userQuota.setCollectionActionRemaining(200);
-                    userQuota.setUpdatedAt(Instant.now());
+                    setFreeTierQuota(userQuota);
                 } else {
                     // Fallback to free if no active school subscription
                     setFreeTierQuota(userQuota);
@@ -563,15 +543,26 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userAuth.getUser();
         Role userRole = Role.parseRole(user.getRole());
+        UUID userTierId = user.getSubscriptionTierId();
+
+        boolean isFreeTier = userTierId.equals(subscriptionTierRepository.findByNameIgnoreCase("free").get().getId());
+        boolean isProTier = userTierId.equals(subscriptionTierRepository.findByNameIgnoreCase("pro").get().getId());
+        boolean isPremiumTier = userTierId.equals(subscriptionTierRepository.findByNameIgnoreCase("premium").get().getId());
+        boolean hasSchoolSubscription = schoolSubscriptionRepository.findActiveBySchoolId(user.getSchoolId()).isPresent();
 
         log.info("Return personal info for user : {}", user.getEmail());
         return PersonalInfoResponse.builder()
+                .id(user.getId())
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .phoneNumber(user.getPhoneNumber())
                 .isActive(user.getIsActive())
                 .isVerified(user.getIsVerified())
+                .isFreeTier(isFreeTier)
+                .isProTier(isProTier)
+                .isPremiumTier(isPremiumTier)
+                .hasSchoolSubscription(hasSchoolSubscription)
                 .isTeacher(userRole.equals(Role.TEACHER))
                 .isSchoolAdmin(userRole.equals(Role.SCHOOL_ADMIN))
                 .isSystemAdmin(userRole.equals(Role.SYSTEM_ADMIN))

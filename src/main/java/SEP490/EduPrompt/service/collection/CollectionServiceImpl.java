@@ -13,6 +13,7 @@ import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
+import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
@@ -25,10 +26,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static SEP490.EduPrompt.enums.Visibility.parseVisibility;
@@ -97,7 +95,7 @@ public class CollectionServiceImpl implements CollectionService {
         }
 
         // admin bypass
-        if (isAdmin(currentUser)) return;
+        if (isSystemAdmin(currentUser.getRole())) return;
 
 
         Visibility vis = parseVisibility(collection.getVisibility());
@@ -211,6 +209,19 @@ public class CollectionServiceImpl implements CollectionService {
                                 .build())
                         .collect(Collectors.toList()))
                 .createdAt(collection.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public CollectionResponse getCollectionById(UUID id, UserPrincipal currentUser) {
+        Collection collection = collectionRepository.findByIdAndIsDeletedFalse(id).orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
+        validateAccess(collection, currentUser);
+        return CollectionResponse.builder()
+                .id(collection.getId())
+                .name(collection.getName())
+                .description(collection.getDescription())
+                .visibility(collection.getVisibility().toUpperCase())
+                .tags(mapCollectionTagsToTags(collection.getCollectionTags()))
                 .build();
     }
 
@@ -469,18 +480,23 @@ public class CollectionServiceImpl implements CollectionService {
 
     @Override
     public long countMyCollections(UserPrincipal currentUser) {
-        return 0;
+        return collectionRepository.countByCreatedByAndIsDeletedFalse(currentUser.getUserId());
     }
 
     // Helper method
-    @Transactional
     protected List<Tag> mapCollectionTagsToTags(UUID collectionId) {
         List<CollectionTag> collectionTags = collectionTagRepository.findByCollectionId(collectionId);
         return collectionTags.stream()
                 .map(CollectionTag::getTag)
                 .collect(Collectors.toList());
 
+    }
 
+    protected List<Tag> mapCollectionTagsToTags(Set<CollectionTag> set) {
+        return set.stream()
+                .map(CollectionTag::getTag)
+                .collect(Collectors.toList());
+    }
 //    @Override
 //    @Transactional
 //    public UpdateCollectionResponse updateCollection(UUID id, UpdateCollectionRequest req, UserPrincipal currentUser) {
@@ -658,6 +674,4 @@ public class CollectionServiceImpl implements CollectionService {
 //        UUID currentUserId = currentUser.getUserId();
 //        return collectionRepository.countByCreatedByAndIsDeletedFalse(currentUserId);
 //    }
-
-    }
 }
