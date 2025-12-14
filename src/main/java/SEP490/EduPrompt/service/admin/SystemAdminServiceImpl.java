@@ -198,32 +198,6 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .build();
     }
 
-    @Override
-    public PageAuditLogResponse listAllAuditLogs(UserPrincipal currentUser, Pageable pageable) {
-        if (!permissionService.isSystemAdmin(currentUser)) {
-            throw new AccessDeniedException("You do not have permission to do this!!");
-        }
-
-        Page<AuditLog> page = auditLogRepository.findAll(pageable);
-
-        List<AuditLogResponse> content = page.getContent().stream()
-                .map(log -> AuditLogResponse.builder()
-                        .id(log.getId())
-                        .userId(log.getUser() != null ? log.getUser().getId() : null)
-                        .actionLog(log.getActionLog())
-                        .createdAt(log.getCreatedAt())
-                        .build())
-                .toList();
-
-        return PageAuditLogResponse.builder()
-                .content(content)
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .pageNumber(page.getNumber())
-                .pageSize(page.getSize())
-                .build();
-    }
-
     //HELPER
     private List<Tag> mapCollectionTagsToTags(UUID collectionId) {
         List<CollectionTag> collectionTags = collectionTagRepository.findByCollectionId(collectionId);

@@ -16,5 +16,4 @@ public interface SystemAdminService {
     PageGroupResponse listAllGroup(UserPrincipal currentUser, Pageable pageable);
     PageTagResponse listAllTag(UserPrincipal currentUser, Pageable pageable);
     PagePromptAllResponse listAllPrompt(UserPrincipal currentUser, Pageable pageable);
-    PageAuditLogResponse listAllAuditLogs(UserPrincipal currentUser, Pageable pageable);
 }
