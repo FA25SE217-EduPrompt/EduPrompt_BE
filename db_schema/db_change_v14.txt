@@ -1,0 +1,16 @@
+CREATE TABLE teacher_token_usage_log (
+                                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                                         school_subscription_id UUID,
+                                         subscription_tier_id UUID,
+                                         user_id UUID,
+                                         tokens_used INT,
+                                         used_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+
+                                         CONSTRAINT fk_subscription_sub FOREIGN KEY (subscription_tier_id) REFERENCES subscription_tiers(id),
+                                         CONSTRAINT fk_school_sub FOREIGN KEY (school_subscription_id) REFERENCES school_subscriptions(id),
+                                         CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_school_sub_user ON teacher_token_usage_log(school_subscription_id, user_id);
+CREATE INDEX idx_tier_sub_user ON teacher_token_usage_log(subscription_tier_id, user_id);
+CREATE INDEX idx_used_at ON teacher_token_usage_log(used_at);

@@ -13,6 +13,10 @@ import SEP490.EduPrompt.dto.response.school.SchoolWithEmailsResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolAdminTeacherResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolSubscriptionUsageResponse;
 import SEP490.EduPrompt.dto.response.systemAdmin.SchoolSubscriptionResponse;
+import SEP490.EduPrompt.dto.response.teacherTokenUsed.PaginatedTeacherTokenUsageLogResponse;
+import SEP490.EduPrompt.dto.response.teacherTokenUsed.SchoolUsageSummaryResponse;
+import SEP490.EduPrompt.dto.response.teacherTokenUsed.TeacherTokenUsageLogResponse;
+import SEP490.EduPrompt.dto.response.teacherTokenUsed.TeacherUsageResponse;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.EmailAlreadyExistedException;
@@ -49,26 +53,9 @@ public class AdminServiceImpl implements AdminService {
     private final UserRepository userRepo;
     private final UserAuthRepository userAuthRepo;
     private final SchoolEmailRepository schoolEmailRepo;
-    private final QuotaService quotaService;
+    private final TeacherTokenUsageLogRepository teacherTokenUsageLogRepo;
     private final SubscriptionTierRepository subscriptionTierRepo;
     private final UserQuotaRepository userQuotaRepository;
-
-    //============Helper============
-    private static Set<String> validateRole(BulkAssignTeachersRequest request, User admin) {
-        if (!Role.SCHOOL_ADMIN.name().equals(admin.getRole())) {
-            throw new AccessDeniedException("Only SCHOOL_ADMIN can assign teachers");
-        }
-        if (admin.getSchoolId() == null) {
-            throw new InvalidInputException("School admin has no school assigned");
-        }
-
-        List<String> emails = request.emails();
-        if (emails.size() > 50) {
-            throw new InvalidInputException("Maximum 50 emails allowed");
-        }
-
-        return new HashSet<>(emails);
-    }
 
     @Override
     @Transactional
@@ -224,28 +211,6 @@ public class AdminServiceImpl implements AdminService {
                 .build();
     }
 
-    private void setFreeTierQuota(UserQuota userQuota) {
-        Optional<SubscriptionTier> freeTier = subscriptionTierRepo.findByNameIgnoreCase("free");
-        SubscriptionTier subscriptionTier;
-        if (freeTier.isPresent()) {
-            subscriptionTier = freeTier.get();
-            userQuota.setSubscriptionTier(subscriptionTier);
-            userQuota.setIndividualTokenLimit(subscriptionTier.getIndividualTokenLimit());
-            userQuota.setIndividualTokenRemaining(subscriptionTier.getIndividualTokenLimit());
-            userQuota.setTestingQuotaLimit(subscriptionTier.getTestingQuotaLimit());
-            userQuota.setTestingQuotaRemaining(subscriptionTier.getTestingQuotaLimit());
-            userQuota.setOptimizationQuotaLimit(subscriptionTier.getOptimizationQuotaLimit());
-            userQuota.setOptimizationQuotaRemaining(subscriptionTier.getOptimizationQuotaLimit());
-            userQuota.setPromptUnlockLimit(subscriptionTier.getPromptUnlockLimit());
-            userQuota.setPromptUnlockRemaining(subscriptionTier.getPromptUnlockLimit());
-            userQuota.setPromptActionLimit(subscriptionTier.getPromptActionLimit());
-            userQuota.setPromptActionRemaining(subscriptionTier.getPromptActionLimit());
-            userQuota.setCollectionActionLimit(subscriptionTier.getCollectionActionLimit());
-            userQuota.setCollectionActionRemaining(subscriptionTier.getCollectionActionLimit());
-            userQuota.setUpdatedAt(Instant.now());
-        } else throw new ResourceNotFoundException("No free tier found");
-    }
-
     @Override
     @Transactional
     public CreateSchoolResponse createSchool(CreateSchoolRequest request) {
@@ -304,7 +269,7 @@ public class AdminServiceImpl implements AdminService {
 
         return new SchoolSubscriptionUsageResponse(
                 sub.getId(),
-                sub.getSchool().getName(),
+                sub.getSchool().getName(),//need to be in transaction
                 sub.getSchoolTokenPool(),
                 tokenUsed,
                 sub.getSchoolTokenRemaining(),
@@ -317,7 +282,6 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<SchoolAdminTeacherResponse> getTeachersInSchool(UUID adminUserId, Pageable pageable) {
         User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
         UUID schoolId = admin.getSchoolId();
@@ -352,6 +316,127 @@ public class AdminServiceImpl implements AdminService {
         userQuotaRepository.save(userQuota);
     }
 
+    @Override
+    public SchoolUsageSummaryResponse getSchoolTeachersUsage(UserPrincipal currentUser) {
+        if(!permissionService.isSchoolAdmin(currentUser)) {
+            throw new AccessDeniedException("You are not authorized to view this school");
+        }
+        User user = userRepo.findById(currentUser.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        School school = schoolRepo.findById(user.getSchoolId())
+                .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        SchoolSubscription activeSub = schoolSubRepo.findActiveBySchoolId(user.getSchoolId()).orElse(null);
+        Integer schoolTokenPool = activeSub != null ? activeSub.getSchoolTokenPool() : null;
+        Integer schoolTokenRemaining = activeSub != null ? activeSub.getSchoolTokenRemaining() : null;
+
+        // School total used: compute in service (pool - remaining)
+        Integer schoolTotalTokenUsed = (schoolTokenPool != null && schoolTokenRemaining != null) ? schoolTokenPool - schoolTokenRemaining : null;
+
+        List<TeacherUsageResponse> teacherUsageLogList = List.of();
+        List<User> teachers = new ArrayList<>();
+        if (activeSub != null) {
+            // Fetch all teachers
+            teachers = userRepo.findBySchoolIdAndRole(user.getSchoolId(), Role.TEACHER.name());
+
+            // Fetch all logs for the subscription (no aggregation in repo)
+            List<TeacherTokenUsageLog> allLogs = teacherTokenUsageLogRepo.findBySchoolSubscriptionId(activeSub.getId());
+
+            // Group and sum in service
+            Map<UUID, Long> userTokenSums = allLogs.stream()
+                    .collect(Collectors.groupingBy(
+                            TeacherTokenUsageLog::getId,
+                            Collectors.summingLong(TeacherTokenUsageLog::getTokensUsed)
+                    ));
+
+            // Build responses (0 if no logs for user)
+            teacherUsageLogList = teachers.stream()
+                    .map(teacher -> new TeacherUsageResponse(
+                            teacher.getId(),
+                            teacher.getFirstName(),
+                            teacher.getLastName(),
+                            teacher.getEmail(),
+                            teacher.getPhoneNumber(),
+                            teacher.getCreatedAt(),
+                            userTokenSums.getOrDefault(teacher.getId(), 0L),
+                            null
+                    ))
+                    .sorted(Comparator.comparingLong(TeacherUsageResponse::schoolTokensUsed).reversed()) // Optional: sort by usage desc
+                    .toList();
+        }
+        return new SchoolUsageSummaryResponse(
+                school.getName(),
+                teachers.size(),
+                schoolTokenPool,
+                schoolTotalTokenUsed,
+                schoolTokenRemaining,
+                activeSub != null ? activeSub.getQuotaResetDate() : null,
+                teacherUsageLogList
+        );
+    }
+
+    @Override
+    public PaginatedTeacherTokenUsageLogResponse getTokenUsageLogsBySchoolAndUser(
+            UserPrincipal currentUser,
+            UUID userId,
+            Pageable pageable) {
+        if (!permissionService.isSchoolAdmin(currentUser)) {
+            throw new AccessDeniedException("You are not authorized to view this school");
+        }
+        User admin = userRepo.findById(currentUser.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        SchoolSubscription schoolSubscription =
+                schoolSubRepo.findActiveBySchoolId(admin.getSchoolId()).orElse(null);
+
+        if (schoolSubscription == null) {
+            throw new ResourceNotFoundException("School subscription not found");
+        }
+
+        // You'll need to add this method to your repository
+        Page<TeacherTokenUsageLog> logPage = teacherTokenUsageLogRepo
+                .findBySchoolSubscriptionIdAndUserId(schoolSubscription.getId(), userId, pageable);
+
+        List<TeacherTokenUsageLogResponse> content = logPage.getContent().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return PaginatedTeacherTokenUsageLogResponse.builder()
+                .content(content)
+                .page(logPage.getNumber())
+                .size(logPage.getSize())
+                .totalElements(logPage.getTotalElements())
+                .totalPages(logPage.getTotalPages())
+                .build();
+    }
+
+    @Override
+    public PaginatedTeacherTokenUsageLogResponse getTokenUsageLogsBySchool(UUID adminId, Pageable pageable) {
+        User admin = permissionService.validateAndGetSchoolAdmin(adminId);
+        UUID schoolId = admin.getSchoolId();
+        SchoolSubscription schoolSubscription =
+                schoolSubRepo.findActiveBySchoolId(schoolId).orElse(null);
+
+        if (schoolSubscription == null) {
+            throw new ResourceNotFoundException("School subscription not found");
+        }
+        // You'll need to add this method to your repository
+        Page<TeacherTokenUsageLog> logPage =
+                teacherTokenUsageLogRepo.findBySchoolSubscriptionId(schoolSubscription.getId(), pageable);
+
+        List<TeacherTokenUsageLogResponse> content = logPage.getContent().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return PaginatedTeacherTokenUsageLogResponse.builder()
+                .content(content)
+                .page(logPage.getNumber())
+                .size(logPage.getSize())
+                .totalElements(logPage.getTotalElements())
+                .totalPages(logPage.getTotalPages())
+                .build();
+    }
+
+    //Helper
     private SchoolSubscriptionResponse toSubscriptionResponse(SchoolSubscription sub) {
         return new SchoolSubscriptionResponse(
                 sub.getId(),
@@ -365,6 +450,22 @@ public class AdminServiceImpl implements AdminService {
         );
     }
 
+    /**
+     * Must be used in a Transaction
+     * @param log
+     * @return
+     */
+    private TeacherTokenUsageLogResponse mapToResponse(TeacherTokenUsageLog log) {
+        return TeacherTokenUsageLogResponse.builder()
+                .id(log.getId())
+                .schoolSubscriptionId(log.getSchoolSubscriptionId())
+                .subscriptionTierId(log.getSubscriptionTierId())
+                .userId(log.getUserId())
+                .tokensUsed(log.getTokensUsed())
+                .usedAt(log.getUsedAt())
+                .build();
+    }
+
     private SchoolAdminTeacherResponse toTeacherResponse(User user) {
         return SchoolAdminTeacherResponse.builder()
                 .id(user.getId())
@@ -376,11 +477,6 @@ public class AdminServiceImpl implements AdminService {
                 .isVerified(user.getIsVerified())
                 .createdAt(user.getCreatedAt())
                 .build();
-    }
-
-    private boolean isValidEmail(String email) {
-        String regex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
-        return email != null && email.matches(regex);
     }
 
     private SchoolWithEmailsResponse mapToSchoolWithEmailsResponse(School school) {
@@ -399,5 +495,27 @@ public class AdminServiceImpl implements AdminService {
                 school.getUpdatedAt(),
                 emailResponses
         );
+    }
+
+    private void setFreeTierQuota(UserQuota userQuota) {
+        Optional<SubscriptionTier> freeTier = subscriptionTierRepo.findByNameIgnoreCase("free");
+        SubscriptionTier subscriptionTier;
+        if (freeTier.isPresent()) {
+            subscriptionTier = freeTier.get();
+            userQuota.setSubscriptionTier(subscriptionTier);
+            userQuota.setIndividualTokenLimit(subscriptionTier.getIndividualTokenLimit());
+            userQuota.setIndividualTokenRemaining(subscriptionTier.getIndividualTokenLimit());
+            userQuota.setTestingQuotaLimit(subscriptionTier.getTestingQuotaLimit());
+            userQuota.setTestingQuotaRemaining(subscriptionTier.getTestingQuotaLimit());
+            userQuota.setOptimizationQuotaLimit(subscriptionTier.getOptimizationQuotaLimit());
+            userQuota.setOptimizationQuotaRemaining(subscriptionTier.getOptimizationQuotaLimit());
+            userQuota.setPromptUnlockLimit(subscriptionTier.getPromptUnlockLimit());
+            userQuota.setPromptUnlockRemaining(subscriptionTier.getPromptUnlockLimit());
+            userQuota.setPromptActionLimit(subscriptionTier.getPromptActionLimit());
+            userQuota.setPromptActionRemaining(subscriptionTier.getPromptActionLimit());
+            userQuota.setCollectionActionLimit(subscriptionTier.getCollectionActionLimit());
+            userQuota.setCollectionActionRemaining(subscriptionTier.getCollectionActionLimit());
+            userQuota.setUpdatedAt(Instant.now());
+        } else throw new ResourceNotFoundException("No free tier found");
     }
 }

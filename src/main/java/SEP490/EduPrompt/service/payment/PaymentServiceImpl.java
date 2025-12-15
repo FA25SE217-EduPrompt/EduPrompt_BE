@@ -157,13 +157,14 @@ public class PaymentServiceImpl implements PaymentService {
         SubscriptionTier tier = tierOpt.get();
         try {
             user.setSubscriptionTier(tier);
-            userRepo.save(user);
+            userRepo.saveAndFlush(user);
             quotaService.syncUserQuotaWithSubscriptionTier(user.getId());
         } catch (Exception e) {
             //might need a better rollback for those quota if error
             payment.setStatus(PaymentStatus.FAILED.name());
             paymentRepository.save(payment);
             user.setSubscriptionTier(user.getSubscriptionTier());
+            userRepo.save(user);
             return new PaymentResponse(responseCode, "Failed to activate subscription");
         }
         // best case
