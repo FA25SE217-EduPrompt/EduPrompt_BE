@@ -90,6 +90,9 @@ public class Prompt {
     @JoinColumn(name = "current_version_id")
     private PromptVersion currentVersion;
 
+    @Column(name = "current_version_id", insertable = false, updatable = false)
+    private UUID currentVersionId;
+
     @Column(name = "avg_rating")
     private Double avgRating;
   

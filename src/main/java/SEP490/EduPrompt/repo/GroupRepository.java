@@ -38,4 +38,6 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
     boolean existsByNameIgnoreCase(String name);
 
     Optional<Group> findByNameIgnoreCase(String name);
+
+
 }

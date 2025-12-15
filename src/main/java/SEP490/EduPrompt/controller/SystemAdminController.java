@@ -1,24 +1,43 @@
 package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.RegisterRequest;
+import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
+import SEP490.EduPrompt.dto.request.group.CreateGroupRequest;
+import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
+import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
 import SEP490.EduPrompt.dto.request.systemAdmin.CreateSchoolSubscriptionRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
+import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
+import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
+import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
+import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
+import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
 import SEP490.EduPrompt.dto.response.systemAdmin.SchoolSubscriptionResponse;
+import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
+import SEP490.EduPrompt.dto.response.user.PageUserResponse;
 import SEP490.EduPrompt.service.admin.AdminService;
+import SEP490.EduPrompt.service.admin.SystemAdminService;
+import SEP490.EduPrompt.service.auth.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('SYSTEM_ADMIN')")
 public class SystemAdminController {
 
     private final AdminService adminService;
+    private final SystemAdminService sAdminService;
 
     @PostMapping("/schools/{schoolId}/subscription")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -34,5 +53,94 @@ public class SystemAdminController {
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseDto<?> createSchoolAdminAccount(@Valid @RequestBody RegisterRequest registerRequest) {
         return ResponseDto.success(adminService.createSchoolAdminAccount(registerRequest));
+    }
+
+    //List all endpoint
+    @GetMapping("/users")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseDto<PageUserResponse> listAllUsers(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(sAdminService.listAllUser(currentUser, pageable));
+    }
+
+    @GetMapping("/collections")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseDto<PageCollectionResponse> listAllCollections(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(sAdminService.listAllCollection(currentUser, pageable));
+    }
+
+    @GetMapping("/groups")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseDto<PageGroupResponse> listAllGroups(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(sAdminService.listAllGroup(currentUser, pageable));
+    }
+
+    @GetMapping("/tags")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseDto<PageTagResponse> listAllTags(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(sAdminService.listAllTag(currentUser, pageable));
+    }
+
+    @GetMapping("/prompts")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseDto<PagePromptAllResponse> listAllPrompts(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(sAdminService.listAllPrompt(currentUser, pageable));
+    }
+
+    //Create for all
+    @PostMapping("/collection")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseDto<CreateCollectionResponse> createCollection(
+            @Valid @RequestBody CreateCollectionRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        CreateCollectionResponse response = sAdminService.createCollection(request, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @PostMapping("/group")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseDto<CreateGroupResponse> createGroup(
+            @Valid @RequestBody CreateGroupRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        CreateGroupResponse response = sAdminService.createGroup(request, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @PostMapping("/prompt/standalone")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseDto<DetailPromptResponse> createStandalonePrompt(
+            @Valid @RequestBody CreatePromptRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        DetailPromptResponse response = sAdminService.createStandalonePrompt(request, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @PostMapping("/prompt/in-collection")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseDto<DetailPromptResponse> createPromptInCollection(
+            @Valid @RequestBody CreatePromptCollectionRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        DetailPromptResponse response = sAdminService.createPromptInCollection(request, currentUser);
+        return ResponseDto.success(response);
     }
 }
