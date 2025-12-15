@@ -31,6 +31,9 @@ public class TeacherTokenUsageLog {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private UUID userId;
+
     @Column(name = "tokens_used")
     private Integer tokensUsed;
 

@@ -12,7 +12,6 @@ public record TeacherTokenUsageLogResponse (
         UUID schoolSubscriptionId,
         UUID subscriptionTierId,
         UUID userId,
-        String userName,
         Integer tokensUsed,
         Instant usedAt
 ){

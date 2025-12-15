@@ -291,7 +291,7 @@ public class QuotaServiceImpl implements QuotaService {
             TeacherTokenUsageLog usageLog = TeacherTokenUsageLog.builder()
                     .user(user)
                     .schoolSubscriptionId(null)
-                    .subscriptionTierId(userQuota.getSubscriptionTier().getId())
+                    .subscriptionTierId(UUID.fromString(userQuota.getSubscriptionTierId()))
                     .tokensUsed(tokenUsed)
                     .usedAt(Instant.now())
                     .build();
