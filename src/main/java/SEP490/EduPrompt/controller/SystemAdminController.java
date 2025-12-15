@@ -21,6 +21,7 @@ import SEP490.EduPrompt.service.admin.SystemAdminService;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -57,40 +58,51 @@ public class SystemAdminController {
     @GetMapping("/users")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseDto<PageUserResponse> listAllUsers(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            Pageable pageable) {
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(sAdminService.listAllUser(currentUser, pageable));
     }
 
     @GetMapping("/collections")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseDto<PageCollectionResponse> listAllCollections(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            Pageable pageable) {
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(sAdminService.listAllCollection(currentUser, pageable));
     }
 
     @GetMapping("/groups")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseDto<PageGroupResponse> listAllGroups(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            Pageable pageable) {
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(sAdminService.listAllGroup(currentUser, pageable));
     }
 
     @GetMapping("/tags")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseDto<PageTagResponse> listAllTags(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            Pageable pageable) {
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(sAdminService.listAllTag(currentUser, pageable));
     }
 
     @GetMapping("/prompts")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseDto<PagePromptAllResponse> listAllPrompts(
-            @AuthenticationPrincipal UserPrincipal currentUser,
-            Pageable pageable) {
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(sAdminService.listAllPrompt(currentUser, pageable));
     }
 
