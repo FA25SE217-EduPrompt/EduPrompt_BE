@@ -13,7 +13,6 @@ import java.util.UUID;
 @Builder
 public record UserResponse (
         UUID id,
-        SubscriptionTier subscriptionTier,
         UUID subscriptionTierId,
         UUID schoolId,
         String firstName,
