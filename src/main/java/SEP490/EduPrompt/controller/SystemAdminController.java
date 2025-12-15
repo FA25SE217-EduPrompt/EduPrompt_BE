@@ -1,10 +1,17 @@
 package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.RegisterRequest;
+import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
+import SEP490.EduPrompt.dto.request.group.CreateGroupRequest;
+import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
+import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
 import SEP490.EduPrompt.dto.request.systemAdmin.CreateSchoolSubscriptionRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
+import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
+import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
+import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
 import SEP490.EduPrompt.dto.response.systemAdmin.SchoolSubscriptionResponse;
 import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
@@ -46,6 +53,7 @@ public class SystemAdminController {
         return ResponseDto.success(adminService.createSchoolAdminAccount(registerRequest));
     }
 
+    //List all endpoint
     @GetMapping("/users")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseDto<PageUserResponse> listAllUsers(
@@ -84,5 +92,42 @@ public class SystemAdminController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             Pageable pageable) {
         return ResponseDto.success(sAdminService.listAllPrompt(currentUser, pageable));
+    }
+
+    //Create for all
+    @PostMapping("/collection")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseDto<CreateCollectionResponse> createCollection(
+            @Valid @RequestBody CreateCollectionRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        CreateCollectionResponse response = sAdminService.createCollection(request, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @PostMapping("/group")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseDto<CreateGroupResponse> createGroup(
+            @Valid @RequestBody CreateGroupRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        CreateGroupResponse response = sAdminService.createGroup(request, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @PostMapping("/prompt/standalone")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseDto<DetailPromptResponse> createStandalonePrompt(
+            @Valid @RequestBody CreatePromptRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        DetailPromptResponse response = sAdminService.createStandalonePrompt(request, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @PostMapping("/prompt/in-collection")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseDto<DetailPromptResponse> createPromptInCollection(
+            @Valid @RequestBody CreatePromptCollectionRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        DetailPromptResponse response = sAdminService.createPromptInCollection(request, currentUser);
+        return ResponseDto.success(response);
     }
 }
