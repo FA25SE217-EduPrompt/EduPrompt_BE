@@ -321,7 +321,7 @@ public class AdminServiceImpl implements AdminService {
         if(!permissionService.isSchoolAdmin(currentUser)) {
             throw new AccessDeniedException("You are not authorized to view this school");
         }
-        User user = userRepo.findById(currentUser.getSchoolId())
+        User user = userRepo.findById(currentUser.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         School school = schoolRepo.findById(user.getSchoolId())
