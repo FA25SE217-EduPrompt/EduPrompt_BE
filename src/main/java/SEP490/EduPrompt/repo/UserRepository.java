@@ -23,5 +23,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Page<User> findBySchoolIdAndRole(UUID schoolId, String role, Pageable pageable);
 
+    Page<User> findAll(Pageable pageable);
+
     List<User> findAllByEmailIn(Collection<String> emails);
 }
