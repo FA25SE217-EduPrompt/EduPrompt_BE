@@ -53,7 +53,6 @@ public class AdminServiceImpl implements AdminService {
     private final UserRepository userRepo;
     private final UserAuthRepository userAuthRepo;
     private final SchoolEmailRepository schoolEmailRepo;
-    private final QuotaService quotaService;
     private final TeacherTokenUsageLogRepository teacherTokenUsageLogRepo;
     private final SubscriptionTierRepository subscriptionTierRepo;
     private final UserQuotaRepository userQuotaRepository;
@@ -270,7 +269,7 @@ public class AdminServiceImpl implements AdminService {
 
         return new SchoolSubscriptionUsageResponse(
                 sub.getId(),
-                sub.getSchool().getName(),
+                sub.getSchool().getName(),//need to be in transaction
                 sub.getSchoolTokenPool(),
                 tokenUsed,
                 sub.getSchoolTokenRemaining(),
@@ -283,7 +282,6 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    @Transactional
     public Page<SchoolAdminTeacherResponse> getTeachersInSchool(UUID adminUserId, Pageable pageable) {
         User admin = permissionService.validateAndGetSchoolAdmin(adminUserId);
         UUID schoolId = admin.getSchoolId();
@@ -319,14 +317,16 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    @Transactional
-    public SchoolUsageSummaryResponse getSchoolTeachersUsage(UUID schoolAdminId) {
-        User admin = permissionService.validateAndGetSchoolAdmin(schoolAdminId);
-        UUID schoolId = admin.getSchoolId();
+    public SchoolUsageSummaryResponse getSchoolTeachersUsage(UserPrincipal currentUser) {
+        if(!permissionService.isSchoolAdmin(currentUser)) {
+            throw new AccessDeniedException("You are not authorized to view this school");
+        }
+        User user = userRepo.findById(currentUser.getSchoolId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        School school = schoolRepo.findById(schoolId)
+        School school = schoolRepo.findById(user.getSchoolId())
                 .orElseThrow(() -> new ResourceNotFoundException("School not found"));
-        SchoolSubscription activeSub = schoolSubRepo.findActiveBySchoolId(schoolId).orElse(null);
+        SchoolSubscription activeSub = schoolSubRepo.findActiveBySchoolId(user.getSchoolId()).orElse(null);
         Integer schoolTokenPool = activeSub != null ? activeSub.getSchoolTokenPool() : null;
         Integer schoolTokenRemaining = activeSub != null ? activeSub.getSchoolTokenRemaining() : null;
 
@@ -337,7 +337,7 @@ public class AdminServiceImpl implements AdminService {
         List<User> teachers = new ArrayList<>();
         if (activeSub != null) {
             // Fetch all teachers
-            teachers = userRepo.findBySchoolIdAndRole(schoolId, Role.TEACHER.name());
+            teachers = userRepo.findBySchoolIdAndRole(user.getSchoolId(), Role.TEACHER.name());
 
             // Fetch all logs for the subscription (no aggregation in repo)
             List<TeacherTokenUsageLog> allLogs = teacherTokenUsageLogRepo.findBySchoolSubscriptionId(activeSub.getId());
@@ -376,15 +376,17 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    @Transactional
     public PaginatedTeacherTokenUsageLogResponse getTokenUsageLogsBySchoolAndUser(
-            UUID adminId,
+            UserPrincipal currentUser,
             UUID userId,
             Pageable pageable) {
-        User admin = permissionService.validateAndGetSchoolAdmin(adminId);
-        UUID schoolId = admin.getSchoolId();
+        if (!permissionService.isSchoolAdmin(currentUser)) {
+            throw new AccessDeniedException("You are not authorized to view this school");
+        }
+        User admin = userRepo.findById(currentUser.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         SchoolSubscription schoolSubscription =
-                schoolSubRepo.findActiveBySchoolId(schoolId).orElse(null);
+                schoolSubRepo.findActiveBySchoolId(admin.getSchoolId()).orElse(null);
 
         if (schoolSubscription == null) {
             throw new ResourceNotFoundException("School subscription not found");
@@ -408,7 +410,6 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    @Transactional
     public PaginatedTeacherTokenUsageLogResponse getTokenUsageLogsBySchool(UUID adminId, Pageable pageable) {
         User admin = permissionService.validateAndGetSchoolAdmin(adminId);
         UUID schoolId = admin.getSchoolId();
@@ -449,13 +450,17 @@ public class AdminServiceImpl implements AdminService {
         );
     }
 
+    /**
+     * Must be used in a Transaction
+     * @param log
+     * @return
+     */
     private TeacherTokenUsageLogResponse mapToResponse(TeacherTokenUsageLog log) {
         return TeacherTokenUsageLogResponse.builder()
                 .id(log.getId())
                 .schoolSubscriptionId(log.getSchoolSubscriptionId())
                 .subscriptionTierId(log.getSubscriptionTierId())
-                .userId(log.getUser() != null ? log.getUser().getId() : null)
-                .userName(log.getUser() != null ? log.getUser().getLastName() + " " + log.getUser().getLastName() : null)
+                .userId(log.getUserId())
                 .tokensUsed(log.getTokensUsed())
                 .usedAt(log.getUsedAt())
                 .build();
@@ -472,27 +477,6 @@ public class AdminServiceImpl implements AdminService {
                 .isVerified(user.getIsVerified())
                 .createdAt(user.getCreatedAt())
                 .build();
-    }
-
-    private boolean isValidEmail(String email) {
-        String regex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
-        return email != null && email.matches(regex);
-    }
-
-    private static Set<String> validateRole(BulkAssignTeachersRequest request, User admin) {
-        if (!Role.SCHOOL_ADMIN.name().equals(admin.getRole())) {
-            throw new AccessDeniedException("Only SCHOOL_ADMIN can assign teachers");
-        }
-        if (admin.getSchoolId() == null) {
-            throw new InvalidInputException("School admin has no school assigned");
-        }
-
-        List<String> emails = request.emails();
-        if (emails.size() > 50) {
-            throw new InvalidInputException("Maximum 50 emails allowed");
-        }
-
-        return new HashSet<>(emails);
     }
 
     private SchoolWithEmailsResponse mapToSchoolWithEmailsResponse(School school) {

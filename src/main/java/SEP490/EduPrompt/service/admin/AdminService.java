@@ -38,9 +38,9 @@ public interface AdminService {
 
     SchoolWithEmailsResponse addEmailsToSchool(UserPrincipal currentUser, SchoolEmailRequest request);
 
-    SchoolUsageSummaryResponse getSchoolTeachersUsage(UUID schoolAdminId);
+    SchoolUsageSummaryResponse getSchoolTeachersUsage(UserPrincipal currentUser);
 
     PaginatedTeacherTokenUsageLogResponse getTokenUsageLogsBySchool(UUID adminId, Pageable pageable);
 
-    PaginatedTeacherTokenUsageLogResponse getTokenUsageLogsBySchoolAndUser(UUID adminId, UUID userId, Pageable pageable);
+    PaginatedTeacherTokenUsageLogResponse getTokenUsageLogsBySchoolAndUser(UserPrincipal currentUser, UUID userId, Pageable pageable);
 }

@@ -8,6 +8,7 @@ import SEP490.EduPrompt.dto.response.school.CreateSchoolResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolAdminTeacherResponse;
 import SEP490.EduPrompt.dto.response.schoolAdmin.SchoolSubscriptionUsageResponse;
 import SEP490.EduPrompt.dto.response.teacherTokenUsed.PaginatedTeacherTokenUsageLogResponse;
+import SEP490.EduPrompt.dto.response.teacherTokenUsed.SchoolUsageSummaryResponse;
 import SEP490.EduPrompt.service.admin.AdminService;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import jakarta.validation.Valid;
@@ -85,8 +86,15 @@ public class SchoolAdminController {
         Pageable pageable = PageRequest.of(page, size);
 
         PaginatedTeacherTokenUsageLogResponse response =
-                adminService.getTokenUsageLogsBySchoolAndUser(principal.getUserId(), userId, pageable);
+                adminService.getTokenUsageLogsBySchoolAndUser(principal, userId, pageable);
 
+        return ResponseDto.success(response);
+    }
+
+    @GetMapping("/teachers-usage")
+    public ResponseDto<SchoolUsageSummaryResponse> getSchoolTeachersUsage(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        SchoolUsageSummaryResponse response = adminService.getSchoolTeachersUsage(currentUser);
         return ResponseDto.success(response);
     }
 
