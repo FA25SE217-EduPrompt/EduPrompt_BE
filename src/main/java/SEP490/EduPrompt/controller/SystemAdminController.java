@@ -33,6 +33,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('SYSTEM_ADMIN')")
 public class SystemAdminController {
 
     private final AdminService adminService;
