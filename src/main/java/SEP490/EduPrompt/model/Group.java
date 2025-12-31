@@ -34,6 +34,9 @@ public class Group {
     @JoinColumn(name = "school_id")
     private School school;
 
+    @Column(name="school_id", updatable = false, insertable = false)
+    private UUID schoolId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "created_by")
