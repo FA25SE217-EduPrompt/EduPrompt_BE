@@ -1,21 +1,29 @@
 package SEP490.EduPrompt.service.admin;
 
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
+import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
 import SEP490.EduPrompt.dto.request.group.CreateGroupRequest;
+import SEP490.EduPrompt.dto.request.group.UpdateGroupRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
 import SEP490.EduPrompt.dto.request.tag.CreateTagBatchRequest;
 import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
+import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
 import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.GroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
+import SEP490.EduPrompt.dto.response.group.UpdateGroupResponse;
 import SEP490.EduPrompt.dto.response.prompt.*;
 import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
 import SEP490.EduPrompt.dto.response.tag.TagResponse;
 import SEP490.EduPrompt.dto.response.user.PageUserResponse;
 import SEP490.EduPrompt.dto.response.user.UserResponse;
+import SEP490.EduPrompt.enums.GroupRole;
+import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
@@ -26,7 +34,7 @@ import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
-import org.springframework.transaction.annotation.Transactional;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -565,6 +573,366 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         log.info("Created {} new tags, {} skipped (already exist)", saved.size(), unique.size() - saved.size());
         return result;
     }
+
+    //========================================================
+    //======================= UPDATE =========================
+    @Override
+    @Transactional
+    public DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
+                                                     UserPrincipal currentUser) {
+        // Fetch prompt
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found!!"));
+
+        // Update only provided fields
+        if (request.getTitle() != null) {
+            prompt.setTitle(request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            prompt.setDescription(request.getDescription());
+        }
+        if (request.getInstruction() != null) {
+            prompt.setInstruction(request.getInstruction());
+        }
+        if (request.getContext() != null) {
+            prompt.setContext(request.getContext());
+        }
+        if (request.getInputExample() != null) {
+            prompt.setInputExample(request.getInputExample());
+        }
+        if (request.getOutputFormat() != null) {
+            prompt.setOutputFormat(request.getOutputFormat());
+        }
+        if (request.getConstraints() != null) {
+            prompt.setConstraints(request.getConstraints());
+        }
+
+        // Update timestamp and user
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+
+        // Handle tags if provided
+        if (request.getTagIds() != null) {
+            // Remove existing PromptTag entries
+            promptTagRepository.deleteByPromptId(promptId);
+
+            // If tagIds are provided and not empty, validate and create new PromptTag
+            // entries
+            if (!request.getTagIds().isEmpty()) {
+                List<Tag> tags = tagRepository.findAllById(request.getTagIds());
+                if (tags.size() != request.getTagIds().size()) {
+                    throw new ResourceNotFoundException("One or more tags not found!!");
+                }
+
+                List<PromptTag> newPromptTags = tags.stream()
+                        .map(tag -> PromptTag.builder()
+                                .id(PromptTagId.builder()
+                                        .promptId(promptId)
+                                        .tagId(tag.getId())
+                                        .build())
+                                .prompt(prompt)
+                                .tag(tag)
+                                .createdAt(Instant.now())
+                                .build())
+                        .collect(Collectors.toList());
+                promptTagRepository.saveAll(newPromptTags);
+            }
+        }
+
+        // Save updated prompt
+        Prompt updatedPrompt = promptRepository.save(prompt);
+
+        // Build response
+        return buildPromptResponse(updatedPrompt);
+    }
+
+    @Override
+    @Transactional
+    public DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
+                                                       UserPrincipal currentUser) {
+        // Fetch prompt
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        // Validate visibility
+        String newVisibility;
+        try {
+            newVisibility = Visibility.parseVisibility(request.getVisibility()).name();
+        } catch (IllegalArgumentException e) {
+            throw new InvalidInputException("Invalid visibility value: " + request.getVisibility());
+        }
+
+        // Handle visibility transitions
+        Collection collection = prompt.getCollection();
+        boolean removeFromCollection = false;
+
+        if (newVisibility.equals(Visibility.PRIVATE.name()) || newVisibility.equals(Visibility.PUBLIC.name())) {
+            // For PRIVATE or PUBLIC, check if current collection allows it
+            if (collection != null) {
+                try {
+                    permissionService.validateCollectionVisibility(collection, newVisibility);
+                } catch (IllegalArgumentException e) {
+                    // If validation fails, automatically remove from collection to make it
+                    // standalone
+                    removeFromCollection = true;
+                }
+            }
+        }
+
+        if (removeFromCollection) {
+            prompt.setCollection(null);
+        } else if (newVisibility.equals(Visibility.GROUP.name())) {
+            // GROUP visibility requires a collection with a group
+            if (collection == null && request.getCollectionId() == null) {
+                throw new InvalidInputException("GROUP visibility requires a collection");
+            }
+            if (request.getCollectionId() != null) {
+                // Move standalone prompt to a collection
+                collection = collectionRepository.findById(request.getCollectionId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Collection not found with ID: " + request.getCollectionId()));
+                if (collection.getGroup() == null) {
+                    throw new IllegalArgumentException(
+                            "Collection must be associated with a group for GROUP visibility");
+                }
+
+                prompt.setCollection(collection);
+            } else if (collection.getGroup() == null) {
+                throw new InvalidActionException(
+                        "Current collection must be associated with a group for GROUP visibility");
+            }
+
+            // Validate collection visibility only if not removing
+            if (collection != null) {
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+            }
+        } else if (newVisibility.equals(Visibility.SCHOOL.name())) {
+            if (currentUser.getSchoolId() == null) {
+                throw new InvalidInputException("User must have a school affiliation for SCHOOL visibility");
+            }
+            if (collection != null) {
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+            }
+            if (request.getCollectionId() != null) {
+                collection = collectionRepository.findById(request.getCollectionId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Collection not found with ID: " + request.getCollectionId()));
+
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+                prompt.setCollection(collection);
+            }
+        } else {
+            if (collection != null) {
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+            }
+            if (request.getCollectionId() != null) {
+                collection = collectionRepository.findById(request.getCollectionId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Collection not found with ID: " + request.getCollectionId()));
+
+                permissionService.validateCollectionVisibility(collection, newVisibility);
+                prompt.setCollection(collection);
+            }
+        }
+
+        // Update visibility
+        prompt.setVisibility(newVisibility);
+        prompt.setUpdatedAt(Instant.now());
+        prompt.setUpdatedBy(currentUser.getUserId());
+
+        // Save updated prompt
+        Prompt updatedPrompt = promptRepository.save(prompt);
+
+        // Build and return response
+        return buildPromptResponse(updatedPrompt);
+    }
+
+    @Override
+    @Transactional
+    public UpdateCollectionResponse updateCollection(UUID id, UpdateCollectionRequest request, UserPrincipal currentUser) {
+        log.info("Updating collection: {} by user: {}", id, currentUser.getUserId());
+
+        // Fetch collection
+        Collection collection = collectionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + id));
+
+        // Validate visibility
+        String newVisibility;
+        try {
+            newVisibility = Visibility.parseVisibility(request.visibility()).name();
+        } catch (IllegalArgumentException e) {
+            throw new InvalidInputException("Invalid visibility value: " + request.visibility());
+        }
+
+        // Handle GROUP visibility
+        Group group = collection.getGroup();
+        if (Visibility.GROUP.name().equals(newVisibility)) {
+            UUID groupId = request.groupId();
+            if (groupId == null) {
+                throw new InvalidActionException("GROUP visibility requires a groupId");
+            }
+            group = groupRepository.findById(groupId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Group not found with ID: " + groupId));
+        }
+
+        // Update collection fields
+        if (request.name() != null) {
+            collection.setName(request.name());
+        }
+        if (request.description() != null) {
+            collection.setDescription(request.description());
+        }
+        collection.setVisibility(newVisibility);
+        collection.setGroup(group);
+        collection.setUpdatedBy(currentUser.getUserId());
+        collection.setUpdatedAt(Instant.now());
+
+        // Handle tags
+        if (request.tags() != null && !request.tags().isEmpty()) {
+            // Validate tags
+            List<Tag> tags = tagRepository.findAllById(request.tags());
+            if (tags.size() != request.tags().size()) {
+                throw new ResourceNotFoundException("One or more tags not found");
+            }
+            // Delete existing tags
+            collectionTagRepository.deleteByCollectionId(id);
+            // Create new CollectionTag entries
+            List<CollectionTag> newCollectionTags = tags.stream()
+                    .map(tag -> CollectionTag.builder()
+                            .id(CollectionTagId.builder()
+                                    .collectionId(id)
+                                    .tagId(tag.getId())
+                                    .build())
+                            .collection(collection)
+                            .tag(tag)
+                            .createdAt(Instant.now())
+                            .build())
+                    .collect(Collectors.toList());
+            collectionTagRepository.saveAll(newCollectionTags);
+        } else {
+            // Clear tags if none provided
+            collectionTagRepository.deleteByCollectionId(id);
+        }
+
+        // Save updated collection
+        Collection updatedCollection = collectionRepository.save(collection);
+
+        // Build response
+        return UpdateCollectionResponse.builder()
+                .name(updatedCollection.getName())
+                .description(updatedCollection.getDescription())
+                .visibility(updatedCollection.getVisibility())
+                .tags(mapCollectionTagsToTags(updatedCollection.getId()))
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public UpdateGroupResponse updateGroup(UUID id, UpdateGroupRequest req, UserPrincipal currentUser) {
+        UUID currentUserId = currentUser.getUserId();
+        Group group = groupRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
+
+        // Track if any changes were made
+        boolean updated = false;
+
+        // Update name if provided
+        if (req.name() != null && !req.name().isBlank()) {
+            group.setName(req.name());
+            updated = true;
+        }
+
+        // Update isActive if provided
+        if (req.isActive() != null && !req.isActive().equals(group.getIsActive())) {
+            group.setIsActive(req.isActive());
+            updated = true;
+        }
+
+        // Update group metadata if changes were made
+        if (updated) {
+            group.setUpdatedBy(userRepository.getReferenceById(currentUserId));
+            group.setUpdatedAt(Instant.now());
+            groupRepository.save(group);
+            log.info("Group updated: {} by user: {}", id, currentUserId);
+        } else {
+            log.info("No changes applied to group: {} by user: {}", id, currentUserId);
+        }
+
+        return UpdateGroupResponse.builder()
+                .id(group.getId())
+                .name(group.getName())
+                .schoolId(group.getSchoolId())
+                .isActive(group.getIsActive())
+                .updatedAt(group.getUpdatedAt())
+                .build();
+    }
+
+    //========================================================
+    //======================= DELETE =========================
+    @Override
+    @Transactional
+    public void softDeletePrompt(UUID promptId, UserPrincipal currentUser) {
+        // Fetch prompt
+        log.info("User with id {} attempt to delete prompt with id {}", currentUser.getUserId(), promptId);
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
+
+        if (prompt.getIsDeleted() != true) {
+            prompt.setIsDeleted(true);
+            prompt.setDeletedAt(Instant.now());
+        }
+        else {
+            throw new InvalidActionException("Prompt is deleted.");
+        }
+        // Save changes
+        promptRepository.save(prompt);
+        log.info("Prompt with id {} has been successfully deleted", promptId);
+    }
+
+    @Override
+    public void softDeleteCollection(UUID id, UserPrincipal currentUser) {
+        UUID currentUserId = currentUser.getUserId();
+        User currentUserEntity = userRepository.getReferenceById(currentUserId);
+
+        Optional<Collection> opt = collectionRepository.findByIdAndIsDeletedFalse(id);
+        if (opt.isEmpty()) {
+            throw new ResourceNotFoundException("Collection not found");
+        }
+        Collection collection = opt.get();
+
+        if (collection.getIsDeleted() != true) {
+            collection.setIsDeleted(true);
+            collection.setDeletedAt(Instant.now());
+            collection.setDeletedBy(currentUserEntity);
+        }
+        else {
+            throw new  InvalidActionException("Collection is deleted.");
+        }
+
+        collectionRepository.save(collection);
+        log.info("Collection soft-deleted: {} by user: {}", id, currentUserId);
+    }
+
+    @Override
+    public void softDeleteGroup(UUID id, UserPrincipal currentUser) {
+        UUID currentUserId = currentUser.getUserId();
+        Group group = groupRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
+
+        if (group.getIsActive() != false) {
+            group.setIsActive(false);
+            group.setUpdatedBy(userRepository.getReferenceById(currentUserId));
+            group.setUpdatedAt(Instant.now());
+        }
+        else {
+            throw new InvalidActionException("Group is deleted.");
+        }
+
+        groupRepository.save(group);
+        log.info("Group soft-deleted: {} by user: {}", id, currentUserId);
+    }
+
+
     //HELPER
     private List<Tag> mapCollectionTagsToTags(UUID collectionId) {
         List<CollectionTag> collectionTags = collectionTagRepository.findByCollectionId(collectionId);
