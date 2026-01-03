@@ -4,6 +4,7 @@ import SEP490.EduPrompt.dto.response.prompt.ClientPromptResponse;
 import SEP490.EduPrompt.enums.AiModel;
 import SEP490.EduPrompt.exception.client.AiProviderException;
 import SEP490.EduPrompt.model.Prompt;
+import com.google.common.collect.ImmutableList;
 import com.google.genai.Client;
 import com.google.genai.types.*;
 import com.openai.client.OpenAIClient;
@@ -34,6 +35,10 @@ public class AiClientServiceImpl implements AiClientService {
 
     @Value("${ai.timeout.read:30}")
     private int readTimeoutSeconds;
+
+    private static final Integer DEFAULT_MAX_TOKEN = 8192;
+    private static final Double DEFAULT_TEMPERATURE = 0.3;
+    private static final Double DEFAULT_TOP_P = 0.7;
 
     @Override
     public ClientPromptResponse testPrompt(
@@ -82,6 +87,19 @@ public class AiClientServiceImpl implements AiClientService {
                 temperature,
                 maxTokens,
                 1.0
+        );
+    }
+
+    @Override
+    public ClientPromptResponse generatePromptWithContext(java.io.File file, String fileName, String mineType) {
+        File uploadFile = uploadFile(file, fileName, mineType);
+
+        return callGeminiApiWithContext(uploadFile,
+                "",
+                AiModel.GEMINI_2_5_FLASH.getName(),
+                DEFAULT_TEMPERATURE,
+                DEFAULT_MAX_TOKEN,
+                DEFAULT_TOP_P
         );
     }
 
@@ -282,6 +300,140 @@ public class AiClientServiceImpl implements AiClientService {
                 );
             }
 
+            throw new AiProviderException("Failed to call Gemini API: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Upload file as context for gemini api request
+     */
+    protected File uploadFile(java.io.File file, String fileName, String mineType) {
+        UploadFileConfig config = UploadFileConfig.builder()
+                .displayName(fileName)
+                .mimeType(mineType)
+                .build();
+        return geminiClient.files.upload(file, config);
+    }
+
+    /**
+     * Call Gemini API with context from file uploaded through gemini file api
+     */
+    protected ClientPromptResponse callGeminiApiWithContext(
+            File file,
+            String prompt,
+            String model,
+            Double temperature,
+            Integer maxTokens,
+            Double topP) {
+
+        String effectiveModel = (model != null && !model.isBlank())
+                ? model
+                : AiModel.GEMINI_2_5_FLASH.getName();
+
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Calling Gemini API with model: {}", effectiveModel);
+
+        try {
+            // Build generation config
+            GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
+            if (temperature != null) {
+                configBuilder.temperature(temperature.floatValue());
+            }
+            if (maxTokens != null) {
+                configBuilder.maxOutputTokens(maxTokens);
+            }
+            if (topP != null) {
+                configBuilder.topP(topP.floatValue());
+            }
+
+            // Build content with user role and text part
+            Content content = Content.builder()
+                    .role("user")
+                    .parts(Part.builder()
+                                    .text(prompt)
+                                    .build(),
+                            Part.builder()
+                                    .fileData(FileData.builder()
+                                            .fileUri(file.uri().get())
+                                            .mimeType(file.mimeType().get())
+                                            .build())
+                                    .build())
+                    .build();
+
+            ImmutableList<SafetySetting> safetySettings =
+                    ImmutableList.of(
+                            SafetySetting.builder()
+                                    .category(HarmCategory.Known.HARM_CATEGORY_HATE_SPEECH)
+                                    .threshold(HarmBlockThreshold.Known.BLOCK_ONLY_HIGH)
+                                    .build(),
+                            SafetySetting.builder()
+                                    .category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT)
+                                    .threshold(HarmBlockThreshold.Known.BLOCK_LOW_AND_ABOVE)
+                                    .build());
+
+            Content systemInstruction = Content.fromParts(Part.fromText("You are an experienced high-school teacher assistant and curriculum designer," +
+                    " familiar with secondary education standards and pedagogical best practices."));
+
+            // Generate content
+            GenerateContentResponse response = geminiClient.models.generateContent(
+                    effectiveModel,
+                    content,
+                    configBuilder
+                            .safetySettings(safetySettings)
+                            .systemInstruction(systemInstruction)
+                            .thinkingConfig(ThinkingConfig.builder().thinkingBudget(4096))
+                            .build()
+            );
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Gemini API call completed in {}ms", duration);
+
+            // Extract response content safely
+            String responseContent = extractResponseContent(response);
+            String finishReason = extractFinishReason(response);
+
+            // Extract usage metadata
+            Integer promptTokens = null;
+            Integer completionTokens = null;
+            Integer totalTokens = null;
+
+            if (response.usageMetadata().isPresent()) {
+                var usageMetadata = response.usageMetadata().get();
+                promptTokens = usageMetadata.promptTokenCount().orElse(null);
+                completionTokens = usageMetadata.candidatesTokenCount().orElse(null);
+                totalTokens = usageMetadata.totalTokenCount().orElse(null);
+            }
+
+            String responseId = UUID.randomUUID().toString();
+
+            return ClientPromptResponse.builder()
+                    .content(responseContent)
+                    .prompt(prompt)
+                    .model(effectiveModel)
+                    .temperature(temperature)
+                    .maxTokens(maxTokens)
+                    .topP(topP)
+                    .promptTokens(promptTokens)
+                    .completionTokens(completionTokens)
+                    .totalTokens(totalTokens)
+                    .finishReason(finishReason)
+                    .id(responseId)
+                    .createdAt(Instant.now())
+                    .build();
+
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("Error calling Gemini API after {}ms with model {}: {}",
+                    duration, effectiveModel, e.getMessage(), e);
+
+            // Check for timeout
+            if (e.getCause() instanceof java.net.SocketTimeoutException) {
+                throw new AiProviderException(
+                        String.format("Gemini request timed out after %d seconds", readTimeoutSeconds),
+                        e
+                );
+            }
             throw new AiProviderException("Failed to call Gemini API: " + e.getMessage(), e);
         }
     }
