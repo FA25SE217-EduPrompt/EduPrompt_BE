@@ -5,7 +5,9 @@ import SEP490.EduPrompt.dto.response.attachment.AttachmentResponse;
 import SEP490.EduPrompt.dto.response.attachment.UploadSignatureResponse;
 import SEP490.EduPrompt.enums.FileType;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,17 +28,20 @@ public interface AttachmentService {
     AttachmentResponse createAttachment(AttachmentRequest request, UserPrincipal currentUser);
 
     /**
-     * Get all attachments for a specific prompt version
-     *
-     * @param promptVersionId UUID of the prompt version
-     * @return List of AttachmentResponse
-     */
-    List<AttachmentResponse> getAttachmentsByPromptVersion(UUID promptVersionId);
-
-    /**
      * Delete an attachment by ID
      *
      * @param id UUID of the attachment
      */
     void deleteAttachment(UUID id);
+
+    /**
+     * Uploads a file to Cloudinary and saves the attachment metadata.
+     *
+     * @param file The binary file
+     * @param currentUser The user uploading the file
+     * @return The saved attachment response
+     */
+    AttachmentResponse uploadAttachment(MultipartFile file, UserPrincipal currentUser);
+
+//    String generateTimeLimitedUrl(String publicId);
 }
