@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Builder
-public record PromptAllResponse (
+public record PromptAllResponse(
         UUID id,
         UUID userId,
         UUID collectionId,
@@ -33,5 +33,5 @@ public record PromptAllResponse (
         String indexingStatus,
         List<Tag> tags,
         UUID shareToken
-){
+) {
 }

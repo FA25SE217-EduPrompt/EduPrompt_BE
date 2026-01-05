@@ -11,7 +11,10 @@ import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.GroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
-import SEP490.EduPrompt.dto.response.prompt.*;
+import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
+import SEP490.EduPrompt.dto.response.prompt.PromptAllResponse;
+import SEP490.EduPrompt.dto.response.prompt.TagDTO;
 import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
 import SEP490.EduPrompt.dto.response.tag.TagResponse;
 import SEP490.EduPrompt.dto.response.user.PageUserResponse;
@@ -21,17 +24,17 @@ import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
-import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.model.Collection;
+import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
@@ -47,12 +50,12 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private final UserRepository userRepository;
     private final PromptRepository promptRepository;
     private final PromptTagRepository promptTagRepository;
-    private final CollectionRepository  collectionRepository;
-    private final GroupRepository  groupRepository;
+    private final CollectionRepository collectionRepository;
+    private final GroupRepository groupRepository;
     private final CollectionTagRepository collectionTagRepository;
     private final PermissionService permissionService;
     private final TagRepository tagRepository;
-    private final GroupMemberRepository  groupMemberRepository;
+    private final GroupMemberRepository groupMemberRepository;
 
     //========================================================
     //======================LIST ALL==========================
@@ -565,6 +568,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         log.info("Created {} new tags, {} skipped (already exist)", saved.size(), unique.size() - saved.size());
         return result;
     }
+
     //HELPER
     private List<Tag> mapCollectionTagsToTags(UUID collectionId) {
         List<CollectionTag> collectionTags = collectionTagRepository.findByCollectionId(collectionId);

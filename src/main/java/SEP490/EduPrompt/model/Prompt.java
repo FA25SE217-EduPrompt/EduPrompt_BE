@@ -95,7 +95,7 @@ public class Prompt {
 
     @Column(name = "avg_rating")
     private Double avgRating;
-  
+
     @Size(max = 255)
     @Column(name = "gemini_file_id")
     private String geminiFileId;
@@ -110,4 +110,13 @@ public class Prompt {
 
     @Column(name = "share_token")
     private UUID shareToken;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "lesson_id")
+    private Lesson lesson;
+
+    @Column(name = "lesson_id", insertable = false, updatable = false)
+    private UUID lessonId;
+
 }

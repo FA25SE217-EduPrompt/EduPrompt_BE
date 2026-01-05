@@ -29,13 +29,13 @@ public interface PromptRatingRepository extends JpaRepository<PromptRating, UUID
 
     @Modifying
     @Query("""
-            UPDATE Prompt p
-            SET p.avgRating = NULL
-            WHERE p.id NOT IN (
-                SELECT DISTINCT pr.prompt.id
-           FROM PromptRating pr
-                WHERE pr.prompt.id IS NOT NULL
-            )
-            """)
+             UPDATE Prompt p
+             SET p.avgRating = NULL
+             WHERE p.id NOT IN (
+                 SELECT DISTINCT pr.prompt.id
+            FROM PromptRating pr
+                 WHERE pr.prompt.id IS NOT NULL
+             )
+             """)
     int clearAvgRatingForUnratedPrompts();
 }

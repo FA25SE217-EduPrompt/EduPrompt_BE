@@ -5,14 +5,14 @@ import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
 import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
-import SEP490.EduPrompt.dto.response.prompt.TagDTO;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
-import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
-import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.model.Collection;
+import SEP490.EduPrompt.model.Group;
+import SEP490.EduPrompt.model.Tag;
+import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
@@ -28,12 +28,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*
-        ;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 @ExtendWith(MockitoExtension.class)
 class CollectionServiceImplTest {
     @Mock
@@ -83,6 +86,7 @@ class CollectionServiceImplTest {
                 .schoolId(schoolId)
                 .build();
     }
+
     //================================================================//
     //====================CREATE COLLECTION===========================//
     @Test
@@ -165,6 +169,7 @@ class CollectionServiceImplTest {
         // Act & Assert
         assertThrows(ResourceNotFoundException.class, () -> collectionService.createCollection(request, userPrincipal));
     }
+
     //================================================================//
     //====================UPDATE COLLECTION===========================//
     @Test
@@ -234,6 +239,7 @@ class CollectionServiceImplTest {
         // Act & Assert
         assertThrows(AccessDeniedException.class, () -> collectionService.updateCollection(collectionId, request, userPrincipal));
     }
+
     //================================================================//
     //====================DELETE COLLECTION===========================//
     @Test
@@ -282,6 +288,7 @@ class CollectionServiceImplTest {
         // Assert
         verify(collectionRepository).save(any(Collection.class));
     }
+
     //================================================================//
     //======================LIST COLLECTION===========================//
     @Test

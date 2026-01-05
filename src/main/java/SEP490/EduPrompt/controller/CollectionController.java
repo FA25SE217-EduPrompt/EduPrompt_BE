@@ -126,7 +126,8 @@ public class CollectionController {
         collectionService.softDeleteCollection(id, currentUser);
         return ResponseDto.success("Collection deleted successfully");
     }
-//
+
+    //
 //    @GetMapping("/my-collections")
 //    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
 //    public ResponseDto<?> listMyCollections(
@@ -148,11 +149,11 @@ public class CollectionController {
 //        return ResponseDto.success(collectionService.listPublicCollections(pageable));
 //    }
 //
-@GetMapping("/my-collections/count")
-@PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
-public ResponseDto<?> countMyCollections(
-        @AuthenticationPrincipal UserPrincipal currentUser) {
-    log.info("Counting collections for user: {}", currentUser.getUserId());
-    return ResponseDto.success(collectionService.countMyCollections(currentUser));
-}
+    @GetMapping("/my-collections/count")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<?> countMyCollections(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Counting collections for user: {}", currentUser.getUserId());
+        return ResponseDto.success(collectionService.countMyCollections(currentUser));
+    }
 }
