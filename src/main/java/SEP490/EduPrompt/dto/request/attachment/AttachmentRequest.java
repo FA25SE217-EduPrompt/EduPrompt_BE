@@ -22,7 +22,4 @@ public class AttachmentRequest {
 
     private Long size;
 
-    @NotNull(message = "Prompt Version ID is required")
-    private UUID promptVersionId;
-
 }
