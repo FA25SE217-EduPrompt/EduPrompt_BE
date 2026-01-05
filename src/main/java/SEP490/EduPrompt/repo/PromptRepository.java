@@ -108,4 +108,6 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
      * Useful when Gemini returns a document ID that is a prefix of the stored ID
      */
     Optional<Prompt> findByGeminiFileIdStartingWith(String prefix);
+
+    List<Prompt> findByLessonId(UUID lessonId);
 }
