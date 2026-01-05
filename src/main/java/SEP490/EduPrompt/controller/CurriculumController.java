@@ -25,11 +25,13 @@ public class CurriculumController {
         DetailLessonResponse detailLessonResponse = curriculumService.getLessonById(id);
         return ResponseDto.success(detailLessonResponse);
     }
+
     @GetMapping("/prompt/lesson/{lessonId}")
     public ResponseDto<List<PromptLessonResponse>> getPromptsByLesson(@PathVariable UUID lessonId) {
         List<PromptLessonResponse> promptResponses = curriculumService.getPromptsByLessonId(lessonId);
         return ResponseDto.success(promptResponses);
     }
+
     @GetMapping("/filters")
     public ResponseDto<CurriculumResponse> getCurriculum(
             @RequestParam String subjectName,

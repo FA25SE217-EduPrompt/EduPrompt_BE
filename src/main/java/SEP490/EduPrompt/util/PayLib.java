@@ -10,6 +10,22 @@ import java.util.TreeMap;
 public class PayLib {
     private final SortedMap<String, String> requestData = new TreeMap<>(String::compareTo);
 
+    public static String hmacSHA512(String key, String inputData) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA512");
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
+            mac.init(secretKey);
+            byte[] hashValue = mac.doFinal(inputData.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hash = new StringBuilder();
+            for (byte b : hashValue) {
+                hash.append(String.format("%02x", b));
+            }
+            return hash.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to calculate HMAC-SHA512", e);
+        }
+    }
+
     public void addRequestData(String key, String value) {
         if (value != null && !value.isEmpty()) {
             requestData.put(key, value);
@@ -37,21 +53,5 @@ public class PayLib {
         baseUrl += "vnp_SecureHash=" + vnpSecureHash;
 
         return baseUrl;
-    }
-
-    public static String hmacSHA512(String key, String inputData) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA512");
-            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
-            mac.init(secretKey);
-            byte[] hashValue = mac.doFinal(inputData.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hash = new StringBuilder();
-            for (byte b : hashValue) {
-                hash.append(String.format("%02x", b));
-            }
-            return hash.toString();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to calculate HMAC-SHA512", e);
-        }
     }
 }

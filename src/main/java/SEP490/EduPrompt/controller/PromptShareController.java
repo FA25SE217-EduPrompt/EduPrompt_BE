@@ -30,6 +30,7 @@ public class PromptShareController {
         promptService.revokeShare(promptId, currentUser);
         return ResponseDto.success(null);
     }
+
     @PostMapping("/{promptId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     @Operation(summary = "Share a prompt and generate a share link")

@@ -2,7 +2,6 @@ package SEP490.EduPrompt.dto.response.curriculum;
 
 import lombok.Builder;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,4 +13,5 @@ public record ChapterResponse(
         String name,
         String description,
         List<LessonResponse> listOfLesson
-) {}
+) {
+}

@@ -2,7 +2,6 @@ package SEP490.EduPrompt.dto.response.curriculum;
 
 import lombok.Builder;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,4 +11,5 @@ public record SemesterResponse(
         Integer semesterNumber,
         String name,
         List<ChapterResponse> listOfChapter
-) {}
+) {
+}

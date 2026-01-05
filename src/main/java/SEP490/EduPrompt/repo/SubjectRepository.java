@@ -10,5 +10,6 @@ import java.util.UUID;
 @Repository
 public interface SubjectRepository extends JpaRepository<Subject, UUID> {
     List<Subject> findByNameContaining(String name);
+
     Subject findByNameIgnoreCase(String name);
 }

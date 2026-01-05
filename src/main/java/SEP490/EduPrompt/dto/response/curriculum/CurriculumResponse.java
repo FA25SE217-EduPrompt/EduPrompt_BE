@@ -9,4 +9,5 @@ public record CurriculumResponse(
         List<SubjectResponse> subjects,
         List<GradeLevelResponse> gradeLevels,
         List<SemesterResponse> semesters
-) {}
+) {
+}

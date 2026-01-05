@@ -5,7 +5,7 @@ import lombok.Builder;
 import java.util.UUID;
 
 @Builder
-public record PromptShareResponse (
+public record PromptShareResponse(
         UUID id,
         String title,
         String description,
@@ -15,5 +15,5 @@ public record PromptShareResponse (
         String outputFormat,
         String constraints,
         UUID shareToken
-){
+) {
 }

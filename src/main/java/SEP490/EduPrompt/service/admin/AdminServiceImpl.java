@@ -3,7 +3,6 @@ package SEP490.EduPrompt.service.admin;
 import SEP490.EduPrompt.dto.request.RegisterRequest;
 import SEP490.EduPrompt.dto.request.school.CreateSchoolRequest;
 import SEP490.EduPrompt.dto.request.school.SchoolEmailRequest;
-import SEP490.EduPrompt.dto.request.schoolAdmin.BulkAssignTeachersRequest;
 import SEP490.EduPrompt.dto.request.schoolAdmin.RemoveTeacherFromSchoolRequest;
 import SEP490.EduPrompt.dto.request.systemAdmin.CreateSchoolSubscriptionRequest;
 import SEP490.EduPrompt.dto.response.RegisterResponse;
@@ -25,7 +24,6 @@ import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
-import SEP490.EduPrompt.service.ai.QuotaService;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
 import lombok.RequiredArgsConstructor;
@@ -318,7 +316,7 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public SchoolUsageSummaryResponse getSchoolTeachersUsage(UserPrincipal currentUser) {
-        if(!permissionService.isSchoolAdmin(currentUser)) {
+        if (!permissionService.isSchoolAdmin(currentUser)) {
             throw new AccessDeniedException("You are not authorized to view this school");
         }
         User user = userRepo.findById(currentUser.getUserId())
@@ -452,6 +450,7 @@ public class AdminServiceImpl implements AdminService {
 
     /**
      * Must be used in a Transaction
+     *
      * @param log
      * @return
      */
