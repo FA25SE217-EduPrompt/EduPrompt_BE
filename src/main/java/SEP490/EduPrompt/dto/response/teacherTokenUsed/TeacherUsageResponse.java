@@ -12,4 +12,5 @@ public record TeacherUsageResponse(
         Instant createdAt,
         Long schoolTokensUsed,
         Integer individualTokensUsed
-) {}
+) {
+}

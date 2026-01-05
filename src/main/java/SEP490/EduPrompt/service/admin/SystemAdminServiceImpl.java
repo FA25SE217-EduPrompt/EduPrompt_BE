@@ -29,8 +29,8 @@ import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
-import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.model.Collection;
+import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
@@ -40,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
@@ -55,12 +56,12 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private final UserRepository userRepository;
     private final PromptRepository promptRepository;
     private final PromptTagRepository promptTagRepository;
-    private final CollectionRepository  collectionRepository;
-    private final GroupRepository  groupRepository;
+    private final CollectionRepository collectionRepository;
+    private final GroupRepository groupRepository;
     private final CollectionTagRepository collectionTagRepository;
     private final PermissionService permissionService;
     private final TagRepository tagRepository;
-    private final GroupMemberRepository  groupMemberRepository;
+    private final GroupMemberRepository groupMemberRepository;
 
     //========================================================
     //======================LIST ALL==========================

@@ -5,11 +5,11 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record PageUserResponse (
+public record PageUserResponse(
         List<UserResponse> content,
         long totalElements,
         int totalPages,
         int pageNumber,
         int pageSize
-){
+) {
 }

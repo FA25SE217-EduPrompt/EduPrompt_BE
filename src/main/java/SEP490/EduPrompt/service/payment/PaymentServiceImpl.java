@@ -92,10 +92,10 @@ public class PaymentServiceImpl implements PaymentService {
 
         Map<String, String> params = parseQueryString(queryString);
 
-        String txnRef          = params.get("vnp_TxnRef");
-        String responseCode    = params.getOrDefault("vnp_ResponseCode", "");
+        String txnRef = params.get("vnp_TxnRef");
+        String responseCode = params.getOrDefault("vnp_ResponseCode", "");
         String secureHash = params.remove("vnp_SecureHash");
-        String tmnCode         = params.get("vnp_TmnCode");
+        String tmnCode = params.get("vnp_TmnCode");
 
         // 1. Rebuild sorted sign data (order-independent)
         StringBuilder signData = new StringBuilder();

@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Builder
-public record PaymentHistoryResponse (
+public record PaymentHistoryResponse(
         UUID id,
         String txnRef,
         Long amount,
@@ -14,5 +14,5 @@ public record PaymentHistoryResponse (
         Instant createdAt,
         Instant paidAt,
         UUID tierId
-){
+) {
 }

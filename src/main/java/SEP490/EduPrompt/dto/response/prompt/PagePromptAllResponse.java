@@ -5,7 +5,7 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record PagePromptAllResponse (
+public record PagePromptAllResponse(
         List<PromptAllResponse> content,
         long totalElements,
         int totalPages,

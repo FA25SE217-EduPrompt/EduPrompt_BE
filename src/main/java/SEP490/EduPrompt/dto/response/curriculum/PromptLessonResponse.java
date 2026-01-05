@@ -1,12 +1,14 @@
-package SEP490.EduPrompt.dto.response.prompt;
+package SEP490.EduPrompt.dto.response.curriculum;
 
 import lombok.Builder;
 
 import java.util.UUID;
 
 @Builder
-public record PromptShareResponse(
+public record PromptLessonResponse(
         UUID id,
+        UUID userId,
+        UUID collectionId,
         String title,
         String description,
         String instruction,
@@ -14,6 +16,8 @@ public record PromptShareResponse(
         String inputExample,
         String outputFormat,
         String constraints,
-        UUID shareToken
+        String visibility,
+        Double avgRating,
+        UUID lessonId
 ) {
 }

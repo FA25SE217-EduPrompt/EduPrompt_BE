@@ -8,7 +8,6 @@ import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.GroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
 import SEP490.EduPrompt.dto.response.group.UpdateGroupResponse;
-import SEP490.EduPrompt.dto.response.groupMember.GroupMemberResponse;
 import SEP490.EduPrompt.dto.response.groupMember.PageGroupMemberResponse;
 import SEP490.EduPrompt.enums.GroupRole;
 import SEP490.EduPrompt.enums.Role;
