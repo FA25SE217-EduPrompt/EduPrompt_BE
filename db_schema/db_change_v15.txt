@@ -9,7 +9,7 @@ CREATE TABLE subjects (
 -- Grade Levels (Khối lớp: 10, 11, 12)
 CREATE TABLE grade_levels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    subject_id UUID
+    subject_id UUID,
     level INT,
     description TEXT,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
