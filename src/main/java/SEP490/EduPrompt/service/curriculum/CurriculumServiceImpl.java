@@ -67,10 +67,9 @@ public class CurriculumServiceImpl implements CurriculumService {
             throw new ResourceNotFoundException("Subject name and grade level are required");
         }
 
-        Subject subject = subjectRepository.findByNameIgnoreCase(subjectName);
-        if (subject == null) {
-            throw new ResourceNotFoundException("Subject not found with name: " + subjectName);
-        }
+        Subject subject = subjectRepository.findByNameIgnoreCase(subjectName).orElseThrow(
+                () -> new ResourceNotFoundException("Subject not found with name: " + subjectName)
+        );
 
         GradeLevel gl = gradeLevelRepository.findByLevelAndSubject(gradeLevel, subject);
         if (gl == null) {
