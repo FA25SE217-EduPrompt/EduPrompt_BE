@@ -230,8 +230,6 @@ public class AttachmentServiceImpl implements AttachmentService {
         return "raw"; // Zip, Docx, etc. will properly download
     }
 
-
-
     private AttachmentResponse mapToResponse(Attachment attachment) {
         return AttachmentResponse.builder()
                 .id(attachment.getId())
