@@ -1,18 +1,28 @@
 package SEP490.EduPrompt.service.ai;
 
+import SEP490.EduPrompt.dto.request.prompt.OptimizationRequest;
 import SEP490.EduPrompt.dto.request.prompt.PromptOptimizationRequest;
+import SEP490.EduPrompt.dto.response.curriculum.CurriculumContext;
+import SEP490.EduPrompt.dto.response.curriculum.CurriculumContextDetail;
+import SEP490.EduPrompt.dto.response.curriculum.DimensionScore;
+import SEP490.EduPrompt.dto.response.curriculum.LessonSuggestion;
 import SEP490.EduPrompt.dto.response.prompt.OptimizationQueueResponse;
+import SEP490.EduPrompt.dto.response.prompt.OptimizationResponse;
+import SEP490.EduPrompt.dto.response.prompt.PromptScoreResult;
 import SEP490.EduPrompt.enums.AiModel;
 import SEP490.EduPrompt.enums.QueueStatus;
 import SEP490.EduPrompt.enums.QuotaType;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
-import SEP490.EduPrompt.model.OptimizationQueue;
-import SEP490.EduPrompt.model.Prompt;
-import SEP490.EduPrompt.model.User;
+import SEP490.EduPrompt.exception.generic.InvalidActionException;
+import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.OptimizationQueueRepository;
 import SEP490.EduPrompt.repo.PromptRepository;
+import SEP490.EduPrompt.repo.PromptScoreRepository;
 import SEP490.EduPrompt.repo.UserRepository;
+import SEP490.EduPrompt.service.curriculum.CurriculumMatchingService;
+import SEP490.EduPrompt.service.prompt.PromptScoringService;
+import SEP490.EduPrompt.service.prompt.PromptVersionService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +38,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 
 @Service
@@ -43,6 +52,11 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     private static final Duration LOCK_TIMEOUT = Duration.ofSeconds(30);
 
     private final QuotaService quotaService;
+    private final PromptScoringService scoringService;
+    private final CurriculumMatchingService curriculumService;
+    private final AiClientService geminiService;
+    private final PromptVersionService versionService;
+    private final PromptScoreRepository scoreRepository;
     private final PromptRepository promptRepository;
     private final OptimizationQueueRepository queueRepository;
     private final RedisTemplate<String, String> redisTemplate;
@@ -307,6 +321,209 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         }
     }
 
+    @Override
+    public OptimizationResponse optimize(OptimizationRequest request) {
+        log.info("Starting optimization for prompt: {}", request.promptId());
+
+        Prompt prompt = promptRepository.findById(request.promptId())
+                .orElseThrow(() -> new ResourceNotFoundException("prompt not found with id: " + request.promptId()));
+
+        PromptScoreResult originalScore = scoringService.scorePrompt(
+                request.promptText(),
+                request.lessonId()
+        );
+
+        log.info("Original prompt score: {}", originalScore.overallScore());
+
+        CurriculumContextDetail curriculumContext = resolveCurriculumContext(
+                request.promptText(),
+                request.lessonId(),
+                originalScore.detectedContext()
+        );
+
+        String contextString = buildCurriculumContextString(curriculumContext);
+
+        String optimizedPrompt = geminiService.optimizePrompt(
+                request.promptText(),
+                request.optimizationMode(),
+                contextString,
+                originalScore.weaknesses()
+        );
+
+        log.info("Generated optimized prompt");
+
+        PromptScoreResult optimizedScore = scoringService.scorePrompt(
+                optimizedPrompt,
+                curriculumContext.lessonId()
+        );
+
+        log.info("Optimized prompt score: {}", optimizedScore.overallScore());
+
+        List<String> appliedFixes = identifyAppliedFixes(originalScore, optimizedScore);
+
+        PromptVersion newVersion = versionService.createOptimizedVersion(
+                request.promptId(),
+                optimizedPrompt,
+                prompt.getCreatedBy(),
+                curriculumContext.lessonId()
+        );
+
+        scoringService.savePromptScore(request.promptId(), newVersion.getId(), optimizedScore);
+
+        double improvement = optimizedScore.overallScore() - originalScore.overallScore();
+
+        log.info("Optimization completed. Improvement: {}", improvement);
+
+        return new OptimizationResponse(
+                newVersion.getId(),
+                request.promptText(),
+                optimizedPrompt,
+                originalScore,
+                optimizedScore,
+                improvement,
+                curriculumContext,
+                appliedFixes,
+                Instant.now()
+        );
+    }
+
+    @Override
+    public OptimizationResponse getOptimizationResult(UUID versionId) {
+        PromptVersion version = versionService.findById(versionId)
+                .orElseThrow(() -> new ResourceNotFoundException("prompt version not found with id: " + versionId));
+
+        if (!version.getIsAiGenerated()) {
+            throw new InvalidActionException("Version is not AI-generated");
+        }
+
+        PromptScore optimizedScore = scoreRepository.findByVersionId(versionId)
+                .orElseThrow(() -> new RuntimeException("Score not found for version"));
+
+        PromptScore originalScore = scoreRepository.findByPromptIdAndVersionIdIsNull(version.getPromptId())
+                .orElse(null);
+
+        CurriculumContextDetail curriculumContext = null;
+        if (version.getPrompt().getLessonId() != null) {
+            curriculumContext = curriculumService.getContextDetail(version.getPrompt().getLessonId());
+        }
+
+        return OptimizationResponse.builder()
+                .versionId(version.getId())
+                .originalPrompt(originalScore != null ? version.getPrompt().getInstruction() : null)
+                .optimizedPrompt(version.getInstruction())
+                .originalScore(convertToScoreResult(originalScore))
+                .optimizedScore(convertToScoreResult(optimizedScore))
+                .improvement(
+                        optimizedScore.getOverallScore().doubleValue() -
+                                (originalScore != null ? originalScore.getOverallScore().doubleValue() : 0)
+                )
+                .curriculumContext(curriculumContext)
+                .appliedFixes(List.of()) // Applied fixes would need to be stored separately
+                .createdAt(version.getCreatedAt())
+                .build();
+
+    }
+
+    private CurriculumContextDetail resolveCurriculumContext(String promptText, UUID lessonId,
+                                                             CurriculumContext detectedContext) {
+        if (lessonId != null) {
+            return curriculumService.getContextDetail(lessonId);
+        }
+
+        if (detectedContext.getSubjectId() != null && detectedContext.getGradeLevel() != null) {
+            LessonSuggestion suggestion = curriculumService.suggestLesson(
+                    promptText,
+                    detectedContext.getSubjectId(),
+                    detectedContext.getGradeLevel()
+            );
+
+            if (suggestion != null && suggestion.confidence() > 0.5) {
+                log.info("Auto-detected lesson: {}", suggestion.lessonName());
+                return curriculumService.getContextDetail(suggestion.lessonId());
+            }
+        }
+
+        throw new ResourceNotFoundException(
+                "Cannot determine curriculum context. Please specify lesson or provide more context."
+        );
+    }
+
+    private String buildCurriculumContextString(CurriculumContextDetail context) {
+        return String.format("""
+            Môn học: %s
+            Khối: %d
+            Học kỳ: %d
+            Chương %d: %s
+            Bài %d: %s
+            
+            Nội dung bài học:
+            %s
+            """,
+                context.subjectName(),
+                context.gradeLevel(),
+                context.semester(),
+                context.chapterNumber(),
+                context.chapterName(),
+                context.lessonNumber(),
+                context.lessonName(),
+                context.lessonContent()
+        );
+    }
+
+    private List<String> identifyAppliedFixes(PromptScoreResult original, PromptScoreResult optimized) {
+        List<String> fixes = new ArrayList<>();
+
+        if (optimized.instructionClarity().score() > original.instructionClarity().score() + 10) {
+            fixes.add("Improved instruction clarity");
+        }
+
+        if (optimized.contextCompleteness().score() > original.contextCompleteness().score() + 10) {
+            fixes.add("Added missing context information");
+        }
+
+        if (optimized.outputSpecification().score() > original.outputSpecification().score() + 10) {
+            fixes.add("Defined output format and structure");
+        }
+
+        if (optimized.constraintStrength().score() > original.constraintStrength().score() + 10) {
+            fixes.add("Added constraints and guardrails");
+        }
+
+        if (optimized.curriculumAlignment().score() > original.curriculumAlignment().score() + 10) {
+            fixes.add("Aligned with curriculum objectives");
+        }
+
+        if (optimized.pedagogicalQuality().score() > original.pedagogicalQuality().score() + 10) {
+            fixes.add("Enhanced pedagogical approach");
+        }
+
+        return fixes;
+    }
+
+    private PromptScoreResult convertToScoreResult(PromptScore score) {
+        if (score == null) return null;
+
+        @SuppressWarnings("unchecked")
+        List<String> weaknesses = (List<String>) score.getDetectedWeaknesses().get("list");
+
+        return new PromptScoreResult(
+                score.getOverallScore().doubleValue(),
+                new DimensionScore("Instruction Clarity", score.getInstructionClarityScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Context Completeness", score.getContextCompletenessScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Output Specification", score.getOutputSpecificationScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Constraint Strength", score.getConstraintStrengthScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Curriculum Alignment", score.getCurriculumAlignmentScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Pedagogical Quality", score.getPedagogicalQualityScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                weaknesses != null ? weaknesses : List.of(),
+                null
+        );
+}
     /**
      * Helper: Get cached response with error handling
      */
@@ -338,6 +555,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         }
     }
 
+
     /**
      * Helper: mapper (i dont like mapper tho :<)
      */
@@ -353,5 +571,14 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
                 .createdAt(queue.getCreatedAt())
                 .updatedAt(queue.getUpdatedAt())
                 .build();
+    }
+
+    private Map<String, Object> convertContextToMap(CurriculumContext context) {
+        Map<String, Object> map = new HashMap<>();
+        if (context.getSubject() != null) map.put("subject", context.getSubject());
+        if (context.getGradeLevel() != null) map.put("gradeLevel", context.getGradeLevel());
+        if (context.getSemester() != null) map.put("semester", context.getSemester());
+        if (context.getDetectedKeywords() != null) map.put("keywords", context.getDetectedKeywords());
+        return map;
     }
 }
