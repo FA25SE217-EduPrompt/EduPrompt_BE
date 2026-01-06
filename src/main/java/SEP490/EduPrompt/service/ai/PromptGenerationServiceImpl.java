@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.types.File;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +28,9 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
     //    private final QuotaService quotaService;
     private final AiClientService aiClientService;
     private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, String> redisTemplate;
+
+    private static final String UPLOAD_TOPIC = "file:upload";
 
     @Override
     @Transactional
@@ -70,6 +74,8 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
             // Parse the response into 5 sections
             PromptSections sections = parsePromptSections(aiResponse.content());
 
+            queueCloudinaryUpload(userId, tempFile, file);
+
             GeneratePromptFromFileResponse response = sections.toResponse(
                     aiResponse.model(),
                     aiResponse.promptTokens(),
@@ -84,15 +90,48 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
             log.error("Error generating prompt from file for user {}: {}",
                     userId, e.getMessage(), e);
             throw new AiProviderException("Failed to generate prompt: " + e.getMessage(), e);
-        } finally {
-            if (tempFile != null && tempFile.exists()) {
-                try {
-                    Files.deleteIfExists(tempFile.toPath());
-                    log.info("Temporary file deleted: {}", tempFile.getName());
-                } catch (Exception e) {
-                    log.warn("Failed to delete temporary file: {}", e.getMessage());
-                }
-            }
+        }
+//        finally {
+//            if (tempFile != null && tempFile.exists()) {
+//                try {
+//                    Files.deleteIfExists(tempFile.toPath());
+//                    log.info("Temporary file deleted: {}", tempFile.getName());
+//                } catch (Exception e) {
+//                    log.warn("Failed to delete temporary file: {}", e.getMessage());
+//                }
+//            }
+//        }
+    }
+
+    /**
+     * Queue file upload to Cloudinary via Redis Pub/Sub
+     */
+    private void queueCloudinaryUpload(
+            UUID userId,
+            java.io.File tempFile,
+            MultipartFile originalFile) {
+
+        try {
+            // Create upload event
+            QueueEventListener.FileUploadEvent event = QueueEventListener.FileUploadEvent.builder()
+                    .userId(userId)
+                    .tempFilePath(tempFile.getAbsolutePath())
+                    .originalFilename(originalFile.getOriginalFilename())
+                    .contentType(originalFile.getContentType())
+                    .fileSize(originalFile.getSize())
+                    .build();
+
+            // Serialize to JSON
+            String message = objectMapper.writeValueAsString(event);
+
+            // Publish to Redis
+            redisTemplate.convertAndSend(UPLOAD_TOPIC, message);
+
+            log.info("Queued Cloudinary upload for file: {}", originalFile.getOriginalFilename());
+
+        } catch (Exception e) {
+            log.error("Failed to queue Cloudinary upload, file will not be saved", e);
+            // Not fatal - prompt generation succeeded, only attachment save failed
         }
     }
 
