@@ -65,3 +65,52 @@ add constraint fk_prompts_lesson
 foreign key (lesson_id)
 references lessons (id)
 on delete set null;
+
+-- Add full-text search indexes for Vietnamese content
+CREATE INDEX idx_lessons_content_search ON lessons
+  USING gin(to_tsvector('simple', content));
+
+CREATE INDEX idx_lessons_name_search ON lessons
+  USING gin(to_tsvector('simple', name));
+
+CREATE INDEX idx_chapters_name_search ON chapters
+  USING gin(to_tsvector('simple', name));
+
+-- Composite index for fast curriculum lookups
+CREATE INDEX idx_lessons_hierarchy ON lessons(chapter_id, lesson_number);
+CREATE INDEX idx_chapters_hierarchy ON chapters(semester_id, chapter_number);
+CREATE INDEX idx_semesters_hierarchy ON semesters(grade_level_id, semester_number);
+CREATE INDEX idx_grade_levels_hierarchy ON grade_levels(subject_id, level);
+
+-- Index for prompt-lesson relationship
+CREATE INDEX idx_prompts_lesson ON prompts(lesson_id) WHERE lesson_id IS NOT NULL;
+
+-- Store scoring results
+CREATE TABLE prompt_scores (
+  id UUID PRIMARY KEY,
+  prompt_id UUID NOT NULL,
+  version_id UUID NULL, -- NULL for original, UUID for optimized versions
+
+  -- Overall score
+  overall_score DECIMAL(5,2) NOT NULL, -- 0.00 to 100.00
+
+  -- Dimension scores
+  instruction_clarity_score DECIMAL(5,2),
+  context_completeness_score DECIMAL(5,2),
+  output_specification_score DECIMAL(5,2),
+  constraint_strength_score DECIMAL(5,2),
+  curriculum_alignment_score DECIMAL(5,2),
+  pedagogical_quality_score DECIMAL(5,2),
+
+  -- Analysis results
+  detected_weaknesses JSONB, -- Array of weakness objects
+  detected_context JSONB, -- {grade, subject, lesson, ...}
+
+  created_at TIMESTAMP DEFAULT now(),
+
+  FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  FOREIGN KEY (version_id) REFERENCES prompt_versions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_prompt_scores_prompt ON prompt_scores(prompt_id);
+CREATE INDEX idx_prompt_scores_overall ON prompt_scores(overall_score DESC);
