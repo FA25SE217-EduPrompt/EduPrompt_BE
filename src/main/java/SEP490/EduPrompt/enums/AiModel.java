@@ -10,7 +10,7 @@ public enum AiModel {
     GPT_4O_MINI("gpt-4o-mini"),
     CLAUDE_3_5_SONNET("claude-3.5-sonnet"),
     GEMINI_2_5_FLASH("gemini-2.5-flash"),
-    GEMINI_3_0_FLASH_PREVIEW("gemini-3.0-flash-preview"),
+    GEMINI_3_FLASH_PREVIEW("gemini-3-flash-preview"),
     ;
 
     private final String name;
@@ -30,7 +30,7 @@ public enum AiModel {
         try {
             return AiModel.valueOf(normalized);
         } catch (IllegalArgumentException e) {
-            throw new InvalidInputException("Invalid model name: " + a + ". Allowed: gpt-4o-mini, claude-3.5-sonnet, gemini-2.5-flash, gemini-3.0-flash-preview");
+            throw new InvalidInputException("Invalid model name: " + a + ". Allowed: gpt-4o-mini, claude-3.5-sonnet, gemini-2.5-flash, gemini-3-flash-preview");
         }
     }
 }

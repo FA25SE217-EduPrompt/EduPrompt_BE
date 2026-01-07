@@ -26,20 +26,18 @@ public class CurriculumMatchingServiceImpl implements CurriculumMatchingService 
     private final SubjectRepository subjectRepository;
 
     private static final Map<String, List<String>> SUBJECT_PATTERNS = Map.of(
-            "Toán", List.of("toán", "hình học", "đại số", "giải tích", "lượng giác","math", "mathematics"),
+            "Toán", List.of("toán", "hình học", "đại số", "giải tích", "lượng giác", "math", "mathematics"),
             "Văn", List.of("văn", "ngữ văn", "văn học", "tiếng việt", "literature"),
             "Anh", List.of("tiếng anh", "anh văn", "english"),
             "Lý", List.of("vật lý", "vật lí", "physics"),
             "Hóa", List.of("hóa học", "hoá học", "chemistry"),
             "Sinh", List.of("sinh học", "sinh vật", "biology"),
             "Sử", List.of("lịch sử", "history"),
-            "Địa", List.of("địa lý", "địa lí", "geography")
-    );
+            "Địa", List.of("địa lý", "địa lí", "geography"));
 
     private static final Set<String> STOPWORDS = Set.of(
             "tạo", "viết", "thiết", "kế", "cho", "của", "và", "với", "một", "các",
-            "bài", "giáo", "án", "học", "sinh", "lớp", "tiết"
-    );
+            "bài", "giáo", "án", "học", "sinh", "lớp", "tiết");
 
     @Override
     public CurriculumContext detectContext(String promptText) {
@@ -66,18 +64,28 @@ public class CurriculumMatchingServiceImpl implements CurriculumMatchingService 
     }
 
     private String detectSubject(String text) {
+        Map<String, Integer> scores = new HashMap<>();
+
         for (Map.Entry<String, List<String>> entry : SUBJECT_PATTERNS.entrySet()) {
             for (String pattern : entry.getValue()) {
                 if (text.contains(pattern)) {
-                    return entry.getKey();
+                    // Weight matches: Exact subject name > derived words
+                    // E.g. "hóa học" (7 chars) > "hóa" (3 chars)
+                    int score = pattern.length();
+                    scores.merge(entry.getKey(), score, Integer::sum);
                 }
             }
         }
-        return null;
+
+        return scores.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
     }
 
     private Integer detectGradeLevel(String text) {
-        Pattern gradePattern = Pattern.compile("(lớp|khối|grade)\\s*(10|11|12)");
+        // Matches "lớp 11", "lớp: 11", "khối 11", "khối: 11", "grade 11"
+        Pattern gradePattern = Pattern.compile("(lớp|khối|grade)[^\\d]{0,5}(10|11|12)");
         Matcher matcher = gradePattern.matcher(text);
 
         if (matcher.find()) {
@@ -87,20 +95,26 @@ public class CurriculumMatchingServiceImpl implements CurriculumMatchingService 
     }
 
     private Integer detectSemester(String text) {
-        if (text.matches(".*(học kỳ 1|hk1|semester 1).*")) {
+        // Matches "học kỳ 1", "học kỳ: 1", "hk1", "hk 1", "semester 1", "semester: 1"
+        Pattern sem1Pattern = Pattern.compile("(học kỳ|hk|semester)[^\\d]{0,5}1");
+        if (sem1Pattern.matcher(text).find()) {
             return 1;
         }
-        if (text.matches(".*(học kỳ 2|hk2|semester 2).*")) {
+
+        Pattern sem2Pattern = Pattern.compile("(học kỳ|hk|semester)[^\\d]{0,5}2");
+        if (sem2Pattern.matcher(text).find()) {
             return 2;
         }
         return null;
     }
 
     private List<String> extractKeywords(String text) {
-        return Arrays.stream(text.toLowerCase().split("\\s+"))
-                .filter(w -> w.length() > 3)
+        // Simple keyword extraction: words > 3 chars, not stopwords, not numbers
+        return Arrays
+                .stream(text.toLowerCase()
+                        .split("[^a-záàảãạăằắẳẵặâầấẩẫậéèẻẽẹêềếểễệíìỉĩịóòỏõọôồốổỗộơờớởỡợúùủũụưừứửữựýỳỷỹỵđ]+"))
+                .filter(w -> w.length() > 2)
                 .filter(w -> !STOPWORDS.contains(w))
-                .filter(w -> !w.matches("\\d+")) // Remove numbers
                 .distinct()
                 .limit(10)
                 .collect(Collectors.toList());
@@ -125,8 +139,7 @@ public class CurriculumMatchingServiceImpl implements CurriculumMatchingService 
                 chapter.getChapterNumber(),
                 semester.getSemesterNumber(),
                 gradeLevel.getLevel(),
-                subject.getName()
-        );
+                subject.getName());
     }
 
     @Override
@@ -134,8 +147,7 @@ public class CurriculumMatchingServiceImpl implements CurriculumMatchingService 
         log.info("Searching lessons: keyword={}, subject={}, grade={}", keyword, subjectId, gradeLevel);
 
         List<LessonRepository.LessonSearchResultProjection> projections = lessonRepository.searchByKeyword(
-                keyword, subjectId, gradeLevel
-        );
+                keyword, subjectId, gradeLevel);
 
         return projections.stream()
                 .map(p -> LessonSearchResult.builder()
@@ -146,8 +158,7 @@ public class CurriculumMatchingServiceImpl implements CurriculumMatchingService 
                         .subjectName(p.getSubjectName())
                         .gradeLevel(p.getGradeLevel())
                         .relevanceScore(p.getRelevanceScore())
-                        .build()
-                )
+                        .build())
                 .collect(Collectors.toList());
     }
 
@@ -175,7 +186,6 @@ public class CurriculumMatchingServiceImpl implements CurriculumMatchingService 
                 topMatch.lessonId(),
                 topMatch.lessonName(),
                 topMatch.relevanceScore(),
-                "Matched keywords: " + String.join(", ", keywords.subList(0, Math.min(3, keywords.size())))
-        );
+                "Matched keywords: " + String.join(", ", keywords.subList(0, Math.min(3, keywords.size()))));
     }
 }

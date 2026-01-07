@@ -44,7 +44,7 @@ public class AiClientServiceImpl implements AiClientService {
     private static final Integer DEFAULT_MAX_TOKEN = 8192;
     private static final Float DEFAULT_TEMPERATURE = 0.3f;
     private static final Float DEFAULT_TOP_P = 0.7f;
-    private static final String DEFAULT_MODEL = AiModel.GEMINI_3_0_FLASH_PREVIEW.getName();
+    private static final String DEFAULT_MODEL = AiModel.GEMINI_3_FLASH_PREVIEW.getName();
 
     private static final ImmutableList<SafetySetting> DEFAULT_SAFETY_SETTINGS = ImmutableList.of(
             SafetySetting.builder()
@@ -71,7 +71,7 @@ public class AiClientServiceImpl implements AiClientService {
 
         try {
             return switch (aiModel) {
-                case GEMINI_2_5_FLASH, GEMINI_3_0_FLASH_PREVIEW ->
+                case GEMINI_2_5_FLASH, GEMINI_3_FLASH_PREVIEW ->
                     callGeminiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
                 case GPT_4O_MINI -> callOpenAiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
                 case CLAUDE_3_5_SONNET -> callAnthropicApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
@@ -219,7 +219,8 @@ public class AiClientServiceImpl implements AiClientService {
 
                 OFFICIAL CURRICULUM CONTEXT:
                 %s
-
+                                
+                Searching for related lesson content in Vietnamese high school curriculum for better curriculum context if you found it missing.
                 Scoring criteria:
                 1. Does the prompt reference the correct lesson/chapter? (30 points)
                 2. Does it match the learning objectives? (30 points)
@@ -231,9 +232,13 @@ public class AiClientServiceImpl implements AiClientService {
                 """, promptText, curriculumContext);
 
         try {
-            String response = callGeminiApi(systemPrompt, userPrompt);
-            JsonNode jsonNode = objectMapper.readTree(response);
-            return jsonNode.get("score").asDouble();
+            String response = callGeminiApi(systemPrompt, userPrompt, false);
+            String jsonString = extractOptimizedPrompt(response);
+            JsonNode jsonNode = objectMapper.readTree(jsonString);
+            if (jsonNode.has("score")) {
+                return jsonNode.get("score").asDouble();
+            }
+            return 0.0;
         } catch (Exception e) {
             log.error("Error parsing curriculum alignment score", e);
             return 0.0;
@@ -284,7 +289,7 @@ public class AiClientServiceImpl implements AiClientService {
                         customInstruction);
 
         try {
-            String response = callGeminiApi(systemPrompt, userPrompt);
+            String response = callGeminiApi(systemPrompt, userPrompt, true);
             return extractOptimizedPrompt(response);
         } catch (Exception e) {
             log.error("Error optimizing prompt", e);
@@ -313,12 +318,13 @@ public class AiClientServiceImpl implements AiClientService {
 
                 OPTIMIZATION RULES (SAFE MODE):
                 1. Preserve teacher's intent 100%% - do not change the core request
-                2. Only add missing structural elements identified in weaknesses
-                3. Add output format specification if missing
-                4. Add curriculum reference from the context provided
-                5. Keep the same language and tone
-                6. Make minimal additions
-                7. Do not add activities or change teaching approach
+                        2. Preserve ALL existing sections (Content, Input Example, Output Format, etc.) - DO NOT DELETE ANY TEXT
+                        3. Only add missing structural elements identified in weaknesses
+                        4. Add output format specification if missing
+                        5. Add curriculum reference from the context provided
+                        6. Keep the same language and tone
+                        7. Make minimal additions
+                        8. Do not add activities or change teaching approach
 
                 Return ONLY the optimized prompt text, nothing else.
                 """,
@@ -382,16 +388,21 @@ public class AiClientServiceImpl implements AiClientService {
 
     private double callGeminiForScore(String systemPrompt, String userPrompt) {
         try {
-            String response = callGeminiApi(systemPrompt, userPrompt);
-            JsonNode jsonNode = objectMapper.readTree(response);
-            return jsonNode.get("score").asDouble();
+            String response = callGeminiApi(systemPrompt, userPrompt, false);
+            // Clean markdown formatting if present
+            String jsonString = extractOptimizedPrompt(response);
+            JsonNode jsonNode = objectMapper.readTree(jsonString);
+            if (jsonNode.has("score")) {
+                return jsonNode.get("score").asDouble();
+            }
+            return 0.0;
         } catch (Exception e) {
             log.error("Error calling Gemini API for scoring", e);
             return 0.0;
         }
     }
 
-    private String callGeminiApi(String systemPrompt, String userPrompt) {
+    private String callGeminiApi(String systemPrompt, String userPrompt, Boolean enableGoogleSearch) {
         Content systemInstruction = Content.builder()
                 .parts(Part.builder()
                         .text(systemPrompt)
@@ -404,6 +415,11 @@ public class AiClientServiceImpl implements AiClientService {
                         .text(userPrompt)
                         .build())
                 .build();
+        Tool.Builder toolBuilder = Tool.builder();
+        if (enableGoogleSearch) {
+            toolBuilder.googleSearch(GoogleSearch.builder()
+                    .build());
+        }
 
         GenerateContentConfig config = GenerateContentConfig.builder()
                 .temperature(DEFAULT_TEMPERATURE)
@@ -411,11 +427,12 @@ public class AiClientServiceImpl implements AiClientService {
                 .topP(DEFAULT_TOP_P)
                 .safetySettings(DEFAULT_SAFETY_SETTINGS)
                 .systemInstruction(systemInstruction)
+                .tools(toolBuilder)
                 .build();
 
         try {
             GenerateContentResponse response = geminiClient.models.generateContent(
-                    AiModel.GEMINI_2_5_FLASH.getName(),
+                    AiModel.GEMINI_3_FLASH_PREVIEW.getName(),
                     prompt,
                     config);
 
@@ -428,11 +445,13 @@ public class AiClientServiceImpl implements AiClientService {
     }
 
     private String extractOptimizedPrompt(String response) {
+        // Remove markdown code blocks (json, text, etc)
         String cleaned = response.trim()
-                .replaceAll("^```json\\s*", "")
+                .replaceAll("^```\\w*\\s*", "")
                 .replaceAll("```\\s*$", "")
                 .trim();
 
+        // Remove wrapping quotes if present
         if (cleaned.startsWith("\"") && cleaned.endsWith("\"")) {
             cleaned = cleaned.substring(1, cleaned.length() - 1);
         }
