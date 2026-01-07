@@ -83,6 +83,15 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
     List<Prompt> findByIndexingStatusAndIsDeletedAndVisibility(String indexingStatus, Boolean isDeleted,
                                                                String visibility);
 
+    /**
+     * Find all prompts with specific indexing status
+     */
+    List<Prompt> findByIndexingStatusAndIsDeletedAndVisibilityAndGeminiFileIdIsNotNull(
+            String indexingStatus,
+            Boolean isDeleted,
+            String visibility
+    );
+
     List<Prompt> findByIndexingStatusAndIsDeleted(String indexingStatus, boolean isDeleted);
 
     /**
