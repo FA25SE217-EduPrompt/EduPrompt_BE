@@ -25,8 +25,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-
 
 @Service
 @Slf4j
@@ -41,10 +41,10 @@ public class AiClientServiceImpl implements AiClientService {
 
     private final ObjectMapper objectMapper;
 
-
     private static final Integer DEFAULT_MAX_TOKEN = 8192;
     private static final Float DEFAULT_TEMPERATURE = 0.3f;
     private static final Float DEFAULT_TOP_P = 0.7f;
+    private static final String DEFAULT_MODEL = AiModel.GEMINI_3_0_FLASH_PREVIEW.getName();
 
     private static final ImmutableList<SafetySetting> DEFAULT_SAFETY_SETTINGS = ImmutableList.of(
             SafetySetting.builder()
@@ -54,9 +54,7 @@ public class AiClientServiceImpl implements AiClientService {
             SafetySetting.builder()
                     .category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT)
                     .threshold(HarmBlockThreshold.Known.BLOCK_LOW_AND_ABOVE)
-                    .build()
-    );
-
+                    .build());
 
     @Override
     public ClientPromptResponse testPrompt(
@@ -73,7 +71,8 @@ public class AiClientServiceImpl implements AiClientService {
 
         try {
             return switch (aiModel) {
-                case GEMINI_2_5_FLASH -> callGeminiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
+                case GEMINI_2_5_FLASH, GEMINI_3_0_FLASH_PREVIEW ->
+                    callGeminiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
                 case GPT_4O_MINI -> callOpenAiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
                 case CLAUDE_3_5_SONNET -> callAnthropicApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
                 default -> throw new AiProviderException("Unsupported AI model: " + aiModel.getName());
@@ -104,8 +103,7 @@ public class AiClientServiceImpl implements AiClientService {
                 AiModel.GPT_4O_MINI.getName(),
                 temperature,
                 maxTokens,
-                1.0
-        );
+                1.0);
     }
 
     @Override
@@ -113,23 +111,23 @@ public class AiClientServiceImpl implements AiClientService {
         log.debug("Calling Gemini for instruction clarity scoring");
 
         String systemPrompt = """
-            You are an expert in evaluating prompt quality for educational purposes.
-            Score the instruction clarity of the given prompt on a scale of 0-40.
-            """;
+                You are an expert in evaluating prompt quality for educational purposes.
+                Score the instruction clarity of the given prompt on a scale of 0-40.
+                """;
 
         String userPrompt = String.format("""
-            Evaluate the clarity of this instruction (0-40 points):
-            
-            %s
-            
-            Consider:
-            - Is the AI's role crystal clear?
-            - Is the task unambiguous?
-            - Would different AI models interpret this similarly?
-            
-            Return ONLY a JSON object:
-            {"score": <0-40>, "reason": "<brief explanation>"}
-            """, promptText);
+                Evaluate the clarity of this instruction (0-40 points):
+
+                %s
+
+                Consider:
+                - Is the AI's role crystal clear?
+                - Is the task unambiguous?
+                - Would different AI models interpret this similarly?
+
+                Return ONLY a JSON object:
+                {"score": <0-40>, "reason": "<brief explanation>"}
+                """, promptText);
 
         return callGeminiForScore(systemPrompt, userPrompt);
     }
@@ -139,21 +137,21 @@ public class AiClientServiceImpl implements AiClientService {
         log.debug("Calling Gemini for context completeness scoring");
 
         String systemPrompt = """
-            You are an expert in evaluating educational prompt context richness.
-            Score how complete the contextual information is on a scale of 0-30.
-            """;
+                You are an expert in evaluating educational prompt context richness.
+                Score how complete the contextual information is on a scale of 0-30.
+                """;
 
         String userPrompt = String.format("""
-            Rate the contextual richness (0-30 points):
-            
-            %s
-            
-            Does it provide enough background for generating high-quality educational content?
-            Consider: subject details, student characteristics, teaching environment.
-            
-            Return ONLY a JSON object:
-            {"score": <0-30>, "reason": "<brief explanation>"}
-            """, promptText);
+                Rate the contextual richness (0-30 points):
+
+                %s
+
+                Does it provide enough background for generating high-quality educational content?
+                Consider: subject details, student characteristics, teaching environment.
+
+                Return ONLY a JSON object:
+                {"score": <0-30>, "reason": "<brief explanation>"}
+                """, promptText);
 
         return callGeminiForScore(systemPrompt, userPrompt);
     }
@@ -163,20 +161,20 @@ public class AiClientServiceImpl implements AiClientService {
         log.debug("Calling Gemini for output specification scoring");
 
         String systemPrompt = """
-            You are an expert in evaluating prompt output specifications.
-            Score how well-defined the output requirements are on a scale of 0-50.
-            """;
+                You are an expert in evaluating prompt output specifications.
+                Score how well-defined the output requirements are on a scale of 0-50.
+                """;
 
         String userPrompt = String.format("""
-            Score output specification clarity (0-50 points):
-            
-            %s
-            
-            Would a teacher know exactly what format/structure to expect from the AI output?
-            
-            Return ONLY a JSON object:
-            {"score": <0-50>, "reason": "<brief explanation>"}
-            """, promptText);
+                Score output specification clarity (0-50 points):
+
+                %s
+
+                Would a teacher know exactly what format/structure to expect from the AI output?
+
+                Return ONLY a JSON object:
+                {"score": <0-50>, "reason": "<brief explanation>"}
+                """, promptText);
 
         return callGeminiForScore(systemPrompt, userPrompt);
     }
@@ -186,51 +184,51 @@ public class AiClientServiceImpl implements AiClientService {
         log.debug("Calling Gemini for constraint strength scoring");
 
         String systemPrompt = """
-            You are an expert in evaluating prompt constraints and guardrails.
-            Score the strength of constraints on a scale of 0-60.
-            """;
+                You are an expert in evaluating prompt constraints and guardrails.
+                Score the strength of constraints on a scale of 0-60.
+                """;
 
         String userPrompt = String.format("""
-            Evaluate constraint strength (0-60 points):
-            
-            %s
-            
-            Are there clear guardrails to prevent hallucination, off-topic content, or inaccurate information?
-            
-            Return ONLY a JSON object:
-            {"score": <0-60>, "reason": "<brief explanation>"}
-            """, promptText);
+                Evaluate constraint strength (0-60 points):
+
+                %s
+
+                Are there clear guardrails to prevent hallucination, off-topic content, or inaccurate information?
+
+                Return ONLY a JSON object:
+                {"score": <0-60>, "reason": "<brief explanation>"}
+                """, promptText);
 
         return callGeminiForScore(systemPrompt, userPrompt);
     }
 
     @Override
     public double scoreCurriculumAlignment(String promptText, String curriculumContext) {
-        log.debug("Calling Gemini for curriculum alignment scoring");
+        log.info("Calling Gemini for curriculum alignment scoring");
 
         String systemPrompt = """
-            You are an expert in Vietnamese high school curriculum evaluation.
-            Score how well a prompt aligns with official curriculum content on a scale of 0-100.
-            """;
+                You are an expert in Vietnamese high school curriculum evaluation.
+                Score how well a prompt aligns with official curriculum content on a scale of 0-100.
+                """;
 
         String userPrompt = String.format("""
-            Score curriculum alignment (0-100 points):
-            
-            TEACHER'S PROMPT:
-            %s
-            
-            OFFICIAL CURRICULUM CONTEXT:
-            %s
-            
-            Scoring criteria:
-            1. Does the prompt reference the correct lesson/chapter? (30 points)
-            2. Does it match the learning objectives? (30 points)
-            3. Is the scope appropriate for this grade level? (20 points)
-            4. Are terminology and concepts accurate per curriculum? (20 points)
-            
-            Return ONLY a JSON object:
-            {"score": <0-100>, "issues": ["issue1", "issue2"], "suggestions": ["suggestion1"]}
-            """, promptText, curriculumContext);
+                Score curriculum alignment (0-100 points):
+
+                TEACHER'S PROMPT:
+                %s
+
+                OFFICIAL CURRICULUM CONTEXT:
+                %s
+
+                Scoring criteria:
+                1. Does the prompt reference the correct lesson/chapter? (30 points)
+                2. Does it match the learning objectives? (30 points)
+                3. Is the scope appropriate for this grade level? (20 points)
+                4. Are terminology and concepts accurate per curriculum? (20 points)
+
+                Return ONLY a JSON object:
+                {"score": <0-100>, "issues": ["issue1", "issue2"], "suggestions": ["suggestion1"]}
+                """, promptText, curriculumContext);
 
         try {
             String response = callGeminiApi(systemPrompt, userPrompt);
@@ -244,45 +242,46 @@ public class AiClientServiceImpl implements AiClientService {
 
     @Override
     public double scorePedagogicalQuality(String promptText) {
-        log.debug("Calling Gemini for pedagogical quality scoring");
+        log.info("Calling Gemini for pedagogical quality scoring");
 
         String systemPrompt = """
-            You are an expert in pedagogy and teaching methodologies.
-            Score the pedagogical quality of a prompt on a scale of 0-80.
-            """;
+                You are an expert in pedagogy and teaching methodologies.
+                Score the pedagogical quality of a prompt on a scale of 0-80.
+                """;
 
         String userPrompt = String.format("""
-            Evaluate pedagogical quality (0-80 points):
-            
-            %s
-            
-            Consider:
-            - Active learning vs passive learning approach
-            - Differentiation for different student levels
-            - Assessment integration
-            - Alignment with modern teaching methodologies
-            - Bloom's taxonomy level
-            
-            Return ONLY a JSON object:
-            {"score": <0-80>, "reason": "<brief explanation>"}
-            """, promptText);
+                Evaluate pedagogical quality (0-80 points):
+
+                %s
+
+                Consider:
+                - Active learning vs passive learning approach
+                - Differentiation for different student levels
+                - Assessment integration
+                - Alignment with modern teaching methodologies
+                - Bloom's taxonomy level
+
+                Return ONLY a JSON object:
+                {"score": <0-80>, "reason": "<brief explanation>"}
+                """, promptText);
 
         return callGeminiForScore(systemPrompt, userPrompt);
     }
 
     @Override
-    public String optimizePrompt(String promptText, OptimizationMode mode,
-                                 String curriculumContext, List<String> weaknesses) {
+    public String optimizePrompt(String promptText, OptimizationMode mode, String curriculumContext,
+            Map<String, List<String>> selectedWeaknesses, String customInstruction) {
         log.info("Optimizing prompt with mode: {}", mode);
 
         String systemPrompt = """
-            You are an expert prompt engineer specializing in educational content creation.
-            Your task is to optimize teacher prompts while preserving their original intent.
-            """;
+                You are an expert prompt engineer specializing in educational content creation.
+                Your task is to optimize teacher prompts while preserving their original intent.
+                """;
 
         String userPrompt = mode == OptimizationMode.SAFE
-                ? buildSafeOptimizationPrompt(promptText, curriculumContext, weaknesses)
-                : buildPedagogicalOptimizationPrompt(promptText, curriculumContext, weaknesses);
+                ? buildSafeOptimizationPrompt(promptText, curriculumContext, selectedWeaknesses, customInstruction)
+                : buildPedagogicalOptimizationPrompt(promptText, curriculumContext, selectedWeaknesses,
+                        customInstruction);
 
         try {
             String response = callGeminiApi(systemPrompt, userPrompt);
@@ -293,68 +292,92 @@ public class AiClientServiceImpl implements AiClientService {
         }
     }
 
-    private String buildSafeOptimizationPrompt(String promptText, String curriculumContext, List<String> weaknesses) {
+    private String buildSafeOptimizationPrompt(String promptText, String curriculumContext,
+            Map<String, List<String>> weaknesses, String customInstruction) {
+        String weaknessesString = formatWeaknesses(weaknesses);
+
         return String.format("""
-            Optimize this teacher's prompt using SAFE mode:
-            
-            ORIGINAL PROMPT:
-            %s
-            
-            CURRICULUM CONTEXT:
-            %s
-            
-            DETECTED WEAKNESSES:
-            %s
-            
-            OPTIMIZATION RULES (SAFE MODE):
-            1. Preserve teacher's intent 100%% - do not change the core request
-            2. Only add missing structural elements identified in weaknesses
-            3. Add output format specification if missing
-            4. Add curriculum reference from the context provided
-            5. Keep the same language and tone
-            6. Make minimal additions
-            7. Do not add activities or change teaching approach
-            
-            Return ONLY the optimized prompt text, nothing else.
-            """,
+                Optimize this teacher's prompt using SAFE mode:
+
+                ORIGINAL PROMPT:
+                %s
+
+                CURRICULUM CONTEXT:
+                %s
+
+                DETECTED WEAKNESSES:
+                %s
+
+                USER INSTRUCTIONS:
+                %s
+
+                OPTIMIZATION RULES (SAFE MODE):
+                1. Preserve teacher's intent 100%% - do not change the core request
+                2. Only add missing structural elements identified in weaknesses
+                3. Add output format specification if missing
+                4. Add curriculum reference from the context provided
+                5. Keep the same language and tone
+                6. Make minimal additions
+                7. Do not add activities or change teaching approach
+
+                Return ONLY the optimized prompt text, nothing else.
+                """,
                 promptText,
                 curriculumContext,
-                String.join("\n", weaknesses)
-        );
+                weaknessesString,
+                customInstruction != null ? customInstruction : "None");
     }
 
-    private String buildPedagogicalOptimizationPrompt(String promptText, String curriculumContext, List<String> weaknesses) {
+    private String buildPedagogicalOptimizationPrompt(String promptText, String curriculumContext,
+            Map<String, List<String>> weaknesses, String customInstruction) {
+        String weaknessesString = formatWeaknesses(weaknesses);
+
         return String.format("""
-            Optimize this teacher's prompt using PEDAGOGICAL ENHANCEMENT mode:
-            
-            ORIGINAL PROMPT:
-            %s
-            
-            CURRICULUM CONTEXT:
-            %s
-            
-            DETECTED WEAKNESSES:
-            %s
-            
-            OPTIMIZATION RULES (PEDAGOGICAL MODE):
-            1. Preserve teacher's core intent
-            2. Fix all structural issues from weaknesses
-            3. Add 2-3 active learning activities aligned with the lesson content
-            4. Include differentiation strategies for mixed-ability students
-            5. Add formative assessment component
-            6. Align explicitly with learning objectives from curriculum
-            7. Target appropriate Bloom's taxonomy level (Analysis/Application for high school)
-            8. Maintain Vietnamese educational context and terminology
-            
-            Format the optimized prompt clearly with sections.
-            Mark new additions with [ADDED] at the start of new sections.
-            
-            Return ONLY the optimized prompt text.
-            """,
+                Optimize this teacher's prompt using PEDAGOGICAL ENHANCEMENT mode:
+
+                ORIGINAL PROMPT:
+                %s
+
+                CURRICULUM CONTEXT:
+                %s
+
+                DETECTED WEAKNESSES:
+                %s
+
+                USER INSTRUCTIONS:
+                %s
+
+                OPTIMIZATION RULES (PEDAGOGICAL MODE):
+                1. Preserve teacher's core intent
+                2. Fix all structural issues from weaknesses
+                3. Add 2-3 active learning activities aligned with the lesson content
+                4. Include differentiation strategies for mixed-ability students
+                5. Add formative assessment component
+                6. Align explicitly with learning objectives from curriculum
+                7. Target appropriate Bloom's taxonomy level (Analysis/Application for high school)
+                8. Maintain Vietnamese educational context and terminology
+
+                Format the optimized prompt clearly with sections.
+                Mark new additions with [ADDED] at the start of new sections.
+
+                Return ONLY the optimized prompt text.
+                """,
                 promptText,
                 curriculumContext,
-                String.join("\n", weaknesses)
-        );
+                weaknessesString,
+                customInstruction != null ? customInstruction : "None");
+    }
+
+    private String formatWeaknesses(Map<String, List<String>> weaknesses) {
+        if (weaknesses == null || weaknesses.isEmpty()) {
+            return "None";
+        }
+        StringBuilder sb = new StringBuilder();
+        weaknesses.forEach((category, issues) -> {
+            sb.append("- ").append(category).append(":\n");
+            issues.forEach(issue -> sb.append("  * ").append(issue).append("\n"));
+        });
+        return sb.toString();
     }
 
     private double callGeminiForScore(String systemPrompt, String userPrompt) {
@@ -394,8 +417,7 @@ public class AiClientServiceImpl implements AiClientService {
             GenerateContentResponse response = geminiClient.models.generateContent(
                     AiModel.GEMINI_2_5_FLASH.getName(),
                     prompt,
-                    config
-            );
+                    config);
 
             return extractResponseContent(response);
 
@@ -438,8 +460,7 @@ public class AiClientServiceImpl implements AiClientService {
                     .model(ChatModel.GPT_4O)
                     .addMessage(ChatCompletionUserMessageParam.builder()
                             .content(ChatCompletionUserMessageParam.Content.ofText(prompt))
-                            .build()
-                    );
+                            .build());
 
             // Add optional parameters
             if (temperature != null) {
@@ -514,8 +535,7 @@ public class AiClientServiceImpl implements AiClientService {
             if (e.getCause() instanceof java.net.SocketTimeoutException) {
                 throw new AiProviderException(
                         String.format("OpenAI request timed out after %d seconds", readTimeoutSeconds),
-                        e
-                );
+                        e);
             }
 
             throw new AiProviderException("Failed to call OpenAI API: " + e.getMessage(), e);
@@ -534,7 +554,7 @@ public class AiClientServiceImpl implements AiClientService {
 
         String effectiveModel = (model != null && !model.isBlank())
                 ? model
-                : AiModel.GEMINI_2_5_FLASH.getName();
+                : DEFAULT_MODEL;
 
         long startTime = System.currentTimeMillis();
 
@@ -563,8 +583,7 @@ public class AiClientServiceImpl implements AiClientService {
             GenerateContentResponse response = geminiClient.models.generateContent(
                     effectiveModel,
                     List.of(content),
-                    configBuilder.build()
-            );
+                    configBuilder.build());
 
             long duration = System.currentTimeMillis() - startTime;
             log.info("Gemini API call completed in {}ms", duration);
@@ -611,8 +630,7 @@ public class AiClientServiceImpl implements AiClientService {
             if (e.getCause() instanceof java.net.SocketTimeoutException) {
                 throw new AiProviderException(
                         String.format("Gemini request timed out after %d seconds", readTimeoutSeconds),
-                        e
-                );
+                        e);
             }
 
             throw new AiProviderException("Failed to call Gemini API: " + e.getMessage(), e);
@@ -626,7 +644,7 @@ public class AiClientServiceImpl implements AiClientService {
             Integer maxTokens,
             Double topP) {
 
-        //TODO: Implement when i get the $5 credit, im broke (T-T)
+        // TODO: Implement when i get the $5 credit, im broke (T-T)
         log.warn("Anthropic API not yet implemented");
         throw new AiProviderException("Anthropic API not yet implemented");
     }
@@ -636,14 +654,12 @@ public class AiClientServiceImpl implements AiClientService {
      */
     private String extractResponseContent(GenerateContentResponse response) {
         return response.candidates()
-                .flatMap(candidates -> candidates.isEmpty() ?
-                        java.util.Optional.empty() :
-                        java.util.Optional.of(candidates.getFirst()))
+                .flatMap(candidates -> candidates.isEmpty() ? java.util.Optional.empty()
+                        : java.util.Optional.of(candidates.getFirst()))
                 .flatMap(Candidate::content)
                 .flatMap(Content::parts)
-                .flatMap(parts -> parts.isEmpty() ?
-                        java.util.Optional.empty() :
-                        java.util.Optional.of(parts.getFirst()))
+                .flatMap(
+                        parts -> parts.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(parts.getFirst()))
                 .flatMap(Part::text)
                 .orElse("");
     }
@@ -703,13 +719,13 @@ public class AiClientServiceImpl implements AiClientService {
                          - Keep or expand examples, constraints, and formatting. Add step-by-step instructions, examples, and explicit output format if missing.
                          - Follow prompt-engineering best practices: explicit goal, role, audience, constraints, examples, desired output shape.
                          - Return ONLY the optimized prompt text (no commentary, no meta, no labels). If you produce anything else, the response will be discarded.
-                                
+
                         === Current Prompt ===
                         %s
-                                
+
                         === Optimization Request ===
                         %s
-                                
+
                         Output requirements (IMPORTANT):
                         1) Return a single block of plain text (the new prompt).
                         2) The prompt must be ready-to-use — teacher can paste it into an LLM as-is.
@@ -719,8 +735,7 @@ public class AiClientServiceImpl implements AiClientService {
                 minChars, minWords,
                 currentPrompt,
                 optimizationInput,
-                minChars, minWords
-        );
+                minChars, minWords);
     }
 
 }

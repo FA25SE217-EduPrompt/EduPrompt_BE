@@ -39,7 +39,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-
+import java.security.MessageDigest;
 
 @Service
 @Slf4j
@@ -66,7 +66,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
     @Override
     public OptimizationQueueResponse requestOptimization(UUID userId, PromptOptimizationRequest request,
-                                                         String idempotencyKey) {
+            String idempotencyKey) {
         log.info("Requesting optimization for prompt: {} by user: {} with idempotency key: {}",
                 request.promptId(), userId, idempotencyKey);
 
@@ -84,8 +84,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(
                 lockKey,
                 userId.toString(),
-                LOCK_TIMEOUT
-        );
+                LOCK_TIMEOUT);
 
         if (!lockAcquired) {
             log.warn("Concurrent request detected for idempotency key: {}, rejecting", idempotencyKey);
@@ -116,7 +115,8 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
             // Verify prompt exists BEFORE starting transaction
             Prompt prompt = promptRepository.findById(request.promptId())
-                    .orElseThrow(() -> new ResourceNotFoundException("prompt not found with id: " + request.promptId()));
+                    .orElseThrow(
+                            () -> new ResourceNotFoundException("prompt not found with id: " + request.promptId()));
 
             // Use TransactionTemplate for explicit transaction control
             OptimizationQueue savedQueue = transactionTemplate.execute(status -> {
@@ -141,7 +141,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
                 return queueRepository.save(queueEntry);
             });
-            //publish event to redis
+            // publish event to redis
             publishOptimizationEvent(savedQueue.getId());
 
             // Cache result AFTER transaction commits successfully
@@ -185,8 +185,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
         Page<OptimizationQueue> queuePage = queueRepository.findByRequestedByIdOrderByCreatedAtDesc(
                 userId,
-                pageable
-        );
+                pageable);
 
         return queuePage.map(this::mapToResponse);
     }
@@ -199,8 +198,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         Page<OptimizationQueue> queuePage = queueRepository.findByPromptIdAndRequestedByIdOrderByCreatedAtDesc(
                 promptId,
                 userId,
-                pageable
-        );
+                pageable);
 
         return queuePage.map(this::mapToResponse);
     }
@@ -212,8 +210,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
         List<OptimizationQueue> pendingQueues = queueRepository.findByRequestedByIdAndStatusInOrderByCreatedAtDesc(
                 userId,
-                List.of(QueueStatus.PENDING.name(), QueueStatus.PROCESSING.name())
-        );
+                List.of(QueueStatus.PENDING.name(), QueueStatus.PROCESSING.name()));
 
         return pendingQueues.stream()
                 .map(this::mapToResponse)
@@ -277,7 +274,6 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         log.info("Optimization cancelled successfully: {}", queueId);
     }
 
-
     /**
      * Publish optimization event to Redis
      */
@@ -285,8 +281,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         try {
             redisTemplate.convertAndSend(
                     "queue:optimization",
-                    queueId.toString()
-            );
+                    queueId.toString());
             log.debug("Published optimization event for queue: {}", queueId);
         } catch (Exception e) {
             log.error("Failed to publish optimization event, will rely on fallback scheduler", e);
@@ -312,8 +307,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
         Pageable pageable = PageRequest.of(0, BATCH_SIZE);
         List<OptimizationQueue> pendingItems = queueRepository.findPendingItemsForProcessing(
-                QueueStatus.PENDING.name(), pageable
-        ).getContent();
+                QueueStatus.PENDING.name(), pageable).getContent();
 
         // Re-trigger events for pending items
         for (OptimizationQueue item : pendingItems) {
@@ -323,68 +317,101 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
     @Override
     public OptimizationResponse optimize(OptimizationRequest request) {
-        log.info("Starting optimization for prompt: {}", request.promptId());
+        log.info("Starting optimization. Scratchpad mode: {}", request.promptId() == null);
 
-        Prompt prompt = promptRepository.findById(request.promptId())
-                .orElseThrow(() -> new ResourceNotFoundException("prompt not found with id: " + request.promptId()));
+        // 1. Generate Cache Key
+        String cacheKey = generateOptimizationCacheKey(request);
+        try {
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                log.info("Returning cached optimization result");
+                return objectMapper.readValue(cached, OptimizationResponse.class);
+            }
+        } catch (Exception e) {
+            log.warn("Cache read failed", e);
+        }
 
+        // 2. Score Original Prompt
         PromptScoreResult originalScore = scoringService.scorePrompt(
-                request.promptText(),
-                request.lessonId()
-        );
+                request.promptContent(),
+                request.lessonId());
 
         log.info("Original prompt score: {}", originalScore.overallScore());
 
+        // 3. Resolve Context
         CurriculumContextDetail curriculumContext = resolveCurriculumContext(
-                request.promptText(),
+                request.promptContent(),
                 request.lessonId(),
-                originalScore.detectedContext()
-        );
+                originalScore.detectedContext());
 
         String contextString = buildCurriculumContextString(curriculumContext);
 
+        // 4. Optimize via AI
         String optimizedPrompt = geminiService.optimizePrompt(
-                request.promptText(),
+                request.promptContent(),
                 request.optimizationMode(),
                 contextString,
-                originalScore.weaknesses()
-        );
+                request.selectedWeaknesses(),
+                request.customInstruction());
 
         log.info("Generated optimized prompt");
 
+        // 5. Score Optimized Prompt
         PromptScoreResult optimizedScore = scoringService.scorePrompt(
                 optimizedPrompt,
-                curriculumContext.lessonId()
-        );
+                curriculumContext.lessonId());
 
         log.info("Optimized prompt score: {}", optimizedScore.overallScore());
 
         List<String> appliedFixes = identifyAppliedFixes(originalScore, optimizedScore);
-
-        PromptVersion newVersion = versionService.createOptimizedVersion(
-                request.promptId(),
-                optimizedPrompt,
-                prompt.getCreatedBy(),
-                curriculumContext.lessonId()
-        );
-
-        scoringService.savePromptScore(request.promptId(), newVersion.getId(), optimizedScore);
-
         double improvement = optimizedScore.overallScore() - originalScore.overallScore();
 
-        log.info("Optimization completed. Improvement: {}", improvement);
-
-        return new OptimizationResponse(
-                newVersion.getId(),
-                request.promptText(),
+        // 6. Construct Response (No DB Save)
+        OptimizationResponse response = new OptimizationResponse(
+                null, // versionId is null for scratchpad/unsaved
+                request.promptContent(),
                 optimizedPrompt,
                 originalScore,
                 optimizedScore,
                 improvement,
                 curriculumContext,
                 appliedFixes,
-                Instant.now()
-        );
+                Instant.now());
+
+        // 7. Cache Result
+        try {
+            redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(response), Duration.ofHours(24));
+        } catch (Exception e) {
+            log.warn("Cache write failed", e);
+        }
+
+        return response;
+    }
+
+    private String generateOptimizationCacheKey(OptimizationRequest request) {
+        String input = request.promptContent() +
+                "|" + request.optimizationMode() +
+                "|" + request.lessonId() +
+                "|" + request.customInstruction() +
+                "|" + (request.selectedWeaknesses() != null ? request.selectedWeaknesses().toString() : "");
+        return "opt:" + hashString(input);
+    }
+
+    private String hashString(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1)
+                    hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            return String.valueOf(input.hashCode());
+        }
     }
 
     @Override
@@ -415,8 +442,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
                 .optimizedScore(convertToScoreResult(optimizedScore))
                 .improvement(
                         optimizedScore.getOverallScore().doubleValue() -
-                                (originalScore != null ? originalScore.getOverallScore().doubleValue() : 0)
-                )
+                                (originalScore != null ? originalScore.getOverallScore().doubleValue() : 0))
                 .curriculumContext(curriculumContext)
                 .appliedFixes(List.of()) // Applied fixes would need to be stored separately
                 .createdAt(version.getCreatedAt())
@@ -425,7 +451,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     }
 
     private CurriculumContextDetail resolveCurriculumContext(String promptText, UUID lessonId,
-                                                             CurriculumContext detectedContext) {
+            CurriculumContext detectedContext) {
         if (lessonId != null) {
             return curriculumService.getContextDetail(lessonId);
         }
@@ -434,8 +460,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
             LessonSuggestion suggestion = curriculumService.suggestLesson(
                     promptText,
                     detectedContext.getSubjectId(),
-                    detectedContext.getGradeLevel()
-            );
+                    detectedContext.getGradeLevel());
 
             if (suggestion != null && suggestion.confidence() > 0.5) {
                 log.info("Auto-detected lesson: {}", suggestion.lessonName());
@@ -443,22 +468,24 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
             }
         }
 
-        throw new ResourceNotFoundException(
-                "Cannot determine curriculum context. Please specify lesson or provide more context."
-        );
+        // Fallback context if no lesson identified
+        return new CurriculumContextDetail(
+                null, "General", "General Content", 0, "General", 0, 1, 0, "General Topic");
     }
 
     private String buildCurriculumContextString(CurriculumContextDetail context) {
+        if (context.lessonId() == null)
+            return "General Context";
         return String.format("""
-            Môn học: %s
-            Khối: %d
-            Học kỳ: %d
-            Chương %d: %s
-            Bài %d: %s
-            
-            Nội dung bài học:
-            %s
-            """,
+                Môn học: %s
+                Khối: %d
+                Học kỳ: %d
+                Chương %d: %s
+                Bài %d: %s
+
+                Nội dung bài học:
+                %s
+                """,
                 context.subjectName(),
                 context.gradeLevel(),
                 context.semester(),
@@ -466,8 +493,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
                 context.chapterName(),
                 context.lessonNumber(),
                 context.lessonName(),
-                context.lessonContent()
-        );
+                context.lessonContent());
     }
 
     private List<String> identifyAppliedFixes(PromptScoreResult original, PromptScoreResult optimized) {
@@ -501,10 +527,11 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     }
 
     private PromptScoreResult convertToScoreResult(PromptScore score) {
-        if (score == null) return null;
+        if (score == null)
+            return null;
 
         @SuppressWarnings("unchecked")
-        List<String> weaknesses = (List<String>) score.getDetectedWeaknesses().get("list");
+        Map<String, List<String>> weaknesses = (Map<String, List<String>>) (Map<?, ?>) score.getDetectedWeaknesses();
 
         return new PromptScoreResult(
                 score.getOverallScore().doubleValue(),
@@ -520,10 +547,10 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
                         100.0, null, null, List.of(), List.of()),
                 new DimensionScore("Pedagogical Quality", score.getPedagogicalQualityScore().doubleValue(),
                         100.0, null, null, List.of(), List.of()),
-                weaknesses != null ? weaknesses : List.of(),
-                null
-        );
-}
+                weaknesses != null ? weaknesses : new HashMap<>(),
+                null);
+    }
+
     /**
      * Helper: Get cached response with error handling
      */
@@ -555,7 +582,6 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         }
     }
 
-
     /**
      * Helper: mapper (i dont like mapper tho :<)
      */
@@ -575,10 +601,14 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
     private Map<String, Object> convertContextToMap(CurriculumContext context) {
         Map<String, Object> map = new HashMap<>();
-        if (context.getSubject() != null) map.put("subject", context.getSubject());
-        if (context.getGradeLevel() != null) map.put("gradeLevel", context.getGradeLevel());
-        if (context.getSemester() != null) map.put("semester", context.getSemester());
-        if (context.getDetectedKeywords() != null) map.put("keywords", context.getDetectedKeywords());
+        if (context.getSubject() != null)
+            map.put("subject", context.getSubject());
+        if (context.getGradeLevel() != null)
+            map.put("gradeLevel", context.getGradeLevel());
+        if (context.getSemester() != null)
+            map.put("semester", context.getSemester());
+        if (context.getDetectedKeywords() != null)
+            map.put("keywords", context.getDetectedKeywords());
         return map;
     }
 }
