@@ -28,7 +28,6 @@ public class PromptOptimizationControllerV2 {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public ResponseDto<PromptScoreResult> scorePrompt(
             @RequestBody @Valid PromptScoringRequest request) {
-        // We use OptimizationRequest just for the content here
         PromptScoreResult result = scoringService.scorePrompt(
                 request.promptContent(),
                 request.lessonId());

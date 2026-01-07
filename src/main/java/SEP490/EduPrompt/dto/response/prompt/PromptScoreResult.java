@@ -2,10 +2,12 @@ package SEP490.EduPrompt.dto.response.prompt;
 
 import SEP490.EduPrompt.dto.response.curriculum.CurriculumContext;
 import SEP490.EduPrompt.dto.response.curriculum.DimensionScore;
+import lombok.Builder;
 
 import java.util.List;
 import java.util.Map;
 
+@Builder
 public record PromptScoreResult(
                 Double overallScore,
                 DimensionScore instructionClarity,

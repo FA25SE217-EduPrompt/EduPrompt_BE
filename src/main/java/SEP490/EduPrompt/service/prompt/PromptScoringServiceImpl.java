@@ -57,7 +57,6 @@ public class PromptScoringServiceImpl implements PromptScoringService {
     public PromptScoreResult scorePrompt(String promptText, UUID lessonId) {
         log.info("Starting prompt scoring process");
 
-        // 1. Check Cache
         String cacheKey = "prompt_score:" + hashString(promptText + (lessonId != null ? lessonId : ""));
         try {
             String cached = redisTemplate.opsForValue().get(cacheKey);
@@ -69,12 +68,11 @@ public class PromptScoringServiceImpl implements PromptScoringService {
             log.warn("Cache read failed", e);
         }
 
-        // 2. Detect Context (Main Thread)
         CurriculumContext detectedContext = curriculumService.detectContext(promptText);
 
         UUID finalLessonId = resolveLessonId(promptText, lessonId, detectedContext);
 
-        // 3. Parallel Execution of Scoring Dimensions
+        // batch request for 6 dimension
         CompletableFuture<DimensionScore> instructionFuture = CompletableFuture
                 .supplyAsync(() -> scoreInstructionClarity(promptText));
         CompletableFuture<DimensionScore> contextFuture = CompletableFuture
@@ -98,7 +96,6 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         DimensionScore curriculumAlignment = alignmentFuture.join();
         DimensionScore pedagogicalQuality = pedagogicalFuture.join();
 
-        // 4. Aggregate Results
         double overallScore = calculateOverallScore(
                 instructionClarity, contextCompleteness, outputSpecification,
                 constraintStrength, curriculumAlignment, pedagogicalQuality);
@@ -109,16 +106,17 @@ public class PromptScoringServiceImpl implements PromptScoringService {
 
         log.info("Scoring completed. Overall score: {}", overallScore);
 
-        PromptScoreResult result = new PromptScoreResult(
-                overallScore,
-                instructionClarity,
-                contextCompleteness,
-                outputSpecification,
-                constraintStrength,
-                curriculumAlignment,
-                pedagogicalQuality,
-                weaknesses,
-                detectedContext);
+        PromptScoreResult result = PromptScoreResult.builder()
+                .overallScore(overallScore)
+                .instructionClarity(instructionClarity)
+                .contextCompleteness(contextCompleteness)
+                .outputSpecification(outputSpecification)
+                .constraintStrength(constraintStrength)
+                .curriculumAlignment(curriculumAlignment)
+                .pedagogicalQuality(pedagogicalQuality)
+                .weaknesses(weaknesses)
+                .detectedContext(detectedContext)
+                .build();
 
         // 5. Cache Result
         try {
@@ -166,7 +164,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
             issues.add("No clear action verb for the task");
         }
 
-        String[] genericPhrases = { "giúp tôi", "help me", "làm cái gì đó", "something", "stuff" };
+        String[] genericPhrases = {"giúp tôi", "help me", "làm cái gì đó", "something", "stuff"};
         boolean isGeneric = Arrays.stream(genericPhrases)
                 .anyMatch(phrase -> promptText.toLowerCase().contains(phrase));
 
@@ -176,7 +174,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
             issues.add("Task description is too generic or vague");
         }
 
-        String[] ambiguousWords = { "có thể", "maybe", "probably", "something", "stuff", "things" };
+        String[] ambiguousWords = {"có thể", "maybe", "probably", "something", "stuff", "things"};
         long ambiguousCount = Arrays.stream(ambiguousWords)
                 .filter(word -> promptText.toLowerCase().contains(word))
                 .count();
@@ -190,14 +188,17 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         double aiScore = geminiService.scoreInstructionClarity(promptText);
         double totalScore = ruleBasedScore + aiScore;
 
-        return new DimensionScore(
-                "Instruction Clarity",
-                totalScore,
-                100.0,
-                ruleBasedScore,
-                aiScore,
-                issues,
-                aiScore < 30 ? List.of("Consider making the instruction more explicit and direct") : List.of());
+        return DimensionScore.builder()
+                .dimensionName("Instruction Clarity")
+                .score(totalScore)
+                .maxScore(100.0)
+                .ruleBasedScore(ruleBasedScore)
+                .aiAssistedScore(aiScore)
+                .issues(issues)
+                .suggestions(aiScore < 30
+                        ? List.of("Consider making the instruction more explicit and direct")
+                        : List.of())
+                .build();
     }
 
     private DimensionScore scoreContextCompleteness(String promptText, CurriculumContext context) {
@@ -254,14 +255,16 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         double aiScore = geminiService.scoreContextCompleteness(promptText);
         double totalScore = ruleBasedScore + aiScore;
 
-        return new DimensionScore(
-                "Context Completeness",
-                totalScore,
-                100.0,
-                ruleBasedScore,
-                aiScore,
-                issues,
-                List.of("Add missing contextual information for better AI output quality"));
+        return DimensionScore.builder()
+                .dimensionName("Context Completeness")
+                .score(totalScore)
+                .maxScore(100.0)
+                .ruleBasedScore(ruleBasedScore)
+                .aiAssistedScore(aiScore)
+                .issues(issues)
+                .suggestions(List.of("Add missing contextual information for better AI output quality"))
+                .build();
+
     }
 
     private DimensionScore scoreOutputSpecification(String promptText) {
@@ -296,14 +299,18 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         double aiScore = geminiService.scoreOutputSpecification(promptText);
         double totalScore = ruleBasedScore + aiScore;
 
-        return new DimensionScore(
-                "Output Specification",
-                totalScore,
-                100.0,
-                ruleBasedScore,
-                aiScore,
-                issues,
-                totalScore < 50 ? List.of("Define clear output format and structure expectations") : List.of());
+        return DimensionScore.builder()
+                .dimensionName("Output Specification")
+                .score(totalScore)
+                .maxScore(100.0)
+                .ruleBasedScore(ruleBasedScore)
+                .aiAssistedScore(aiScore)
+                .issues(issues)
+                .suggestions(totalScore < 50
+                        ? List.of("Define clear output format and structure expectations")
+                        : List.of())
+                .build();
+
     }
 
     private DimensionScore scoreConstraintStrength(String promptText) {
@@ -339,15 +346,18 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         double aiScore = geminiService.scoreConstraintStrength(promptText);
         double totalScore = ruleBasedScore + aiScore;
 
-        return new DimensionScore(
-                "Constraint Strength",
-                totalScore,
-                100.0,
-                ruleBasedScore,
-                aiScore,
-                issues,
-                totalScore < 60 ? List.of("Add constraints to prevent hallucination and off-topic content")
-                        : List.of());
+        return DimensionScore.builder()
+                .dimensionName("Constraint Strength")
+                .score(totalScore)
+                .maxScore(100.0)
+                .ruleBasedScore(ruleBasedScore)
+                .aiAssistedScore(aiScore)
+                .issues(issues)
+                .suggestions(totalScore < 60
+                        ? List.of("Add constraints to prevent hallucination and off-topic content")
+                        : List.of())
+                .build();
+
     }
 
     private DimensionScore scoreCurriculumAlignment(String promptText, UUID lessonId) {
@@ -373,14 +383,18 @@ public class PromptScoringServiceImpl implements PromptScoringService {
             issues.add("Weak alignment with official curriculum content");
         }
 
-        return new DimensionScore(
-                "Curriculum Alignment",
-                aiScore,
-                100.0,
-                0.0,
-                aiScore,
-                issues,
-                aiScore < 70 ? List.of("Align prompt more closely with curriculum learning objectives") : List.of());
+        return DimensionScore.builder()
+                .dimensionName("Curriculum Alignment")
+                .score(aiScore)
+                .maxScore(100.0)
+                .ruleBasedScore(0.0)
+                .aiAssistedScore(aiScore)
+                .issues(issues)
+                .suggestions(aiScore < 70
+                        ? List.of("Align prompt more closely with curriculum learning objectives")
+                        : List.of())
+                .build();
+
     }
 
     private DimensionScore scorePedagogicalQuality(String promptText) {
@@ -408,14 +422,18 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         double aiScore = geminiService.scorePedagogicalQuality(promptText);
         double totalScore = ruleBasedScore + aiScore;
 
-        return new DimensionScore(
-                "Pedagogical Quality",
-                totalScore,
-                100.0,
-                ruleBasedScore,
-                aiScore,
-                issues,
-                totalScore < 60 ? List.of("Enhance with active learning and assessment strategies") : List.of());
+        return DimensionScore.builder()
+                .dimensionName("Pedagogical Quality")
+                .score(totalScore)
+                .maxScore(100.0)
+                .ruleBasedScore(ruleBasedScore)
+                .aiAssistedScore(aiScore)
+                .issues(issues)
+                .suggestions(totalScore < 60
+                        ? List.of("Enhance with active learning and assessment strategies")
+                        : List.of())
+                .build();
+
     }
 
     private double calculateOverallScore(DimensionScore... dimensions) {
