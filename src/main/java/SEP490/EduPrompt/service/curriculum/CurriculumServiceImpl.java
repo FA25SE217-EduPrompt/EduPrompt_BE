@@ -166,6 +166,7 @@ public class CurriculumServiceImpl implements CurriculumService {
                 .lessonNumber(lesson.getLessonNumber())
                 .name(lesson.getName())
                 .description(lesson.getDescription())
+                .content(lesson.getContent())
                 .build();
     }
 }

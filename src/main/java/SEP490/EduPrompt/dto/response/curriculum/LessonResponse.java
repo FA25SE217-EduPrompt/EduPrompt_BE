@@ -10,6 +10,7 @@ public record LessonResponse(
         UUID chapterId,
         Integer lessonNumber,
         String name,
-        String description
+        String description,
+        String content
 ) {
 }
