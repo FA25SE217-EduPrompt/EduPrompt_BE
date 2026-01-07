@@ -1,7 +1,8 @@
 package SEP490.EduPrompt.controller;
 
-import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.request.prompt.OptimizationRequest;
+import SEP490.EduPrompt.dto.request.prompt.PromptScoringRequest;
+import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.prompt.OptimizationResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptScoreResult;
 import SEP490.EduPrompt.service.ai.PromptOptimizationService;
@@ -24,7 +25,7 @@ public class PromptOptimizationControllerV2 {
 
     @PostMapping("/score")
     public ResponseDto<PromptScoreResult> scorePrompt(
-            @RequestBody @Valid OptimizationRequest request) {
+            @RequestBody @Valid PromptScoringRequest request) {
         // We use OptimizationRequest just for the content here
         PromptScoreResult result = scoringService.scorePrompt(
                 request.promptContent(),
