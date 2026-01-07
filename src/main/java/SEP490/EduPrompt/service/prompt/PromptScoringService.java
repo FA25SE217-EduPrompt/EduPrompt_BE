@@ -8,4 +8,6 @@ public interface PromptScoringService {
     PromptScoreResult scorePrompt(String promptText, UUID lessonId);
 
     void savePromptScore(UUID promptId, UUID versionId, PromptScoreResult scoreResult);
+
+    void savePromptScoreAsync(UUID promptId, UUID versionId, PromptScoreResult scoreResult);
 }

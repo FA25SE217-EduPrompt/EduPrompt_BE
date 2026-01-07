@@ -14,15 +14,22 @@ import SEP490.EduPrompt.repo.PromptScoreRepository;
 import SEP490.EduPrompt.repo.PromptVersionRepository;
 import SEP490.EduPrompt.service.ai.AiClientServiceImpl;
 import SEP490.EduPrompt.service.curriculum.CurriculumMatchingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -34,6 +41,8 @@ public class PromptScoringServiceImpl implements PromptScoringService {
     private final PromptScoreRepository promptScoreRepository;
     private final PromptRepository promptRepository;
     private final PromptVersionRepository promptVersionRepository;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     // Scoring weights
     private static final double INSTRUCTION_CLARITY_WEIGHT = 0.15;
@@ -48,41 +57,59 @@ public class PromptScoringServiceImpl implements PromptScoringService {
     public PromptScoreResult scorePrompt(String promptText, UUID lessonId) {
         log.info("Starting prompt scoring process");
 
-        CurriculumContext detectedContext = curriculumService.detectContext(promptText);
-
-        if (lessonId == null && detectedContext.getSubjectId() != null && detectedContext.getGradeLevel() != null) {
-            LessonSuggestion suggestion = curriculumService.suggestLesson(
-                    promptText,
-                    detectedContext.getSubjectId(),
-                    detectedContext.getGradeLevel()
-            );
-
-            if (suggestion != null) {
-                lessonId = suggestion.lessonId();
-                log.info("Auto-detected lesson: {}", suggestion.lessonName());
+        // 1. Check Cache
+        String cacheKey = "prompt_score:" + hashString(promptText + (lessonId != null ? lessonId : ""));
+        try {
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                log.info("Cache hit for prompt score");
+                return objectMapper.readValue(cached, PromptScoreResult.class);
             }
+        } catch (Exception e) {
+            log.warn("Cache read failed", e);
         }
 
-        DimensionScore instructionClarity = scoreInstructionClarity(promptText);
-        DimensionScore contextCompleteness = scoreContextCompleteness(promptText, detectedContext);
-        DimensionScore outputSpecification = scoreOutputSpecification(promptText);
-        DimensionScore constraintStrength = scoreConstraintStrength(promptText);
-        DimensionScore curriculumAlignment = scoreCurriculumAlignment(promptText, lessonId);
-        DimensionScore pedagogicalQuality = scorePedagogicalQuality(promptText);
+        // 2. Detect Context (Main Thread)
+        CurriculumContext detectedContext = curriculumService.detectContext(promptText);
 
+        UUID finalLessonId = resolveLessonId(promptText, lessonId, detectedContext);
+
+        // 3. Parallel Execution of Scoring Dimensions
+        CompletableFuture<DimensionScore> instructionFuture = CompletableFuture
+                .supplyAsync(() -> scoreInstructionClarity(promptText));
+        CompletableFuture<DimensionScore> contextFuture = CompletableFuture
+                .supplyAsync(() -> scoreContextCompleteness(promptText, detectedContext));
+        CompletableFuture<DimensionScore> outputFuture = CompletableFuture
+                .supplyAsync(() -> scoreOutputSpecification(promptText));
+        CompletableFuture<DimensionScore> constraintFuture = CompletableFuture
+                .supplyAsync(() -> scoreConstraintStrength(promptText));
+        CompletableFuture<DimensionScore> alignmentFuture = CompletableFuture
+                .supplyAsync(() -> scoreCurriculumAlignment(promptText, finalLessonId));
+        CompletableFuture<DimensionScore> pedagogicalFuture = CompletableFuture
+                .supplyAsync(() -> scorePedagogicalQuality(promptText));
+
+        CompletableFuture.allOf(instructionFuture, contextFuture, outputFuture, constraintFuture, alignmentFuture,
+                pedagogicalFuture).join();
+
+        DimensionScore instructionClarity = instructionFuture.join();
+        DimensionScore contextCompleteness = contextFuture.join();
+        DimensionScore outputSpecification = outputFuture.join();
+        DimensionScore constraintStrength = constraintFuture.join();
+        DimensionScore curriculumAlignment = alignmentFuture.join();
+        DimensionScore pedagogicalQuality = pedagogicalFuture.join();
+
+        // 4. Aggregate Results
         double overallScore = calculateOverallScore(
                 instructionClarity, contextCompleteness, outputSpecification,
-                constraintStrength, curriculumAlignment, pedagogicalQuality
-        );
+                constraintStrength, curriculumAlignment, pedagogicalQuality);
 
-        List<String> weaknesses = collectWeaknesses(
+        Map<String, List<String>> weaknesses = collectWeaknesses(
                 instructionClarity, contextCompleteness, outputSpecification,
-                constraintStrength, curriculumAlignment, pedagogicalQuality
-        );
+                constraintStrength, curriculumAlignment, pedagogicalQuality);
 
         log.info("Scoring completed. Overall score: {}", overallScore);
 
-        return new PromptScoreResult(
+        PromptScoreResult result = new PromptScoreResult(
                 overallScore,
                 instructionClarity,
                 contextCompleteness,
@@ -91,8 +118,31 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 curriculumAlignment,
                 pedagogicalQuality,
                 weaknesses,
-                detectedContext
-        );
+                detectedContext);
+
+        // 5. Cache Result
+        try {
+            redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(result), Duration.ofHours(24));
+        } catch (Exception e) {
+            log.warn("Cache write failed", e);
+        }
+
+        return result;
+    }
+
+    private UUID resolveLessonId(String promptText, UUID lessonId, CurriculumContext detectedContext) {
+        if (lessonId == null && detectedContext.getSubjectId() != null && detectedContext.getGradeLevel() != null) {
+            LessonSuggestion suggestion = curriculumService.suggestLesson(
+                    promptText,
+                    detectedContext.getSubjectId(),
+                    detectedContext.getGradeLevel());
+
+            if (suggestion != null) {
+                log.info("Auto-detected lesson: {}", suggestion.lessonName());
+                return suggestion.lessonId();
+            }
+        }
+        return lessonId;
     }
 
     private DimensionScore scoreInstructionClarity(String promptText) {
@@ -108,14 +158,15 @@ public class PromptScoringServiceImpl implements PromptScoringService {
             issues.add("Missing explicit AI role definition");
         }
 
-        Pattern taskPattern = Pattern.compile("(tạo|thiết kế|viết|phát triển|create|design|write|develop|generate)", Pattern.CASE_INSENSITIVE);
+        Pattern taskPattern = Pattern.compile("(tạo|thiết kế|viết|phát triển|create|design|write|develop|generate)",
+                Pattern.CASE_INSENSITIVE);
         if (taskPattern.matcher(promptText).find()) {
             ruleBasedScore += 15;
         } else {
             issues.add("No clear action verb for the task");
         }
 
-        String[] genericPhrases = {"giúp tôi", "help me", "làm cái gì đó", "something", "stuff"};
+        String[] genericPhrases = { "giúp tôi", "help me", "làm cái gì đó", "something", "stuff" };
         boolean isGeneric = Arrays.stream(genericPhrases)
                 .anyMatch(phrase -> promptText.toLowerCase().contains(phrase));
 
@@ -125,7 +176,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
             issues.add("Task description is too generic or vague");
         }
 
-        String[] ambiguousWords = {"có thể", "maybe", "probably", "something", "stuff", "things"};
+        String[] ambiguousWords = { "có thể", "maybe", "probably", "something", "stuff", "things" };
         long ambiguousCount = Arrays.stream(ambiguousWords)
                 .filter(word -> promptText.toLowerCase().contains(word))
                 .count();
@@ -146,8 +197,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 ruleBasedScore,
                 aiScore,
                 issues,
-                aiScore < 30 ? List.of("Consider making the instruction more explicit and direct") : List.of()
-        );
+                aiScore < 30 ? List.of("Consider making the instruction more explicit and direct") : List.of());
     }
 
     private DimensionScore scoreContextCompleteness(String promptText, CurriculumContext context) {
@@ -189,12 +239,14 @@ public class PromptScoringServiceImpl implements PromptScoringService {
             issues.add("Teaching duration not specified");
         }
 
-        Pattern stylePattern = Pattern.compile("(khám phá|thuyết trình|thảo luận|discovery|lecture|discussion)", Pattern.CASE_INSENSITIVE);
+        Pattern stylePattern = Pattern.compile("(khám phá|thuyết trình|thảo luận|discovery|lecture|discussion)",
+                Pattern.CASE_INSENSITIVE);
         if (stylePattern.matcher(promptText).find()) {
             ruleBasedScore += 10;
         }
 
-        Pattern objectivePattern = Pattern.compile("(mục tiêu|objectives|học sinh có thể|students will)", Pattern.CASE_INSENSITIVE);
+        Pattern objectivePattern = Pattern.compile("(mục tiêu|objectives|học sinh có thể|students will)",
+                Pattern.CASE_INSENSITIVE);
         if (objectivePattern.matcher(promptText).find()) {
             ruleBasedScore += 10;
         }
@@ -209,8 +261,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 ruleBasedScore,
                 aiScore,
                 issues,
-                List.of("Add missing contextual information for better AI output quality")
-        );
+                List.of("Add missing contextual information for better AI output quality"));
     }
 
     private DimensionScore scoreOutputSpecification(String promptText) {
@@ -226,14 +277,16 @@ public class PromptScoringServiceImpl implements PromptScoringService {
             issues.add("Output format not specified");
         }
 
-        Pattern structurePattern = Pattern.compile("(\\d+\\s*(phần|sections|parts|bước|steps))", Pattern.CASE_INSENSITIVE);
+        Pattern structurePattern = Pattern.compile("(\\d+\\s*(phần|sections|parts|bước|steps))",
+                Pattern.CASE_INSENSITIVE);
         if (structurePattern.matcher(promptText).find()) {
             ruleBasedScore += 15;
         } else {
             issues.add("Output structure not defined");
         }
 
-        Pattern lengthPattern = Pattern.compile("(\\d+\\s*(từ|words|slides|trang|pages)|chi tiết|detailed)", Pattern.CASE_INSENSITIVE);
+        Pattern lengthPattern = Pattern.compile("(\\d+\\s*(từ|words|slides|trang|pages)|chi tiết|detailed)",
+                Pattern.CASE_INSENSITIVE);
         if (lengthPattern.matcher(promptText).find()) {
             ruleBasedScore += 15;
         } else {
@@ -250,8 +303,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 ruleBasedScore,
                 aiScore,
                 issues,
-                totalScore < 50 ? List.of("Define clear output format and structure expectations") : List.of()
-        );
+                totalScore < 50 ? List.of("Define clear output format and structure expectations") : List.of());
     }
 
     private DimensionScore scoreConstraintStrength(String promptText) {
@@ -260,21 +312,24 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         double ruleBasedScore = 0.0;
         List<String> issues = new ArrayList<>();
 
-        Pattern curriculumPattern = Pattern.compile("(chương trình|curriculum|SGK|sách giáo khoa|theo|based on)", Pattern.CASE_INSENSITIVE);
+        Pattern curriculumPattern = Pattern.compile("(chương trình|curriculum|SGK|sách giáo khoa|theo|based on)",
+                Pattern.CASE_INSENSITIVE);
         if (curriculumPattern.matcher(promptText).find()) {
             ruleBasedScore += 15;
         } else {
             issues.add("No curriculum reference specified");
         }
 
-        Pattern accuracyPattern = Pattern.compile("(chính xác|accurate|đúng|correct|không sai|no errors)", Pattern.CASE_INSENSITIVE);
+        Pattern accuracyPattern = Pattern.compile("(chính xác|accurate|đúng|correct|không sai|no errors)",
+                Pattern.CASE_INSENSITIVE);
         if (accuracyPattern.matcher(promptText).find()) {
             ruleBasedScore += 10;
         } else {
             issues.add("No accuracy requirements stated");
         }
 
-        Pattern prohibitionPattern = Pattern.compile("(không được|tránh|don't|avoid|không|do not)", Pattern.CASE_INSENSITIVE);
+        Pattern prohibitionPattern = Pattern.compile("(không được|tránh|don't|avoid|không|do not)",
+                Pattern.CASE_INSENSITIVE);
         if (prohibitionPattern.matcher(promptText).find()) {
             ruleBasedScore += 15;
         } else {
@@ -291,8 +346,8 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 ruleBasedScore,
                 aiScore,
                 issues,
-                totalScore < 60 ? List.of("Add constraints to prevent hallucination and off-topic content") : List.of()
-        );
+                totalScore < 60 ? List.of("Add constraints to prevent hallucination and off-topic content")
+                        : List.of());
     }
 
     private DimensionScore scoreCurriculumAlignment(String promptText, UUID lessonId) {
@@ -306,8 +361,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                     0.0,
                     0.0,
                     List.of("No lesson context available for alignment check"),
-                    List.of("Specify lesson or provide enough context to detect curriculum alignment")
-            );
+                    List.of("Specify lesson or provide enough context to detect curriculum alignment"));
         }
 
         CurriculumContextDetail curriculumContext = curriculumService.getContextDetail(lessonId);
@@ -326,8 +380,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 0.0,
                 aiScore,
                 issues,
-                aiScore < 70 ? List.of("Align prompt more closely with curriculum learning objectives") : List.of()
-        );
+                aiScore < 70 ? List.of("Align prompt more closely with curriculum learning objectives") : List.of());
     }
 
     private DimensionScore scorePedagogicalQuality(String promptText) {
@@ -336,14 +389,16 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         double ruleBasedScore = 0.0;
         List<String> issues = new ArrayList<>();
 
-        Pattern activityPattern = Pattern.compile("(hoạt động|activity|bài tập|exercise|thực hành|practice)", Pattern.CASE_INSENSITIVE);
+        Pattern activityPattern = Pattern.compile("(hoạt động|activity|bài tập|exercise|thực hành|practice)",
+                Pattern.CASE_INSENSITIVE);
         if (activityPattern.matcher(promptText).find()) {
             ruleBasedScore += 10;
         } else {
             issues.add("No learning activities mentioned");
         }
 
-        Pattern assessmentPattern = Pattern.compile("(đánh giá|assessment|kiểm tra|quiz|test|câu hỏi|questions)", Pattern.CASE_INSENSITIVE);
+        Pattern assessmentPattern = Pattern.compile("(đánh giá|assessment|kiểm tra|quiz|test|câu hỏi|questions)",
+                Pattern.CASE_INSENSITIVE);
         if (assessmentPattern.matcher(promptText).find()) {
             ruleBasedScore += 10;
         } else {
@@ -360,8 +415,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 ruleBasedScore,
                 aiScore,
                 issues,
-                totalScore < 60 ? List.of("Enhance with active learning and assessment strategies") : List.of()
-        );
+                totalScore < 60 ? List.of("Enhance with active learning and assessment strategies") : List.of());
     }
 
     private double calculateOverallScore(DimensionScore... dimensions) {
@@ -373,25 +427,27 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 dimensions[5].score() * PEDAGOGICAL_QUALITY_WEIGHT;
     }
 
-    private List<String> collectWeaknesses(DimensionScore... dimensions) {
-        return Arrays.stream(dimensions)
-                .filter(d -> d.score() < 70)
-                .flatMap(d -> d.issues().stream())
-                .distinct()
-                .collect(Collectors.toList());
+    private Map<String, List<String>> collectWeaknesses(DimensionScore... dimensions) {
+        Map<String, List<String>> weaknesses = new HashMap<>();
+        for (DimensionScore dimension : dimensions) {
+            if (dimension.score() < 70) {
+                weaknesses.put(dimension.dimensionName(), dimension.issues());
+            }
+        }
+        return weaknesses;
     }
 
     private String buildCurriculumContextString(CurriculumContextDetail context) {
         return String.format("""
-            Môn học: %s
-            Khối: %d
-            Học kỳ: %d
-            Chương %d: %s
-            Bài %d: %s
-            
-            Nội dung bài học:
-            %s
-            """,
+                Môn học: %s
+                Khối: %d
+                Học kỳ: %d
+                Chương %d: %s
+                Bài %d: %s
+
+                Nội dung bài học:
+                %s
+                """,
                 context.subjectName(),
                 context.gradeLevel(),
                 context.semester(),
@@ -399,11 +455,26 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 context.chapterName(),
                 context.lessonNumber(),
                 context.lessonName(),
-                context.lessonContent()
-        );
+                context.lessonContent());
     }
 
+    @Override
     public void savePromptScore(UUID promptId, UUID versionId, PromptScoreResult scoreResult) {
+        doSavePromptScore(promptId, versionId, scoreResult);
+    }
+
+    @Override
+    @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void savePromptScoreAsync(UUID promptId, UUID versionId, PromptScoreResult scoreResult) {
+        try {
+            doSavePromptScore(promptId, versionId, scoreResult);
+        } catch (Exception e) {
+            log.error("Failed to save PromptScore async for prompt: {}", promptId, e);
+        }
+    }
+
+    private void doSavePromptScore(UUID promptId, UUID versionId, PromptScoreResult scoreResult) {
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("prompt not found with id: " + promptId));
 
@@ -415,8 +486,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                     .orElse(null);
         }
 
-        Map<String, Object> weaknessesMap = new HashMap<>();
-        weaknessesMap.put("list", scoreResult.weaknesses());
+        Map<String, Object> weaknessesMap = new HashMap<>(scoreResult.weaknesses());
 
         PromptScore score = PromptScore.builder()
                 .prompt(prompt)
@@ -439,10 +509,31 @@ public class PromptScoringServiceImpl implements PromptScoringService {
 
     private Map<String, Object> convertContextToMap(CurriculumContext context) {
         Map<String, Object> map = new HashMap<>();
-        if (context.getSubject() != null) map.put("subject", context.getSubject());
-        if (context.getGradeLevel() != null) map.put("gradeLevel", context.getGradeLevel());
-        if (context.getSemester() != null) map.put("semester", context.getSemester());
-        if (context.getDetectedKeywords() != null) map.put("keywords", context.getDetectedKeywords());
+        if (context.getSubject() != null)
+            map.put("subject", context.getSubject());
+        if (context.getGradeLevel() != null)
+            map.put("gradeLevel", context.getGradeLevel());
+        if (context.getSemester() != null)
+            map.put("semester", context.getSemester());
+        if (context.getDetectedKeywords() != null)
+            map.put("keywords", context.getDetectedKeywords());
         return map;
+    }
+
+    private String hashString(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1)
+                    hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            return String.valueOf(input.hashCode());
+        }
     }
 }
