@@ -64,8 +64,7 @@ public class Payment {
     private Instant paidAt;
 
     @PrePersist
-    public void onCreate()
-    {
+    public void onCreate() {
         this.createdAt = Instant.now();
     }
 }

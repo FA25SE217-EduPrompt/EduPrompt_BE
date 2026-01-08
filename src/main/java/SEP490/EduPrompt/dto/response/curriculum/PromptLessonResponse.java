@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.dto.response.curriculum;
 
 import lombok.Builder;
+
 import java.util.UUID;
 
 @Builder
@@ -18,4 +19,5 @@ public record PromptLessonResponse(
         String visibility,
         Double avgRating,
         UUID lessonId
-) {}
+) {
+}

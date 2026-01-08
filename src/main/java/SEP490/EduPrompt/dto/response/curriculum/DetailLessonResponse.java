@@ -12,4 +12,5 @@ public record DetailLessonResponse(
         String name,
         String description,
         String content
-) {}
+) {
+}

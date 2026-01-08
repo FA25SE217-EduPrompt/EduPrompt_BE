@@ -103,6 +103,8 @@ openai:
 gemini:
   api-key: ${GEMINI_API_KEY}
   file-search-store: "fileSearchStores/somethin-ewzxgazaxwbo"
+#  location: "asia-southeast1"
+#  project: ${GEMINI_PROJECT}}
 
 #share url for sharing prompt
 share_url: ${SHARE_URL}

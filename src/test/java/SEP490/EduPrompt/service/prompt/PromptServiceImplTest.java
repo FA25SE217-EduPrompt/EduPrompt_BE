@@ -285,6 +285,7 @@ class PromptServiceImplTest {
         verify(tagRepository).findAllById(List.of(tagId));
         verifyNoInteractions(promptRepository, promptTagRepository);
     }
+
     //================================================================//
     //=====================GET MY PROMPTS=======================//
     @Test
@@ -662,6 +663,7 @@ class PromptServiceImplTest {
         verify(userRepository).findById(prompt.getCreatedBy());
         verifyNoInteractions(promptTagRepository, permissionService, collectionRepository, groupRepository, groupMemberRepository, schoolRepository, tagRepository);
     }
+
     //================================================================//
     //=====================UPDATE PROMPT METADATA=======================//
     @Test

@@ -27,6 +27,9 @@ public class PromptVersion {
     @JoinColumn(name = "prompt_id", nullable = false)
     private Prompt prompt;
 
+    @Column(name = "prompt_id", insertable = false, updatable = false)
+    private UUID promptId;
+
     @Column(name = "instruction", length = Integer.MAX_VALUE)
     private String instruction;
 

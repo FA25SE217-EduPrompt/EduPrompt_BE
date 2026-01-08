@@ -9,6 +9,8 @@ import java.util.UUID;
 
 public interface CurriculumService {
     DetailLessonResponse getLessonById(UUID id);
+
     List<PromptLessonResponse> getPromptsByLessonId(UUID lessonId);
+
     CurriculumResponse getCurriculum(String subjectName, Integer gradeLevel, Integer semesterNumber);
 }

@@ -45,6 +45,7 @@ public class PromptServiceImpl implements PromptService {
     private final UserRepository userRepository;
     private final PermissionService permissionService;
     private final PromptVersionRepository promptVersionRepository;
+    private final PromptVersionService promptVersionService;
 
     @Value("${share_url}")
     private String shareUrl;
@@ -359,7 +360,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable,
-                                                            UUID collectionId) {
+            UUID collectionId) {
         if (collectionId == null) {
             throw new InvalidInputException("Collection ID must not be null");
         }
@@ -374,8 +375,8 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional(readOnly = true)
     public PaginatedPromptResponse filterPrompts(PromptFilterRequest request,
-                                                 UserPrincipal currentUser,
-                                                 Pageable pageable) {
+            UserPrincipal currentUser,
+            Pageable pageable) {
 
         // VALIDATION – runs BEFORE any DB call
         validateFilterRequest(request, currentUser);
@@ -424,7 +425,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
-                                                     UserPrincipal currentUser) {
+            UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found!!"));
@@ -499,7 +500,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
-                                                       UserPrincipal currentUser) {
+            UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
@@ -546,21 +547,21 @@ public class PromptServiceImpl implements PromptService {
                 collection = collectionRepository.findById(request.getCollectionId())
                         .orElseThrow(() -> new ResourceNotFoundException(
                                 "Collection not found with ID: " + request.getCollectionId()));
-                if (collection.getGroup() == null) {
+                if (collection.getGroupId() == null) {
                     throw new IllegalArgumentException(
                             "Collection must be associated with a group for GROUP visibility");
                 }
                 if (!permissionService.canEditCollection(currentUser, collection)) {
                     throw new AccessDeniedException("You do not have permission to add prompts to this collection");
                 }
-                if (!permissionService.isGroupMember(currentUser, collection.getGroup().getId())) {
+                if (!permissionService.isGroupMember(currentUser, collection.getGroupId())) {
                     throw new AccessDeniedException("You must be a member of the group to set GROUP visibility");
                 }
                 prompt.setCollection(collection);
-            } else if (collection.getGroup() == null) {
+            } else if (collection != null && collection.getGroupId() == null) {
                 throw new InvalidActionException(
                         "Current collection must be associated with a group for GROUP visibility");
-            } else if (!permissionService.isGroupMember(currentUser, collection.getGroup().getId())) {
+            } else if (collection != null && !permissionService.isGroupMember(currentUser, collection.getGroupId())) {
                 throw new AccessDeniedException("You must be a member of the group to set GROUP visibility");
             }
             // Validate collection visibility only if not removing
@@ -688,7 +689,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
-                                                     UserPrincipal currentUser) {
+            UserPrincipal currentUser) {
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
 
@@ -696,41 +697,7 @@ public class PromptServiceImpl implements PromptService {
             throw new AccessDeniedException("You do not have permission to edit this prompt");
         }
 
-        List<PromptVersion> versions = promptVersionRepository.findByPromptIdOrderByVersionNumberDesc(promptId);
-        int nextVersion = 1;
-        if (!versions.isEmpty()) {
-            nextVersion = versions.getFirst().getVersionNumber() + 1;
-        }
-
-        PromptVersion newVersion = PromptVersion.builder()
-                .prompt(prompt)
-                .instruction(request.instruction())
-                .context(request.context())
-                .inputExample(request.inputExample())
-                .outputFormat(request.outputFormat())
-                .constraints(request.constraints())
-                .editorId(currentUser.getUserId())
-                .versionNumber(nextVersion)
-                .isAiGenerated(request.isAiGenerated())
-                .createdAt(Instant.now())
-                .build();
-
-        PromptVersion savedVersion = promptVersionRepository.save(newVersion);
-
-        // Update prompt current version
-        prompt.setCurrentVersion(savedVersion);
-        // Also update the prompt content to match the new version (optional yet it
-        // should be :D, but good
-        // for "current state")
-        prompt.setInstruction(request.instruction());
-        prompt.setContext(request.context());
-        prompt.setInputExample(request.inputExample());
-        prompt.setOutputFormat(request.outputFormat());
-        prompt.setConstraints(request.constraints());
-        prompt.setUpdatedAt(Instant.now());
-        prompt.setUpdatedBy(currentUser.getUserId());
-
-        promptRepository.save(prompt);
+        PromptVersion savedVersion = promptVersionService.createVersion(prompt, request, currentUser.getUserId(), null);
 
         return toPromptVersionResponse(savedVersion);
     }
@@ -1069,10 +1036,10 @@ public class PromptServiceImpl implements PromptService {
     }
 
     private Predicate buildTagPredicate(Root<Prompt> root,
-                                        CriteriaQuery<?> query,
-                                        CriteriaBuilder cb,
-                                        String field, // "type" or "value"
-                                        List<String> values) {
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            String field, // "type" or "value"
+            List<String> values) {
 
         Subquery<UUID> subquery = query.subquery(UUID.class);
         Root<PromptTag> pt = subquery.from(PromptTag.class);

@@ -95,7 +95,7 @@ public class Prompt {
 
     @Column(name = "avg_rating")
     private Double avgRating;
-  
+
     @Size(max = 255)
     @Column(name = "gemini_file_id")
     private String geminiFileId;

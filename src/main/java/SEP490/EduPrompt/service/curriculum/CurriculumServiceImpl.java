@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class CurriculumServiceImpl implements CurriculumService{
+public class CurriculumServiceImpl implements CurriculumService {
     private final LessonRepository lessonRepository;
     private final PromptRepository promptRepository;
     private final SubjectRepository subjectRepository;
@@ -44,20 +44,20 @@ public class CurriculumServiceImpl implements CurriculumService{
         List<Prompt> prompts = promptRepository.findByLessonId(lessonId);
         return prompts.stream()
                 .map(prompt -> PromptLessonResponse.builder()
-                                .id(prompt.getId())
-                                .userId(prompt.getUserId())
-                                .collectionId(prompt.getCollectionId())
-                                .title(prompt.getTitle())
-                                .description(prompt.getDescription())
-                                .instruction(prompt.getInstruction())
-                                .context(prompt.getContext())
-                                .inputExample(prompt.getInputExample())
-                                .outputFormat(prompt.getOutputFormat())
-                                .constraints(prompt.getConstraints())
-                                .visibility(prompt.getVisibility())
-                                .avgRating(prompt.getAvgRating())
-                                .lessonId(prompt.getLessonId())
-                                .build())
+                        .id(prompt.getId())
+                        .userId(prompt.getUserId())
+                        .collectionId(prompt.getCollectionId())
+                        .title(prompt.getTitle())
+                        .description(prompt.getDescription())
+                        .instruction(prompt.getInstruction())
+                        .context(prompt.getContext())
+                        .inputExample(prompt.getInputExample())
+                        .outputFormat(prompt.getOutputFormat())
+                        .constraints(prompt.getConstraints())
+                        .visibility(prompt.getVisibility())
+                        .avgRating(prompt.getAvgRating())
+                        .lessonId(prompt.getLessonId())
+                        .build())
                 .collect(Collectors.toList());
     }
 
@@ -67,10 +67,9 @@ public class CurriculumServiceImpl implements CurriculumService{
             throw new ResourceNotFoundException("Subject name and grade level are required");
         }
 
-        Subject subject = subjectRepository.findByNameIgnoreCase(subjectName);
-        if (subject == null) {
-            throw new ResourceNotFoundException("Subject not found with name: " + subjectName);
-        }
+        Subject subject = subjectRepository.findByNameIgnoreCase(subjectName).orElseThrow(
+                () -> new ResourceNotFoundException("Subject not found with name: " + subjectName)
+        );
 
         GradeLevel gl = gradeLevelRepository.findByLevelAndSubject(gradeLevel, subject);
         if (gl == null) {
@@ -98,10 +97,10 @@ public class CurriculumServiceImpl implements CurriculumService{
                 : Collections.emptyList();
 
         Map<UUID, List<Lesson>> lessonsByChapterId = lessons.stream()
-                .collect(Collectors.groupingBy(l -> l.getChapter().getId()));
+                .collect(Collectors.groupingBy(Lesson::getChapterId));
 
         Map<UUID, List<Chapter>> chaptersBySemesterId = chapters.stream()
-                .collect(Collectors.groupingBy(c -> c.getSemester().getId()));
+                .collect(Collectors.groupingBy(Chapter::getSemesterId));
 
         // Build nested response
         List<SemesterResponse> semesterResponses = semesters.stream()
@@ -166,6 +165,7 @@ public class CurriculumServiceImpl implements CurriculumService{
                 .lessonNumber(lesson.getLessonNumber())
                 .name(lesson.getName())
                 .description(lesson.getDescription())
+                .content(lesson.getContent())
                 .build();
     }
 }

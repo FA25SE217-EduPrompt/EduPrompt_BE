@@ -1,18 +1,28 @@
 package SEP490.EduPrompt.service.ai;
 
+import SEP490.EduPrompt.dto.request.prompt.OptimizationRequest;
 import SEP490.EduPrompt.dto.request.prompt.PromptOptimizationRequest;
+import SEP490.EduPrompt.dto.response.curriculum.CurriculumContext;
+import SEP490.EduPrompt.dto.response.curriculum.CurriculumContextDetail;
+import SEP490.EduPrompt.dto.response.curriculum.DimensionScore;
+import SEP490.EduPrompt.dto.response.curriculum.LessonSuggestion;
 import SEP490.EduPrompt.dto.response.prompt.OptimizationQueueResponse;
+import SEP490.EduPrompt.dto.response.prompt.OptimizationResponse;
+import SEP490.EduPrompt.dto.response.prompt.PromptScoreResult;
 import SEP490.EduPrompt.enums.AiModel;
 import SEP490.EduPrompt.enums.QueueStatus;
 import SEP490.EduPrompt.enums.QuotaType;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
-import SEP490.EduPrompt.model.OptimizationQueue;
-import SEP490.EduPrompt.model.Prompt;
-import SEP490.EduPrompt.model.User;
+import SEP490.EduPrompt.exception.generic.InvalidActionException;
+import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.OptimizationQueueRepository;
 import SEP490.EduPrompt.repo.PromptRepository;
+import SEP490.EduPrompt.repo.PromptScoreRepository;
 import SEP490.EduPrompt.repo.UserRepository;
+import SEP490.EduPrompt.service.curriculum.CurriculumMatchingService;
+import SEP490.EduPrompt.service.prompt.PromptScoringService;
+import SEP490.EduPrompt.service.prompt.PromptVersionService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,11 +36,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
+import java.util.*;
 
 @Service
 @Slf4j
@@ -43,6 +52,11 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     private static final Duration LOCK_TIMEOUT = Duration.ofSeconds(30);
 
     private final QuotaService quotaService;
+    private final PromptScoringService scoringService;
+    private final CurriculumMatchingService curriculumService;
+    private final AiClientService geminiService;
+    private final PromptVersionService versionService;
+    private final PromptScoreRepository scoreRepository;
     private final PromptRepository promptRepository;
     private final OptimizationQueueRepository queueRepository;
     private final RedisTemplate<String, String> redisTemplate;
@@ -52,7 +66,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
     @Override
     public OptimizationQueueResponse requestOptimization(UUID userId, PromptOptimizationRequest request,
-                                                         String idempotencyKey) {
+            String idempotencyKey) {
         log.info("Requesting optimization for prompt: {} by user: {} with idempotency key: {}",
                 request.promptId(), userId, idempotencyKey);
 
@@ -70,8 +84,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(
                 lockKey,
                 userId.toString(),
-                LOCK_TIMEOUT
-        );
+                LOCK_TIMEOUT);
 
         if (!lockAcquired) {
             log.warn("Concurrent request detected for idempotency key: {}, rejecting", idempotencyKey);
@@ -102,7 +115,8 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
             // Verify prompt exists BEFORE starting transaction
             Prompt prompt = promptRepository.findById(request.promptId())
-                    .orElseThrow(() -> new ResourceNotFoundException("prompt not found with id: " + request.promptId()));
+                    .orElseThrow(
+                            () -> new ResourceNotFoundException("prompt not found with id: " + request.promptId()));
 
             // Use TransactionTemplate for explicit transaction control
             OptimizationQueue savedQueue = transactionTemplate.execute(status -> {
@@ -127,7 +141,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
                 return queueRepository.save(queueEntry);
             });
-            //publish event to redis
+            // publish event to redis
             publishOptimizationEvent(savedQueue.getId());
 
             // Cache result AFTER transaction commits successfully
@@ -171,8 +185,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
         Page<OptimizationQueue> queuePage = queueRepository.findByRequestedByIdOrderByCreatedAtDesc(
                 userId,
-                pageable
-        );
+                pageable);
 
         return queuePage.map(this::mapToResponse);
     }
@@ -185,8 +198,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         Page<OptimizationQueue> queuePage = queueRepository.findByPromptIdAndRequestedByIdOrderByCreatedAtDesc(
                 promptId,
                 userId,
-                pageable
-        );
+                pageable);
 
         return queuePage.map(this::mapToResponse);
     }
@@ -198,8 +210,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
         List<OptimizationQueue> pendingQueues = queueRepository.findByRequestedByIdAndStatusInOrderByCreatedAtDesc(
                 userId,
-                List.of(QueueStatus.PENDING.name(), QueueStatus.PROCESSING.name())
-        );
+                List.of(QueueStatus.PENDING.name(), QueueStatus.PROCESSING.name()));
 
         return pendingQueues.stream()
                 .map(this::mapToResponse)
@@ -263,7 +274,6 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         log.info("Optimization cancelled successfully: {}", queueId);
     }
 
-
     /**
      * Publish optimization event to Redis
      */
@@ -271,8 +281,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         try {
             redisTemplate.convertAndSend(
                     "queue:optimization",
-                    queueId.toString()
-            );
+                    queueId.toString());
             log.debug("Published optimization event for queue: {}", queueId);
         } catch (Exception e) {
             log.error("Failed to publish optimization event, will rely on fallback scheduler", e);
@@ -298,13 +307,248 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
         Pageable pageable = PageRequest.of(0, BATCH_SIZE);
         List<OptimizationQueue> pendingItems = queueRepository.findPendingItemsForProcessing(
-                QueueStatus.PENDING.name(), pageable
-        ).getContent();
+                QueueStatus.PENDING.name(), pageable).getContent();
 
         // Re-trigger events for pending items
         for (OptimizationQueue item : pendingItems) {
             publishOptimizationEvent(item.getId());
         }
+    }
+
+    @Override
+    public OptimizationResponse optimize(OptimizationRequest request) {
+        log.info("Starting optimization. Scratchpad mode: {}", request.promptId() == null);
+
+        // 1. Generate Cache Key
+        String cacheKey = generateOptimizationCacheKey(request);
+        try {
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                log.info("Returning cached optimization result");
+                return objectMapper.readValue(cached, OptimizationResponse.class);
+            }
+        } catch (Exception e) {
+            log.warn("Cache read failed", e);
+        }
+
+        // 2. Score Original Prompt
+        PromptScoreResult originalScore = scoringService.scorePrompt(
+                request.promptContent(),
+                request.lessonId());
+
+        log.info("Original prompt score: {}", originalScore.overallScore());
+
+        // 3. Resolve Context
+        CurriculumContextDetail curriculumContext = resolveCurriculumContext(
+                request.promptContent(),
+                request.lessonId(),
+                originalScore.detectedContext());
+
+        String contextString = buildCurriculumContextString(curriculumContext);
+
+        // 4. Optimize via AI
+        String optimizedPrompt = geminiService.optimizePrompt(
+                request.promptContent(),
+                request.optimizationMode(),
+                contextString,
+                request.selectedWeaknesses(),
+                request.customInstruction());
+
+        log.info("Generated optimized prompt");
+
+        // 5. Score Optimized Prompt
+        PromptScoreResult optimizedScore = scoringService.scorePrompt(
+                optimizedPrompt,
+                curriculumContext.lessonId());
+
+        log.info("Optimized prompt score: {}", optimizedScore.overallScore());
+
+        List<String> appliedFixes = identifyAppliedFixes(originalScore, optimizedScore);
+        double improvement = optimizedScore.overallScore() - originalScore.overallScore();
+
+        // 6. Construct Response (No DB Save)
+        OptimizationResponse response = new OptimizationResponse(
+                null, // versionId is null for scratchpad/unsaved
+                request.promptContent(),
+                optimizedPrompt,
+                originalScore,
+                optimizedScore,
+                improvement,
+                curriculumContext,
+                appliedFixes,
+                Instant.now());
+
+        // 7. Cache Result
+        try {
+            redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(response), Duration.ofHours(24));
+        } catch (Exception e) {
+            log.warn("Cache write failed", e);
+        }
+
+        return response;
+    }
+
+    private String generateOptimizationCacheKey(OptimizationRequest request) {
+        String input = request.promptContent() +
+                "|" + request.optimizationMode() +
+                "|" + request.lessonId() +
+                "|" + request.customInstruction() +
+                "|" + (request.selectedWeaknesses() != null ? request.selectedWeaknesses().toString() : "");
+        return "opt:" + hashString(input);
+    }
+
+    private String hashString(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1)
+                    hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            return String.valueOf(input.hashCode());
+        }
+    }
+
+    @Override
+    public OptimizationResponse getOptimizationResult(UUID versionId) {
+        PromptVersion version = versionService.findById(versionId)
+                .orElseThrow(() -> new ResourceNotFoundException("prompt version not found with id: " + versionId));
+
+        if (!version.getIsAiGenerated()) {
+            throw new InvalidActionException("Version is not AI-generated");
+        }
+
+        PromptScore optimizedScore = scoreRepository.findByVersionId(versionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Score not found for version"));
+
+        PromptScore originalScore = scoreRepository.findByPromptIdAndVersionIdIsNull(version.getPromptId())
+                .orElse(null);
+
+        CurriculumContextDetail curriculumContext = null;
+        if (version.getPrompt().getLessonId() != null) {
+            curriculumContext = curriculumService.getContextDetail(version.getPrompt().getLessonId());
+        }
+
+        return OptimizationResponse.builder()
+                .versionId(version.getId())
+                .originalPrompt(originalScore != null ? version.getPrompt().getInstruction() : null)
+                .optimizedPrompt(version.getInstruction())
+                .originalScore(convertToScoreResult(originalScore))
+                .optimizedScore(convertToScoreResult(optimizedScore))
+                .improvement(
+                        optimizedScore.getOverallScore().doubleValue() -
+                                (originalScore != null ? originalScore.getOverallScore().doubleValue() : 0))
+                .curriculumContext(curriculumContext)
+                .appliedFixes(List.of()) // Applied fixes would need to be stored separately
+                .createdAt(version.getCreatedAt())
+                .build();
+
+    }
+
+    private CurriculumContextDetail resolveCurriculumContext(String promptText, UUID lessonId,
+            CurriculumContext detectedContext) {
+        if (lessonId != null) {
+            return curriculumService.getContextDetail(lessonId);
+        }
+
+        if (detectedContext.getSubjectId() != null && detectedContext.getGradeLevel() != null) {
+            LessonSuggestion suggestion = curriculumService.suggestLesson(
+                    promptText,
+                    detectedContext.getSubjectId(),
+                    detectedContext.getGradeLevel());
+
+            if (suggestion != null && suggestion.confidence() > 0.5) {
+                log.info("Auto-detected lesson: {}", suggestion.lessonName());
+                return curriculumService.getContextDetail(suggestion.lessonId());
+            }
+        }
+
+        // Fallback context if no lesson identified
+        return new CurriculumContextDetail(
+                null, "General", "General Content", 0, "General", 0, 1, 0, "General Topic");
+    }
+
+    private String buildCurriculumContextString(CurriculumContextDetail context) {
+        if (context.lessonId() == null)
+            return "General Context";
+        return String.format("""
+                Môn học: %s
+                Khối: %d
+                Học kỳ: %d
+                Chương %d: %s
+                Bài %d: %s
+
+                Nội dung bài học:
+                %s
+                """,
+                context.subjectName(),
+                context.gradeLevel(),
+                context.semester(),
+                context.chapterNumber(),
+                context.chapterName(),
+                context.lessonNumber(),
+                context.lessonName(),
+                context.lessonContent());
+    }
+
+    private List<String> identifyAppliedFixes(PromptScoreResult original, PromptScoreResult optimized) {
+        List<String> fixes = new ArrayList<>();
+
+        if (optimized.instructionClarity().score() > original.instructionClarity().score() + 10) {
+            fixes.add("Improved instruction clarity");
+        }
+
+        if (optimized.contextCompleteness().score() > original.contextCompleteness().score() + 10) {
+            fixes.add("Added missing context information");
+        }
+
+        if (optimized.outputSpecification().score() > original.outputSpecification().score() + 10) {
+            fixes.add("Defined output format and structure");
+        }
+
+        if (optimized.constraintStrength().score() > original.constraintStrength().score() + 10) {
+            fixes.add("Added constraints and guardrails");
+        }
+
+        if (optimized.curriculumAlignment().score() > original.curriculumAlignment().score() + 10) {
+            fixes.add("Aligned with curriculum objectives");
+        }
+
+        if (optimized.pedagogicalQuality().score() > original.pedagogicalQuality().score() + 10) {
+            fixes.add("Enhanced pedagogical approach");
+        }
+
+        return fixes;
+    }
+
+    private PromptScoreResult convertToScoreResult(PromptScore score) {
+        if (score == null)
+            return null;
+
+        @SuppressWarnings("unchecked")
+        Map<String, List<String>> weaknesses = (Map<String, List<String>>) (Map<?, ?>) score.getDetectedWeaknesses();
+
+        return new PromptScoreResult(
+                score.getOverallScore().doubleValue(),
+                new DimensionScore("Instruction Clarity", score.getInstructionClarityScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Context Completeness", score.getContextCompletenessScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Output Specification", score.getOutputSpecificationScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Constraint Strength", score.getConstraintStrengthScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Curriculum Alignment", score.getCurriculumAlignmentScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                new DimensionScore("Pedagogical Quality", score.getPedagogicalQualityScore().doubleValue(),
+                        100.0, null, null, List.of(), List.of()),
+                weaknesses != null ? weaknesses : new HashMap<>(),
+                null);
     }
 
     /**
@@ -353,5 +597,18 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
                 .createdAt(queue.getCreatedAt())
                 .updatedAt(queue.getUpdatedAt())
                 .build();
+    }
+
+    private Map<String, Object> convertContextToMap(CurriculumContext context) {
+        Map<String, Object> map = new HashMap<>();
+        if (context.getSubject() != null)
+            map.put("subject", context.getSubject());
+        if (context.getGradeLevel() != null)
+            map.put("gradeLevel", context.getGradeLevel());
+        if (context.getSemester() != null)
+            map.put("semester", context.getSemester());
+        if (context.getDetectedKeywords() != null)
+            map.put("keywords", context.getDetectedKeywords());
+        return map;
     }
 }

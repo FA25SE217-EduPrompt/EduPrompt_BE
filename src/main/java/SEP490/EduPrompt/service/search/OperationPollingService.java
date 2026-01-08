@@ -41,7 +41,7 @@ public class OperationPollingService {
     @Transactional
     public void pollPendingOperations() {
         List<Prompt> pendingPrompts = promptRepository
-                .findByIndexingStatusAndIsDeletedAndVisibility(
+                .findByIndexingStatusAndIsDeletedAndVisibilityAndGeminiFileIdIsNotNull(
                         IndexStatus.PENDING.name(),
                         false,
                         Visibility.PUBLIC.name());

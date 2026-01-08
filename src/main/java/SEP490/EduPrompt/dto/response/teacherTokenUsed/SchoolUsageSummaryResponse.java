@@ -11,4 +11,5 @@ public record SchoolUsageSummaryResponse(
         Integer schoolTokenRemaining,
         Instant quotaResetDate,
         List<TeacherUsageResponse> users
-) {}
+) {
+}
