@@ -29,6 +29,7 @@ public class RedisConfig {
 
     public static final String OPTIMIZATION_QUEUE_TOPIC = "queue:optimization";
     public static final String TEST_QUEUE_TOPIC = "queue:test";
+    public static final String UPLOAD_TOPIC = "file:upload";
 
 
     @Bean
@@ -73,7 +74,8 @@ public class RedisConfig {
     public RedisMessageListenerContainer redisMessageListenerContainer(
             RedisConnectionFactory connectionFactory,
             MessageListenerAdapter optimizationListenerAdapter,
-            MessageListenerAdapter testListenerAdapter) {
+            MessageListenerAdapter testListenerAdapter,
+            MessageListenerAdapter uploadListenerAdapter) {
 
         log.info("Initializing Redis message listener container");
 
@@ -92,8 +94,13 @@ public class RedisConfig {
                 new ChannelTopic(TEST_QUEUE_TOPIC)
         );
 
-        log.info("Redis listeners registered for topics: {}, {}",
-                OPTIMIZATION_QUEUE_TOPIC, TEST_QUEUE_TOPIC);
+        container.addMessageListener(
+                uploadListenerAdapter,
+                new ChannelTopic(UPLOAD_TOPIC)
+        );
+
+        log.info("Redis listeners registered for topics: {}, {}, {}",
+                OPTIMIZATION_QUEUE_TOPIC, TEST_QUEUE_TOPIC, UPLOAD_TOPIC);
 
         return container;
     }
@@ -112,6 +119,14 @@ public class RedisConfig {
     @Bean
     public MessageListenerAdapter testListenerAdapter(QueueEventListener listener) {
         return new MessageListenerAdapter(listener, "onTestQueued");
+    }
+
+    /**
+     * Adapter for file upload messages
+     */
+    @Bean
+    public MessageListenerAdapter uploadListenerAdapter(QueueEventListener listener) {
+        return new MessageListenerAdapter(listener, "onFileUploadRequested");
     }
 }
 
