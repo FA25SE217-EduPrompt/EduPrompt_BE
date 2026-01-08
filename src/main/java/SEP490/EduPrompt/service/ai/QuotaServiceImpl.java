@@ -9,6 +9,7 @@ import SEP490.EduPrompt.model.*;
 import SEP490.EduPrompt.repo.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,7 +77,8 @@ public class QuotaServiceImpl implements QuotaService {
         } else {
             int indvTokenRemaining = userQuota.getIndividualTokenRemaining();
             if (indvTokenRemaining < estimatedTokens) {
-                throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(), indvTokenRemaining);
+                throw new QuotaExceededException(QuotaType.INDIVIDUAL, userQuota.getQuotaResetDate(),
+                        indvTokenRemaining);
             }
 
             switch (quotaType) {
@@ -89,7 +91,8 @@ public class QuotaServiceImpl implements QuotaService {
                 case OPTIMIZATION -> {
                     int optQuota = userQuota.getOptimizationQuotaRemaining();
                     if (optQuota < 1)
-                        throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(), optQuota);
+                        throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(),
+                                optQuota);
                 }
 
                 default -> throw new InvalidInputException("Unknown quota type");
@@ -128,7 +131,8 @@ public class QuotaServiceImpl implements QuotaService {
                 case OPTIMIZATION -> {
                     int optQuota = userQuota.getOptimizationQuotaRemaining();
                     if (optQuota < 1)
-                        throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(), optQuota);
+                        throw new QuotaExceededException(QuotaType.OPTIMIZATION, userQuota.getQuotaResetDate(),
+                                optQuota);
                     userQuota.setOptimizationQuotaRemaining(optQuota - 1);
                 }
                 default -> throw new InvalidInputException("Unknown quota type");
@@ -154,7 +158,8 @@ public class QuotaServiceImpl implements QuotaService {
             resetUserQuota(userQuota);
         }
 
-        // if user have school sub, count token used toward school token pool, ignore test/optimize quota limit
+        // if user have school sub, count token used toward school token pool, ignore
+        // test/optimize quota limit
         if (userQuota.getSchoolSubscriptionId() != null) {
             SchoolSubscription schoolSub = userQuota.getSchoolSubscription();
 
@@ -174,8 +179,7 @@ public class QuotaServiceImpl implements QuotaService {
                 throw new QuotaExceededException(
                         QuotaType.INDIVIDUAL,
                         userQuota.getQuotaResetDate(),
-                        userQuota.getIndividualTokenRemaining()
-                );
+                        userQuota.getIndividualTokenRemaining());
             }
 
             switch (quotaType) {
@@ -185,8 +189,7 @@ public class QuotaServiceImpl implements QuotaService {
                         throw new QuotaExceededException(
                                 QuotaType.TEST,
                                 userQuota.getQuotaResetDate(),
-                                testQuotaLeft
-                        );
+                                testQuotaLeft);
                     }
                     userQuota.setTestingQuotaRemaining(testQuotaLeft - 1);
                 }
@@ -196,8 +199,7 @@ public class QuotaServiceImpl implements QuotaService {
                         throw new QuotaExceededException(
                                 QuotaType.OPTIMIZATION,
                                 userQuota.getQuotaResetDate(),
-                                optQuotaLeft
-                        );
+                                optQuotaLeft);
                     }
                     userQuota.setOptimizationQuotaRemaining(optQuotaLeft - 1);
                 }
@@ -205,7 +207,8 @@ public class QuotaServiceImpl implements QuotaService {
             }
 
             userQuota.setIndividualTokenRemaining(indvTokensLeft - tokenUsed);
-            log.info("Decremented individual quota pools for user {} by {} token(s); action: {}", userId, tokenUsed, quotaType);
+            log.info("Decremented individual quota pools for user {} by {} token(s); action: {}", userId, tokenUsed,
+                    quotaType);
         }
 
         userQuota.setUpdatedAt(Instant.now());
@@ -214,7 +217,7 @@ public class QuotaServiceImpl implements QuotaService {
 
     @Override
     @Transactional
-    public void newValidateAndDecrementQuota(UUID userId, QuotaType quotaType, int tokenUsed) {
+    public void validateAndDecrementQuota(UUID userId, QuotaType quotaType, int tokenUsed, boolean logUsage) {
         log.info("Validating {} quota for user: {}", quotaType, userId);
 
         // prevent concurrent quota
@@ -229,7 +232,8 @@ public class QuotaServiceImpl implements QuotaService {
             resetUserQuota(userQuota);
         }
 
-        // if user have school sub, count token used toward school token pool, ignore test/optimize quota limit
+        // if user have school sub, count token used toward school token pool, ignore
+        // test/optimize quota limit
         if (userQuota.getSchoolSubscriptionId() != null) {
             SchoolSubscription schoolSub = userQuota.getSchoolSubscription();
 
@@ -241,13 +245,17 @@ public class QuotaServiceImpl implements QuotaService {
             schoolSub.setUpdatedAt(Instant.now());
             schoolSubscriptionRepository.save(schoolSub);
 
-            TeacherTokenUsageLog usageLog = TeacherTokenUsageLog.builder()
-                    .user(user)
-                    .schoolSubscriptionId(schoolSub.getId())
-                    .subscriptionTierId(null)
-                    .tokensUsed(tokenUsed)
-                    .usedAt(Instant.now())
-                    .build();
+            if (logUsage) {
+                TeacherTokenUsageLog usageLog = TeacherTokenUsageLog.builder()
+                        .user(user)
+                        .schoolSubscriptionId(schoolSub.getId())
+                        .subscriptionTierId(null)
+                        .tokensUsed(tokenUsed)
+                        .usedAt(Instant.now())
+                        .build();
+                teacherTokenUsageLogRepository.save(usageLog);
+            }
+
             log.info("Decremented school pool for user {} by {}, remaining: {}", userId, tokenUsed, schoolTokensLeft);
         }
         // if user dont have school sub, then proceed as normal
@@ -257,8 +265,7 @@ public class QuotaServiceImpl implements QuotaService {
                 throw new QuotaExceededException(
                         QuotaType.INDIVIDUAL,
                         userQuota.getQuotaResetDate(),
-                        userQuota.getIndividualTokenRemaining()
-                );
+                        userQuota.getIndividualTokenRemaining());
             }
 
             switch (quotaType) {
@@ -268,8 +275,7 @@ public class QuotaServiceImpl implements QuotaService {
                         throw new QuotaExceededException(
                                 QuotaType.TEST,
                                 userQuota.getQuotaResetDate(),
-                                testQuotaLeft
-                        );
+                                testQuotaLeft);
                     }
                     userQuota.setTestingQuotaRemaining(testQuotaLeft - 1);
                 }
@@ -279,8 +285,7 @@ public class QuotaServiceImpl implements QuotaService {
                         throw new QuotaExceededException(
                                 QuotaType.OPTIMIZATION,
                                 userQuota.getQuotaResetDate(),
-                                optQuotaLeft
-                        );
+                                optQuotaLeft);
                     }
                     userQuota.setOptimizationQuotaRemaining(optQuotaLeft - 1);
                 }
@@ -288,15 +293,18 @@ public class QuotaServiceImpl implements QuotaService {
             }
 
             userQuota.setIndividualTokenRemaining(indvTokensLeft - tokenUsed);
-            TeacherTokenUsageLog usageLog = TeacherTokenUsageLog.builder()
-                    .user(user)
-                    .schoolSubscriptionId(null)
-                    .subscriptionTierId(UUID.fromString(userQuota.getSubscriptionTierId()))
-                    .tokensUsed(tokenUsed)
-                    .usedAt(Instant.now())
-                    .build();
-            teacherTokenUsageLogRepository.save(usageLog);
-            log.info("Decremented individual quota pools for user {} by {} token(s); action: {}", userId, tokenUsed, quotaType);
+            if (logUsage) {
+                TeacherTokenUsageLog usageLog = TeacherTokenUsageLog.builder()
+                        .user(user)
+                        .schoolSubscriptionId(null)
+                        .subscriptionTierId(UUID.fromString(userQuota.getSubscriptionTierId()))
+                        .tokensUsed(tokenUsed)
+                        .usedAt(Instant.now())
+                        .build();
+                teacherTokenUsageLogRepository.save(usageLog);
+            }
+            log.info("Decremented individual quota pools for user {} by {} token(s); action: {}", userId, tokenUsed,
+                    quotaType);
         }
 
         userQuota.setUpdatedAt(Instant.now());
@@ -334,7 +342,6 @@ public class QuotaServiceImpl implements QuotaService {
 
         SubscriptionTier tier = subscriptionTierRepository.findById(subscriptionTierId)
                 .orElse(getFreeTier().orElseThrow());
-
 
         UserQuota userQuota = userQuotaRepository.findByUserId(userId)
                 .orElseGet(() -> UserQuota.builder()
@@ -379,7 +386,6 @@ public class QuotaServiceImpl implements QuotaService {
 
         SubscriptionTier tier = subscriptionTierRepository.findById(subscriptionTierId)
                 .orElse(getFreeTier().orElseThrow());
-
 
         UserQuota userQuota = userQuotaRepository.findByUserId(userId)
                 .orElseGet(() -> UserQuota.builder()
@@ -463,9 +469,24 @@ public class QuotaServiceImpl implements QuotaService {
                     int current = userQuota.getOptimizationQuotaRemaining();
                     userQuota.setOptimizationQuotaRemaining(Math.min(current + 1, limit));
                 }
+                case SCHOOL -> {
+                    // No action limit for school
+                }
             }
             userQuota.setUpdatedAt(Instant.now());
             userQuotaRepository.save(userQuota);
+        }
+    }
+
+    @Override
+    @Async
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void refundQuotaAsync(UUID userId, QuotaType quotaType, int tokensToRefund) {
+        log.info("Async refunding {} tokens for user: {} type: {}", tokensToRefund, userId, quotaType);
+        try {
+            refundQuota(userId, quotaType, tokensToRefund);
+        } catch (Exception e) {
+            log.error("Failed to refund quota asynchronously for user: {}", userId, e);
         }
     }
 
@@ -490,4 +511,3 @@ public class QuotaServiceImpl implements QuotaService {
                 .truncatedTo(ChronoUnit.DAYS);
     }
 }
-

@@ -34,19 +34,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AiClientServiceImpl implements AiClientService {
 
-    private final Client geminiClient;
-    private final OpenAIClient openAiClient;
-
-    @Value("${ai.timeout.read:30}")
-    private int readTimeoutSeconds;
-
-    private final ObjectMapper objectMapper;
-
-    private static final Integer DEFAULT_MAX_TOKEN = 16384;
+    // DEFAULT_MAX_TOKEN is now in AiClientService interface
     private static final Float DEFAULT_TEMPERATURE = 0.3f;
     private static final Float DEFAULT_TOP_P = 0.7f;
     private static final String DEFAULT_MODEL = AiModel.GEMINI_3_FLASH_PREVIEW.getName();
-
     private static final ImmutableList<SafetySetting> DEFAULT_SAFETY_SETTINGS = ImmutableList.of(
             SafetySetting.builder()
                     .category(HarmCategory.Known.HARM_CATEGORY_HATE_SPEECH)
@@ -56,6 +47,11 @@ public class AiClientServiceImpl implements AiClientService {
                     .category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT)
                     .threshold(HarmBlockThreshold.Known.BLOCK_LOW_AND_ABOVE)
                     .build());
+    private final Client geminiClient;
+    private final OpenAIClient openAiClient;
+    private final ObjectMapper objectMapper;
+    @Value("${ai.timeout.read:30}")
+    private int readTimeoutSeconds;
 
     @Override
     public ClientPromptResponse testPrompt(
@@ -73,7 +69,7 @@ public class AiClientServiceImpl implements AiClientService {
         try {
             return switch (aiModel) {
                 case GEMINI_2_5_FLASH, GEMINI_3_FLASH_PREVIEW ->
-                    callGeminiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
+                        callGeminiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
                 case GPT_4O_MINI -> callOpenAiApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
                 case CLAUDE_3_5_SONNET -> callAnthropicApi(fullPrompt, aiModel.getName(), temperature, maxTokens, topP);
                 default -> throw new AiProviderException("Unsupported AI model: " + aiModel.getName());
@@ -212,25 +208,27 @@ public class AiClientServiceImpl implements AiClientService {
                 Score how well a prompt aligns with official curriculum content on a scale of 0-100.
                 """;
 
-        String userPrompt = String.format("""
-                Score curriculum alignment (0-100 points):
+        String userPrompt = String.format(
+                """
+                        Score curriculum alignment (0-100 points):
 
-                TEACHER'S PROMPT:
-                %s
+                        TEACHER'S PROMPT:
+                        %s
 
-                OFFICIAL CURRICULUM CONTEXT:
-                %s
-                                
-                Searching for related lesson content in Vietnamese high school curriculum for better curriculum context if you found it missing.
-                Scoring criteria:
-                1. Does the prompt reference the correct lesson/chapter? (30 points)
-                2. Does it match the learning objectives? (30 points)
-                3. Is the scope appropriate for this grade level? (20 points)
-                4. Are terminology and concepts accurate per curriculum? (20 points)
+                        OFFICIAL CURRICULUM CONTEXT:
+                        %s
 
-                Return ONLY a JSON object:
-                {"score": <0-100>, "issues": ["issue1", "issue2"], "suggestions": ["suggestion1"]}
-                """, promptText, curriculumContext);
+                        Searching for related lesson content in Vietnamese high school curriculum for better curriculum context if you found it missing.
+                        Scoring criteria:
+                        1. Does the prompt reference the correct lesson/chapter? (30 points)
+                        2. Does it match the learning objectives? (30 points)
+                        3. Is the scope appropriate for this grade level? (20 points)
+                        4. Are terminology and concepts accurate per curriculum? (20 points)
+
+                        Return ONLY a JSON object:
+                        {"score": <0-100>, "issues": ["issue1", "issue2"], "suggestions": ["suggestion1"]}
+                        """,
+                promptText, curriculumContext);
 
         try {
             String response = callGeminiApi(systemPrompt, userPrompt, false);
@@ -276,7 +274,7 @@ public class AiClientServiceImpl implements AiClientService {
 
     @Override
     public String optimizePrompt(String promptText, OptimizationMode mode, String curriculumContext,
-            Map<String, List<String>> selectedWeaknesses, String customInstruction) {
+                                 Map<String, List<String>> selectedWeaknesses, String customInstruction) {
         log.info("Optimizing prompt with mode: {}", mode);
 
         String systemPrompt = """
@@ -287,7 +285,7 @@ public class AiClientServiceImpl implements AiClientService {
         String userPrompt = mode == OptimizationMode.SAFE
                 ? buildSafeOptimizationPrompt(promptText, curriculumContext, selectedWeaknesses, customInstruction)
                 : buildPedagogicalOptimizationPrompt(promptText, curriculumContext, selectedWeaknesses,
-                        customInstruction);
+                customInstruction);
 
         try {
             String response = callGeminiApi(systemPrompt, userPrompt, true);
@@ -299,36 +297,37 @@ public class AiClientServiceImpl implements AiClientService {
     }
 
     private String buildSafeOptimizationPrompt(String promptText, String curriculumContext,
-            Map<String, List<String>> weaknesses, String customInstruction) {
+                                               Map<String, List<String>> weaknesses, String customInstruction) {
         String weaknessesString = formatWeaknesses(weaknesses);
 
-        return String.format("""
-                Optimize this teacher's prompt using SAFE mode:
+        return String.format(
+                """
+                        Optimize this teacher's prompt using SAFE mode:
 
-                ORIGINAL PROMPT:
-                %s
+                        ORIGINAL PROMPT:
+                        %s
 
-                CURRICULUM CONTEXT:
-                %s
+                        CURRICULUM CONTEXT:
+                        %s
 
-                DETECTED WEAKNESSES:
-                %s
+                        DETECTED WEAKNESSES:
+                        %s
 
-                USER INSTRUCTIONS:
-                %s
+                        USER INSTRUCTIONS:
+                        %s
 
-                OPTIMIZATION RULES (SAFE MODE):
-                1. Preserve teacher's intent 100%% - do not change the core request
-                        2. Preserve ALL existing sections (Content, Input Example, Output Format, etc.) - DO NOT DELETE ANY TEXT
-                        3. Only add missing structural elements identified in weaknesses
-                        4. Add output format specification if missing
-                        5. Add curriculum reference from the context provided
-                        6. Keep the same language and tone
-                        7. Make minimal additions
-                        8. Do not add activities or change teaching approach
+                        OPTIMIZATION RULES (SAFE MODE):
+                        1. Preserve teacher's intent 100%% - do not change the core request
+                                2. Preserve ALL existing sections (Content, Input Example, Output Format, etc.) - DO NOT DELETE ANY TEXT
+                                3. Only add missing structural elements identified in weaknesses
+                                4. Add output format specification if missing
+                                5. Add curriculum reference from the context provided
+                                6. Keep the same language and tone
+                                7. Make minimal additions
+                                8. Do not add activities or change teaching approach
 
-                Return ONLY the optimized prompt text, nothing else.
-                """,
+                        Return ONLY the optimized prompt text, nothing else.
+                        """,
                 promptText,
                 curriculumContext,
                 weaknessesString,
@@ -336,39 +335,39 @@ public class AiClientServiceImpl implements AiClientService {
     }
 
     private String buildPedagogicalOptimizationPrompt(String promptText, String curriculumContext,
-            Map<String, List<String>> weaknesses, String customInstruction) {
+                                                      Map<String, List<String>> weaknesses, String customInstruction) {
         String weaknessesString = formatWeaknesses(weaknesses);
 
         return String.format("""
-                Optimize this teacher's prompt using PEDAGOGICAL ENHANCEMENT mode:
+                        Optimize this teacher's prompt using PEDAGOGICAL ENHANCEMENT mode:
 
-                ORIGINAL PROMPT:
-                %s
+                        ORIGINAL PROMPT:
+                        %s
 
-                CURRICULUM CONTEXT:
-                %s
+                        CURRICULUM CONTEXT:
+                        %s
 
-                DETECTED WEAKNESSES:
-                %s
+                        DETECTED WEAKNESSES:
+                        %s
 
-                USER INSTRUCTIONS:
-                %s
+                        USER INSTRUCTIONS:
+                        %s
 
-                OPTIMIZATION RULES (PEDAGOGICAL MODE):
-                1. Preserve teacher's core intent
-                2. Fix all structural issues from weaknesses
-                3. Add 2-3 active learning activities aligned with the lesson content
-                4. Include differentiation strategies for mixed-ability students
-                5. Add formative assessment component
-                6. Align explicitly with learning objectives from curriculum
-                7. Target appropriate Bloom's taxonomy level (Analysis/Application for high school)
-                8. Maintain Vietnamese educational context and terminology
+                        OPTIMIZATION RULES (PEDAGOGICAL MODE):
+                        1. Preserve teacher's core intent
+                        2. Fix all structural issues from weaknesses
+                        3. Add 2-3 active learning activities aligned with the lesson content
+                        4. Include differentiation strategies for mixed-ability students
+                        5. Add formative assessment component
+                        6. Align explicitly with learning objectives from curriculum
+                        7. Target appropriate Bloom's taxonomy level (Analysis/Application for high school)
+                        8. Maintain Vietnamese educational context and terminology
 
-                Format the optimized prompt clearly with sections.
-                Mark new additions with [ADDED] at the start of new sections.
+                        Format the optimized prompt clearly with sections.
+                        Mark new additions with [ADDED] at the start of new sections.
 
-                Return ONLY the optimized prompt text.
-                """,
+                        Return ONLY the optimized prompt text.
+                        """,
                 promptText,
                 curriculumContext,
                 weaknessesString,
@@ -490,7 +489,7 @@ public class AiClientServiceImpl implements AiClientService {
 
         String effectiveModel = (model != null && !model.isBlank())
                 ? model
-                : AiModel.GEMINI_2_5_FLASH.getName();
+                : AiModel.GEMINI_3_FLASH_PREVIEW.getName();
 
         long startTime = System.currentTimeMillis();
 
@@ -499,7 +498,8 @@ public class AiClientServiceImpl implements AiClientService {
         try {
             // Build the user prompt
             StringBuilder promptBuilder = new StringBuilder();
-            promptBuilder.append("Based on the uploaded document, generate a structured prompt following this template:\n\n");
+            promptBuilder.append(
+                    "Based on the uploaded document, generate a structured prompt following this template:\n\n");
             promptBuilder.append(template);
 
             if (customInstruction != null && !customInstruction.isBlank()) {
@@ -507,7 +507,8 @@ public class AiClientServiceImpl implements AiClientService {
                 promptBuilder.append(customInstruction);
             }
 
-            promptBuilder.append("\n\nIMPORTANT: Return your response as a valid JSON object with these exact fields: ");
+            promptBuilder
+                    .append("\n\nIMPORTANT: Return your response as a valid JSON object with these exact fields: ");
             promptBuilder.append("instruction, context, input_example, output_format, constraints");
 
             String userPrompt = promptBuilder.toString();
@@ -529,14 +530,12 @@ public class AiClientServiceImpl implements AiClientService {
                                             .fileUri(file.uri().get())
                                             .mimeType(file.mimeType().get())
                                             .build())
-                                    .build()
-                    )
+                                    .build())
                     .build();
 
             // System instruction
             Content systemInstruction = Content.fromParts(
-                    Part.fromText(PromptTemplateConstants.buildSystemInstruction())
-            );
+                    Part.fromText(PromptTemplateConstants.buildSystemInstruction()));
 
             // Safety settings
             ImmutableList<SafetySetting> safetySettings = ImmutableList.of(
@@ -547,8 +546,7 @@ public class AiClientServiceImpl implements AiClientService {
                     SafetySetting.builder()
                             .category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT)
                             .threshold(HarmBlockThreshold.Known.BLOCK_LOW_AND_ABOVE)
-                            .build()
-            );
+                            .build());
 
             // Generate content
             GenerateContentResponse response = geminiClient.models.generateContent(
@@ -557,8 +555,10 @@ public class AiClientServiceImpl implements AiClientService {
                     config.toBuilder()
                             .safetySettings(safetySettings)
                             .systemInstruction(systemInstruction)
-                            .build()
-            );
+                            .tools(Tool.builder()
+                                    .googleSearch(GoogleSearch.builder().build())
+                                    .build())
+                            .build());
 
             long duration = System.currentTimeMillis() - startTime;
             log.info("Prompt generation completed in {}ms", duration);
@@ -803,17 +803,6 @@ public class AiClientServiceImpl implements AiClientService {
     }
 
     /**
-     * Upload file as context for gemini api request
-     */
-    protected File uploadFile(java.io.File file, String fileName, String mineType) {
-        UploadFileConfig config = UploadFileConfig.builder()
-                .displayName(fileName)
-                .mimeType(mineType)
-                .build();
-        return geminiClient.files.upload(file, config);
-    }
-
-    /**
      * Call Gemini API with context from file uploaded through gemini file api
      */
     protected ClientPromptResponse callGeminiApiWithContext(
@@ -826,7 +815,7 @@ public class AiClientServiceImpl implements AiClientService {
 
         String effectiveModel = (model != null && !model.isBlank())
                 ? model
-                : AiModel.GEMINI_2_5_FLASH.getName();
+                : AiModel.GEMINI_3_FLASH_PREVIEW.getName();
 
         long startTime = System.currentTimeMillis();
 
@@ -859,19 +848,19 @@ public class AiClientServiceImpl implements AiClientService {
                                     .build())
                     .build();
 
-            ImmutableList<SafetySetting> safetySettings =
-                    ImmutableList.of(
-                            SafetySetting.builder()
-                                    .category(HarmCategory.Known.HARM_CATEGORY_HATE_SPEECH)
-                                    .threshold(HarmBlockThreshold.Known.BLOCK_ONLY_HIGH)
-                                    .build(),
-                            SafetySetting.builder()
-                                    .category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT)
-                                    .threshold(HarmBlockThreshold.Known.BLOCK_LOW_AND_ABOVE)
-                                    .build());
+            ImmutableList<SafetySetting> safetySettings = ImmutableList.of(
+                    SafetySetting.builder()
+                            .category(HarmCategory.Known.HARM_CATEGORY_HATE_SPEECH)
+                            .threshold(HarmBlockThreshold.Known.BLOCK_ONLY_HIGH)
+                            .build(),
+                    SafetySetting.builder()
+                            .category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT)
+                            .threshold(HarmBlockThreshold.Known.BLOCK_LOW_AND_ABOVE)
+                            .build());
 
-            Content systemInstruction = Content.fromParts(Part.fromText("You are an experienced high-school teacher assistant and curriculum designer," +
-                    " familiar with secondary education standards and pedagogical best practices."));
+            Content systemInstruction = Content.fromParts(
+                    Part.fromText("You are an experienced high-school teacher assistant and curriculum designer," +
+                            " familiar with secondary education standards and pedagogical best practices."));
 
             // Generate content
             GenerateContentResponse response = geminiClient.models.generateContent(
@@ -881,8 +870,7 @@ public class AiClientServiceImpl implements AiClientService {
                             .safetySettings(safetySettings)
                             .systemInstruction(systemInstruction)
                             .thinkingConfig(ThinkingConfig.builder().thinkingBudget(4096))
-                            .build()
-            );
+                            .build());
 
             long duration = System.currentTimeMillis() - startTime;
             log.info("Gemini API call completed in {}ms", duration);
@@ -929,8 +917,7 @@ public class AiClientServiceImpl implements AiClientService {
             if (e.getCause() instanceof java.net.SocketTimeoutException) {
                 throw new AiProviderException(
                         String.format("Gemini request timed out after %d seconds", readTimeoutSeconds),
-                        e
-                );
+                        e);
             }
             throw new AiProviderException("Failed to call Gemini API: " + e.getMessage(), e);
         }

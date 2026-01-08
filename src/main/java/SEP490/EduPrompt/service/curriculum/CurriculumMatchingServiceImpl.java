@@ -22,9 +22,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CurriculumMatchingServiceImpl implements CurriculumMatchingService {
 
-    private final LessonRepository lessonRepository;
-    private final SubjectRepository subjectRepository;
-
     private static final Map<String, List<String>> SUBJECT_PATTERNS = Map.of(
             "Toán", List.of("toán", "hình học", "đại số", "giải tích", "lượng giác", "math", "mathematics"),
             "Văn", List.of("văn", "ngữ văn", "văn học", "tiếng việt", "literature"),
@@ -34,10 +31,11 @@ public class CurriculumMatchingServiceImpl implements CurriculumMatchingService 
             "Sinh", List.of("sinh học", "sinh vật", "biology"),
             "Sử", List.of("lịch sử", "history"),
             "Địa", List.of("địa lý", "địa lí", "geography"));
-
     private static final Set<String> STOPWORDS = Set.of(
             "tạo", "viết", "thiết", "kế", "cho", "của", "và", "với", "một", "các",
             "bài", "giáo", "án", "học", "sinh", "lớp", "tiết");
+    private final LessonRepository lessonRepository;
+    private final SubjectRepository subjectRepository;
 
     @Override
     public CurriculumContext detectContext(String promptText) {

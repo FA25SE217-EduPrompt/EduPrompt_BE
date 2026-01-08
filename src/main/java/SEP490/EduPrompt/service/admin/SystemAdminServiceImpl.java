@@ -17,13 +17,14 @@ import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.GroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
 import SEP490.EduPrompt.dto.response.group.UpdateGroupResponse;
-import SEP490.EduPrompt.dto.response.prompt.*;
+import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
+import SEP490.EduPrompt.dto.response.prompt.PromptAllResponse;
+import SEP490.EduPrompt.dto.response.prompt.TagDTO;
 import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
 import SEP490.EduPrompt.dto.response.tag.TagResponse;
 import SEP490.EduPrompt.dto.response.user.PageUserResponse;
 import SEP490.EduPrompt.dto.response.user.UserResponse;
-import SEP490.EduPrompt.enums.GroupRole;
-import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
@@ -40,7 +41,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
@@ -63,8 +63,8 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private final TagRepository tagRepository;
     private final GroupMemberRepository groupMemberRepository;
 
-    //========================================================
-    //======================LIST ALL==========================
+    // ========================================================
+    // ======================LIST ALL==========================
     @Override
     @Transactional
     public PageUserResponse listAllUser(UserPrincipal currentUser, Pageable pageable) {
@@ -228,8 +228,8 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .build();
     }
 
-    //========================================================
-    //======================= CREATE =========================
+    // ========================================================
+    // ======================= CREATE =========================
     @Override
     @Transactional
     public CreateCollectionResponse createCollection(CreateCollectionRequest request, UserPrincipal currentUser) {
@@ -307,17 +307,18 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         UUID currentUserId = currentUser.getUserId();
         User creator = userRepository.getReferenceById(currentUserId);
 
-
-//        // SCHOOL_ADMIN and TEACHER must belong to a school
-//        UUID schoolId = currentUser.getSchoolId();
-//        if (schoolId == null && !Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
-//            throw new AccessDeniedException("You must be associated with a school to create a group");
-//        }
-//        School school = null;
-//        if (schoolId != null) {
-//            school = schoolRepository.findById(schoolId)
-//                    .orElseThrow(() -> new ResourceNotFoundException("School not found"));
-//        }
+        // // SCHOOL_ADMIN and TEACHER must belong to a school
+        // UUID schoolId = currentUser.getSchoolId();
+        // if (schoolId == null &&
+        // !Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
+        // throw new AccessDeniedException("You must be associated with a school to
+        // create a group");
+        // }
+        // School school = null;
+        // if (schoolId != null) {
+        // school = schoolRepository.findById(schoolId)
+        // .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        // }
 
         Group group = Group.builder()
                 .name(req.name())
@@ -540,8 +541,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .collect(Collectors.toMap(
                         t -> t.getType().toLowerCase() + "::" + t.getValue().toLowerCase(),
                         t -> t,
-                        (a, b) -> a
-                ));
+                        (a, b) -> a));
 
         // Step 4: Filter out duplicates
         List<Tag> toSave = unique.entrySet().stream()
@@ -549,7 +549,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .map(e -> {
                     var r = e.getValue();
                     return Tag.builder()
-                            .type(r.type())   // preserve original casing
+                            .type(r.type()) // preserve original casing
                             .value(r.value())
                             .build();
                 })
@@ -564,7 +564,8 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                     String key = r.type().toLowerCase() + "::" + r.value().toLowerCase();
                     Tag tag = existingMap.getOrDefault(key,
                             saved.stream()
-                                    .filter(s -> (s.getType().toLowerCase() + "::" + s.getValue().toLowerCase()).equals(key))
+                                    .filter(s -> (s.getType().toLowerCase() + "::" + s.getValue().toLowerCase())
+                                            .equals(key))
                                     .findFirst()
                                     .orElse(null));
                     return tag != null ? new TagResponse(tag.getId(), tag.getType(), tag.getValue()) : null;
@@ -575,8 +576,8 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         return result;
     }
 
-    //========================================================
-    //======================= UPDATE =========================
+    // ========================================================
+    // ======================= UPDATE =========================
     @Override
     @Transactional
     public DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
@@ -750,7 +751,8 @@ public class SystemAdminServiceImpl implements SystemAdminService {
 
     @Override
     @Transactional
-    public UpdateCollectionResponse updateCollection(UUID id, UpdateCollectionRequest request, UserPrincipal currentUser) {
+    public UpdateCollectionResponse updateCollection(UUID id, UpdateCollectionRequest request,
+                                                     UserPrincipal currentUser) {
         log.info("Updating collection: {} by user: {}", id, currentUser.getUserId());
 
         // Fetch collection
@@ -868,8 +870,8 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .build();
     }
 
-    //========================================================
-    //======================= DELETE =========================
+    // ========================================================
+    // ======================= DELETE =========================
     @Override
     @Transactional
     public void softDeletePrompt(UUID promptId, UserPrincipal currentUser) {
@@ -878,11 +880,10 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
 
-        if (prompt.getIsDeleted() != true) {
+        if (!prompt.getIsDeleted()) {
             prompt.setIsDeleted(true);
             prompt.setDeletedAt(Instant.now());
-        }
-        else {
+        } else {
             throw new InvalidActionException("Prompt is deleted.");
         }
         // Save changes
@@ -901,13 +902,12 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         }
         Collection collection = opt.get();
 
-        if (collection.getIsDeleted() != true) {
+        if (!collection.getIsDeleted()) {
             collection.setIsDeleted(true);
             collection.setDeletedAt(Instant.now());
             collection.setDeletedBy(currentUserEntity);
-        }
-        else {
-            throw new  InvalidActionException("Collection is deleted.");
+        } else {
+            throw new InvalidActionException("Collection is deleted.");
         }
 
         collectionRepository.save(collection);
@@ -920,12 +920,11 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         Group group = groupRepository.findByIdAndIsActiveTrue(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
 
-        if (group.getIsActive() != false) {
+        if (group.getIsActive()) {
             group.setIsActive(false);
             group.setUpdatedBy(userRepository.getReferenceById(currentUserId));
             group.setUpdatedAt(Instant.now());
-        }
-        else {
+        } else {
             throw new InvalidActionException("Group is deleted.");
         }
 
@@ -933,8 +932,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         log.info("Group soft-deleted: {} by user: {}", id, currentUserId);
     }
 
-
-    //HELPER
+    // HELPER
     private List<Tag> mapCollectionTagsToTags(UUID collectionId) {
         List<CollectionTag> collectionTags = collectionTagRepository.findByCollectionId(collectionId);
         return collectionTags.stream()

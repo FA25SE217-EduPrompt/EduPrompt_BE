@@ -12,5 +12,6 @@ public record DimensionScore(
         Double ruleBasedScore,
         Double aiAssistedScore,
         List<String> issues,
-        List<String> suggestions
-) {}
+        List<String> suggestions,
+        Boolean isSuccess) {
+}

@@ -127,7 +127,7 @@ public class PromptTestingServiceImpl implements PromptTestingService {
 
             // Reserve quota
             int reservedTokens = request.maxTokens();
-            quotaService.validateAndDecrementQuota(userId, QuotaType.TEST, reservedTokens);
+            quotaService.validateAndDecrementQuota(userId, QuotaType.TEST, reservedTokens, true);
 
             // Fetch prompt
             Prompt prompt = promptRepository.findById(request.promptId())

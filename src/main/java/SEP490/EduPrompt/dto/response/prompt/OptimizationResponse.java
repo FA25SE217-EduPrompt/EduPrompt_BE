@@ -18,4 +18,5 @@ public record OptimizationResponse(
         CurriculumContextDetail curriculumContext,
         List<String> appliedFixes,
         Instant createdAt
-) {}
+) {
+}

@@ -7,8 +7,6 @@ import SEP490.EduPrompt.enums.FileType;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 
 public interface AttachmentService {
@@ -37,7 +35,7 @@ public interface AttachmentService {
     /**
      * Uploads a file to Cloudinary and saves the attachment metadata.
      *
-     * @param file The binary file
+     * @param file        The binary file
      * @param currentUser The user uploading the file
      * @return The saved attachment response
      */

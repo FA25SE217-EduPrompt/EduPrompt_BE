@@ -16,7 +16,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -79,7 +78,7 @@ public class AttachmentController {
      * Server-side upload: Receives file, uploads to Cloudinary, and saves entity.
      * Does NOT require promptVersionId.
      *
-     * @param file The file binary to upload
+     * @param file        The file binary to upload
      * @param currentUser The authenticated user
      * @return AttachmentResponse
      */

@@ -23,10 +23,11 @@ public class PromptVersionServiceImpl implements PromptVersionService {
 
     private final PromptVersionRepository versionRepository;
     private final PromptRepository promptRepository;
+    private final PromptScoringService scoringService;
 
     @Override
     public PromptVersion createVersion(Prompt prompt, CreatePromptVersionRequest request,
-            UUID editorId, UUID lessonId) {
+                                       UUID editorId, UUID lessonId) {
         log.info("Creating version for prompt: {}", prompt.getId());
 
         // Get next version number
@@ -74,9 +75,28 @@ public class PromptVersionServiceImpl implements PromptVersionService {
         }
         promptRepository.save(prompt);
 
+        // Async score and save
+        String fullPromptText = buildFullText(prompt);
+        scoringService.scoreAndSaveAsync(prompt.getId(), saved.getId(), fullPromptText, lessonId);
+
         log.info("Created version {} for prompt {}", nextVersion, prompt.getId());
 
         return saved;
+    }
+
+    private String buildFullText(Prompt prompt) {
+        StringBuilder sb = new StringBuilder();
+        if (prompt.getInstruction() != null)
+            sb.append(prompt.getInstruction()).append("\n\n");
+        if (prompt.getContext() != null)
+            sb.append(prompt.getContext()).append("\n\n");
+        if (prompt.getInputExample() != null)
+            sb.append(prompt.getInputExample()).append("\n\n");
+        if (prompt.getOutputFormat() != null)
+            sb.append(prompt.getOutputFormat()).append("\n\n");
+        if (prompt.getConstraints() != null)
+            sb.append(prompt.getConstraints()).append("\n\n");
+        return sb.toString().trim();
     }
 
     @Override

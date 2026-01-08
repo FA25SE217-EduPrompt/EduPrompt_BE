@@ -6,12 +6,14 @@ import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.prompt.OptimizationResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptScoreResult;
 import SEP490.EduPrompt.service.ai.PromptOptimizationService;
+import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.prompt.PromptScoringService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -28,8 +30,10 @@ public class PromptOptimizationControllerV2 {
 
     @PostMapping("/score")
     public ResponseDto<PromptScoreResult> scorePrompt(
-            @RequestBody @Valid PromptScoringRequest request) {
-        PromptScoreResult result = scoringService.scorePrompt(
+            @RequestBody @Valid PromptScoringRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        PromptScoreResult result = scoringService.scorePromptWithQuota(
+                userPrincipal.getUserId(),
                 request.promptContent(),
                 request.lessonId());
         return ResponseDto.success(result);
@@ -37,8 +41,9 @@ public class PromptOptimizationControllerV2 {
 
     @PostMapping("/optimize")
     public ResponseDto<OptimizationResponse> optimizePrompt(
-            @RequestBody @Valid OptimizationRequest request) {
-        OptimizationResponse response = optimizationService.optimize(request);
+            @RequestBody @Valid OptimizationRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        OptimizationResponse response = optimizationService.optimize(userPrincipal.getUserId(), request);
         return ResponseDto.success(response);
     }
 

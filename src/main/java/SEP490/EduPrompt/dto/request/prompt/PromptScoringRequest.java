@@ -9,4 +9,5 @@ public record PromptScoringRequest(
         String promptContent,
 
         UUID lessonId // Optional
-) {}
+) {
+}

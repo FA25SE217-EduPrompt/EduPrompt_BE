@@ -10,10 +10,13 @@ import java.util.List;
 import java.util.Map;
 
 public interface AiClientService {
-    ClientPromptResponse testPrompt(Prompt prompt, AiModel aiModel, String inputText, Double temperature,
-            Integer maxTokens, Double topP);
+    Integer DEFAULT_MAX_TOKEN = 16384;
 
-    ClientPromptResponse optimizePrompt(Prompt prompt, String optimizationInput, Double temperature, Integer maxTokens);
+    ClientPromptResponse testPrompt(Prompt prompt, AiModel aiModel, String inputText, Double temperature,
+                                    Integer maxTokens, Double topP);
+
+    ClientPromptResponse optimizePrompt(Prompt prompt, String optimizationInput, Double temperature,
+                                        Integer maxTokens);
 
     /**
      * Generate structured prompt from file context
@@ -28,13 +31,13 @@ public interface AiClientService {
             File file,
             String template,
             String customInstruction,
-            String model
-    );
+            String model);
 
     /**
      * Upload file to Gemini for use as context
      */
     File uploadFileToGemini(java.io.File file, String fileName, String mimeType);
+
     double scoreInstructionClarity(String promptText);
 
     double scoreContextCompleteness(String promptText);
@@ -48,5 +51,5 @@ public interface AiClientService {
     double scorePedagogicalQuality(String promptText);
 
     String optimizePrompt(String promptText, OptimizationMode mode, String curriculumContext,
-            Map<String, List<String>> selectedWeaknesses, String customInstruction);
+                          Map<String, List<String>> selectedWeaknesses, String customInstruction);
 }

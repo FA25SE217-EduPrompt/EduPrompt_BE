@@ -10,5 +10,6 @@ import java.util.UUID;
 @Repository
 public interface PromptVersionRepository extends JpaRepository<PromptVersion, UUID> {
     List<PromptVersion> findByPromptIdOrderByVersionNumberDesc(UUID promptId);
+
     Integer countByPromptId(UUID promptId);
 }

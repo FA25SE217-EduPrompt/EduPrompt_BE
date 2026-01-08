@@ -208,7 +208,6 @@ public class AttachmentServiceImpl implements AttachmentService {
 //    }
 
 
-
     /**
      * Helper to determine if the file should be treated as 'image', 'video', or 'raw'.
      * 'image' type allows PDFs to be displayed inline instead of downloaded.

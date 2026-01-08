@@ -151,6 +151,7 @@ public class SystemAdminController {
         DetailPromptResponse response = sAdminService.createPromptInCollection(request, currentUser);
         return ResponseDto.success(response);
     }
+
     @PutMapping("/prompt/{promptId}/metadata")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     public ResponseDto<DetailPromptResponse> updatePromptMetadata(
@@ -172,6 +173,7 @@ public class SystemAdminController {
         DetailPromptResponse response = sAdminService.updatePromptVisibility(promptId, request, currentUser);
         return ResponseDto.success(response);
     }
+
     @PutMapping("/collection/{id}")
     public ResponseDto<UpdateCollectionResponse> updateCollection(
             @PathVariable UUID id,
@@ -181,6 +183,7 @@ public class SystemAdminController {
         UpdateCollectionResponse response = sAdminService.updateCollection(id, request, currentUser);
         return ResponseDto.success(response);
     }
+
     @PutMapping("/group/{id}")
     public ResponseDto<?> updateGroup(
             @PathVariable UUID id,
@@ -189,6 +192,7 @@ public class SystemAdminController {
         log.info("Updating group {} by user: {}", id, currentUser.getUserId());
         return ResponseDto.success(sAdminService.updateGroup(id, request, currentUser));
     }
+
     @DeleteMapping("/prompt/{id}")
     public ResponseDto<Void> softDeletePrompt(
             @PathVariable UUID id,
@@ -197,6 +201,7 @@ public class SystemAdminController {
         sAdminService.softDeletePrompt(id, currentUser);
         return ResponseDto.success(null);
     }
+
     @DeleteMapping("/collection/{id}")
     public ResponseDto<String> softDeleteCollection(
             @PathVariable UUID id,
@@ -205,6 +210,7 @@ public class SystemAdminController {
         sAdminService.softDeleteCollection(id, currentUser);
         return ResponseDto.success("Collection deleted successfully");
     }
+
     @DeleteMapping("/group/{id}")
     public ResponseDto<String> softDeleteGroup(
             @PathVariable UUID id,

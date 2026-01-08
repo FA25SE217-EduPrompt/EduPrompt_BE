@@ -9,16 +9,16 @@ import java.util.Map;
 import java.util.UUID;
 
 public record OptimizationRequest(
-                // prompt id is optional for scratchpad mode
-                UUID promptId,
+        // prompt id is optional for scratchpad mode
+        UUID promptId,
 
-                @NotBlank(message = "Prompt content is required") String promptContent,
+        @NotBlank(message = "Prompt content is required") String promptContent,
 
-                String customInstruction,
+        String customInstruction,
 
-                UUID lessonId, // Optional, will be auto-detected if null
+        UUID lessonId, // Optional, will be auto-detected if null
 
-                @NotNull(message = "Optimization mode is required") OptimizationMode optimizationMode,
+        @NotNull(message = "Optimization mode is required") OptimizationMode optimizationMode,
 
-                Map<String, List<String>> selectedWeaknesses) {
+        Map<String, List<String>> selectedWeaknesses) {
 }
