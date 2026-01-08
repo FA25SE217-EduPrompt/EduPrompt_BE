@@ -41,7 +41,7 @@ public class AiClientServiceImpl implements AiClientService {
 
     private final ObjectMapper objectMapper;
 
-    private static final Integer DEFAULT_MAX_TOKEN = 8192;
+    private static final Integer DEFAULT_MAX_TOKEN = 16384;
     private static final Float DEFAULT_TEMPERATURE = 0.3f;
     private static final Float DEFAULT_TOP_P = 0.7f;
     private static final String DEFAULT_MODEL = AiModel.GEMINI_3_FLASH_PREVIEW.getName();
