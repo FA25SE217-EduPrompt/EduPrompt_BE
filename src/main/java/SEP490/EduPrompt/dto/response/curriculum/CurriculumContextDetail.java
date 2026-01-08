@@ -15,4 +15,5 @@ public record CurriculumContextDetail(
         Integer semester,
         Integer gradeLevel,
         String subjectName
-) {}
+) {
+}

@@ -11,6 +11,8 @@ import java.util.UUID;
 @Repository
 public interface PromptScoreRepository extends JpaRepository<PromptScore, UUID> {
     Optional<PromptScore> findByPromptIdAndVersionIdIsNull(UUID promptId);
+
     Optional<PromptScore> findByVersionId(UUID versionId);
+
     List<PromptScore> findByPromptIdOrderByCreatedAtDesc(UUID promptId);
 }

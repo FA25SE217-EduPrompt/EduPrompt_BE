@@ -12,6 +12,7 @@ public class CloudinaryUploadFailException extends BaseException {
     public CloudinaryUploadFailException(String message) {
         super(ExceptionCode.CLOUDINARY_UPLOAD_FAILED.name(), message, HttpStatus.SERVICE_UNAVAILABLE);
     }
+
     public CloudinaryUploadFailException(String message, Exception e) {
         super(ExceptionCode.CLOUDINARY_UPLOAD_FAILED.name(), List.of(message, e.getMessage()), HttpStatus.SERVICE_UNAVAILABLE);
     }

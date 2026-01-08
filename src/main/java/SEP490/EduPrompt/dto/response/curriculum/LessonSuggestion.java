@@ -10,4 +10,5 @@ public record LessonSuggestion(
         String lessonName,
         Double confidence,
         String reason
-) {}
+) {
+}

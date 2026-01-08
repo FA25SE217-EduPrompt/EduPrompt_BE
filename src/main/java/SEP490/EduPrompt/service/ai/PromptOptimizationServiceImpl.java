@@ -66,7 +66,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
     @Override
     public OptimizationQueueResponse requestOptimization(UUID userId, PromptOptimizationRequest request,
-            String idempotencyKey) {
+                                                         String idempotencyKey) {
         log.info("Requesting optimization for prompt: {} by user: {} with idempotency key: {}",
                 request.promptId(), userId, idempotencyKey);
 
@@ -316,76 +316,83 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     }
 
     @Override
-    public OptimizationResponse optimize(OptimizationRequest request) {
+    public OptimizationResponse optimize(UUID userId, OptimizationRequest request) {
         log.info("Starting optimization. Scratchpad mode: {}", request.promptId() == null);
 
-        // 1. Generate Cache Key
-        String cacheKey = generateOptimizationCacheKey(request);
+        // Validate quota
+        int defaultTokenLimit = SEP490.EduPrompt.service.ai.AiClientService.DEFAULT_MAX_TOKEN;
+        quotaService.validateAndDecrementQuota(userId, QuotaType.OPTIMIZATION, defaultTokenLimit, true);
+
         try {
-            String cached = redisTemplate.opsForValue().get(cacheKey);
-            if (cached != null) {
-                log.info("Returning cached optimization result");
-                return objectMapper.readValue(cached, OptimizationResponse.class);
+            String cacheKey = generateOptimizationCacheKey(request);
+            try {
+                String cached = redisTemplate.opsForValue().get(cacheKey);
+                if (cached != null) {
+                    log.info("Returning cached optimization result");
+                    // Refund all since cached
+                    quotaService.refundQuotaAsync(userId, QuotaType.OPTIMIZATION, defaultTokenLimit);
+                    return objectMapper.readValue(cached, OptimizationResponse.class);
+                }
+            } catch (Exception e) {
+                log.warn("Cache read failed", e);
             }
+
+            PromptScoreResult originalScore = scoringService.scorePrompt(
+                    request.promptContent(),
+                    request.lessonId());
+
+            log.info("Original prompt score: {}", originalScore.overallScore());
+
+            CurriculumContextDetail curriculumContext = resolveCurriculumContext(
+                    request.promptContent(),
+                    request.lessonId(),
+                    originalScore.detectedContext());
+
+            String contextString = buildCurriculumContextString(curriculumContext);
+
+            String optimizedPrompt = geminiService.optimizePrompt(
+                    request.promptContent(),
+                    request.optimizationMode(),
+                    contextString,
+                    request.selectedWeaknesses(),
+                    request.customInstruction());
+
+            log.info("Generated optimized prompt");
+
+            PromptScoreResult optimizedScore = scoringService.scorePrompt(
+                    optimizedPrompt,
+                    curriculumContext.lessonId());
+
+            log.info("Optimized prompt score: {}", optimizedScore.overallScore());
+
+            List<String> appliedFixes = identifyAppliedFixes(originalScore, optimizedScore);
+            double improvement = optimizedScore.overallScore() - originalScore.overallScore();
+
+            OptimizationResponse response = new OptimizationResponse(
+                    null, // versionId is null for scratchpad/unsaved
+                    request.promptContent(),
+                    optimizedPrompt,
+                    originalScore,
+                    optimizedScore,
+                    improvement,
+                    curriculumContext,
+                    appliedFixes,
+                    Instant.now());
+
+            try {
+                redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(response),
+                        Duration.ofHours(24));
+            } catch (Exception e) {
+                log.warn("Cache write failed", e);
+            }
+
+            return response;
+
         } catch (Exception e) {
-            log.warn("Cache read failed", e);
+            log.error("Optimization failed for user {}", userId, e);
+            quotaService.refundQuotaAsync(userId, QuotaType.OPTIMIZATION, defaultTokenLimit);
+            throw e;
         }
-
-        // 2. Score Original Prompt
-        PromptScoreResult originalScore = scoringService.scorePrompt(
-                request.promptContent(),
-                request.lessonId());
-
-        log.info("Original prompt score: {}", originalScore.overallScore());
-
-        // 3. Resolve Context
-        CurriculumContextDetail curriculumContext = resolveCurriculumContext(
-                request.promptContent(),
-                request.lessonId(),
-                originalScore.detectedContext());
-
-        String contextString = buildCurriculumContextString(curriculumContext);
-
-        // 4. Optimize via AI
-        String optimizedPrompt = geminiService.optimizePrompt(
-                request.promptContent(),
-                request.optimizationMode(),
-                contextString,
-                request.selectedWeaknesses(),
-                request.customInstruction());
-
-        log.info("Generated optimized prompt");
-
-        // 5. Score Optimized Prompt
-        PromptScoreResult optimizedScore = scoringService.scorePrompt(
-                optimizedPrompt,
-                curriculumContext.lessonId());
-
-        log.info("Optimized prompt score: {}", optimizedScore.overallScore());
-
-        List<String> appliedFixes = identifyAppliedFixes(originalScore, optimizedScore);
-        double improvement = optimizedScore.overallScore() - originalScore.overallScore();
-
-        // 6. Construct Response (No DB Save)
-        OptimizationResponse response = new OptimizationResponse(
-                null, // versionId is null for scratchpad/unsaved
-                request.promptContent(),
-                optimizedPrompt,
-                originalScore,
-                optimizedScore,
-                improvement,
-                curriculumContext,
-                appliedFixes,
-                Instant.now());
-
-        // 7. Cache Result
-        try {
-            redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(response), Duration.ofHours(24));
-        } catch (Exception e) {
-            log.warn("Cache write failed", e);
-        }
-
-        return response;
     }
 
     private String generateOptimizationCacheKey(OptimizationRequest request) {
@@ -451,7 +458,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     }
 
     private CurriculumContextDetail resolveCurriculumContext(String promptText, UUID lessonId,
-            CurriculumContext detectedContext) {
+                                                             CurriculumContext detectedContext) {
         if (lessonId != null) {
             return curriculumService.getContextDetail(lessonId);
         }
@@ -477,15 +484,15 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         if (context.lessonId() == null)
             return "General Context";
         return String.format("""
-                Môn học: %s
-                Khối: %d
-                Học kỳ: %d
-                Chương %d: %s
-                Bài %d: %s
+                        Môn học: %s
+                        Khối: %d
+                        Học kỳ: %d
+                        Chương %d: %s
+                        Bài %d: %s
 
-                Nội dung bài học:
-                %s
-                """,
+                        Nội dung bài học:
+                        %s
+                        """,
                 context.subjectName(),
                 context.gradeLevel(),
                 context.semester(),
@@ -535,18 +542,24 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
 
         return new PromptScoreResult(
                 score.getOverallScore().doubleValue(),
-                new DimensionScore("Instruction Clarity", score.getInstructionClarityScore().doubleValue(),
-                        100.0, null, null, List.of(), List.of()),
-                new DimensionScore("Context Completeness", score.getContextCompletenessScore().doubleValue(),
-                        100.0, null, null, List.of(), List.of()),
-                new DimensionScore("Output Specification", score.getOutputSpecificationScore().doubleValue(),
-                        100.0, null, null, List.of(), List.of()),
-                new DimensionScore("Constraint Strength", score.getConstraintStrengthScore().doubleValue(),
-                        100.0, null, null, List.of(), List.of()),
-                new DimensionScore("Curriculum Alignment", score.getCurriculumAlignmentScore().doubleValue(),
-                        100.0, null, null, List.of(), List.of()),
-                new DimensionScore("Pedagogical Quality", score.getPedagogicalQualityScore().doubleValue(),
-                        100.0, null, null, List.of(), List.of()),
+                DimensionScore.builder().dimensionName("Instruction Clarity")
+                        .score(score.getInstructionClarityScore().doubleValue())
+                        .maxScore(100.0).issues(List.of()).suggestions(List.of()).isSuccess(true).build(),
+                DimensionScore.builder().dimensionName("Context Completeness")
+                        .score(score.getContextCompletenessScore().doubleValue())
+                        .maxScore(100.0).issues(List.of()).suggestions(List.of()).isSuccess(true).build(),
+                DimensionScore.builder().dimensionName("Output Specification")
+                        .score(score.getOutputSpecificationScore().doubleValue())
+                        .maxScore(100.0).issues(List.of()).suggestions(List.of()).isSuccess(true).build(),
+                DimensionScore.builder().dimensionName("Constraint Strength")
+                        .score(score.getConstraintStrengthScore().doubleValue())
+                        .maxScore(100.0).issues(List.of()).suggestions(List.of()).isSuccess(true).build(),
+                DimensionScore.builder().dimensionName("Curriculum Alignment")
+                        .score(score.getCurriculumAlignmentScore().doubleValue())
+                        .maxScore(100.0).issues(List.of()).suggestions(List.of()).isSuccess(true).build(),
+                DimensionScore.builder().dimensionName("Pedagogical Quality")
+                        .score(score.getPedagogicalQualityScore().doubleValue())
+                        .maxScore(100.0).issues(List.of()).suggestions(List.of()).isSuccess(true).build(),
                 weaknesses != null ? weaknesses : new HashMap<>(),
                 null);
     }

@@ -15,7 +15,7 @@ public interface QuotaService {
 
     void validateAndDecrementQuota(UUID userId, QuotaType quotaType, int tokenUsed);
 
-    void newValidateAndDecrementQuota(UUID userId, QuotaType quotaType, int tokenUsed);
+    void validateAndDecrementQuota(UUID userId, QuotaType quotaType, int tokenUsed, boolean logUsage);
 
     void resetExpiredQuotas();
 
@@ -25,7 +25,10 @@ public interface QuotaService {
 
     void refundQuota(UUID userId, QuotaType quotaType, int tokens); // refund tokens + action count
 
+    void refundQuotaAsync(UUID userId, QuotaType quotaType, int tokens);
+
     void refundTokens(UUID userId, int tokens);
 
-    //TODO: manage action (5 prompt per day, 3 collection per day,.. based on subscription tier) quota for user
+    // TODO: manage action (5 prompt per day, 3 collection per day,.. based on
+    // subscription tier) quota for user
 }

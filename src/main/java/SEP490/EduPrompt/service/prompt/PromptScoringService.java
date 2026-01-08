@@ -10,4 +10,8 @@ public interface PromptScoringService {
     void savePromptScore(UUID promptId, UUID versionId, PromptScoreResult scoreResult);
 
     void savePromptScoreAsync(UUID promptId, UUID versionId, PromptScoreResult scoreResult);
+
+    void scoreAndSaveAsync(UUID promptId, UUID versionId, String promptText, UUID lessonId);
+
+    PromptScoreResult scorePromptWithQuota(UUID userId, String promptText, UUID lessonId);
 }

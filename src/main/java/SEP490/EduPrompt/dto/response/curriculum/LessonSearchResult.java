@@ -13,4 +13,5 @@ public record LessonSearchResult(
         String subjectName,
         Integer gradeLevel,
         Double relevanceScore
-) {}
+) {
+}

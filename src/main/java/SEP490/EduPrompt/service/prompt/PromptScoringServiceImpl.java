@@ -13,6 +13,7 @@ import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.repo.PromptScoreRepository;
 import SEP490.EduPrompt.repo.PromptVersionRepository;
 import SEP490.EduPrompt.service.ai.AiClientServiceImpl;
+import SEP490.EduPrompt.service.ai.QuotaService;
 import SEP490.EduPrompt.service.curriculum.CurriculumMatchingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -36,14 +37,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class PromptScoringServiceImpl implements PromptScoringService {
 
-    private final CurriculumMatchingService curriculumService;
-    private final AiClientServiceImpl geminiService;
-    private final PromptScoreRepository promptScoreRepository;
-    private final PromptRepository promptRepository;
-    private final PromptVersionRepository promptVersionRepository;
-    private final RedisTemplate<String, String> redisTemplate;
-    private final ObjectMapper objectMapper;
-
     // Scoring weights
     private static final double INSTRUCTION_CLARITY_WEIGHT = 0.15;
     private static final double CONTEXT_COMPLETENESS_WEIGHT = 0.20;
@@ -51,9 +44,16 @@ public class PromptScoringServiceImpl implements PromptScoringService {
     private static final double CONSTRAINT_STRENGTH_WEIGHT = 0.15;
     private static final double CURRICULUM_ALIGNMENT_WEIGHT = 0.20;
     private static final double PEDAGOGICAL_QUALITY_WEIGHT = 0.15;
+    private final CurriculumMatchingService curriculumService;
+    private final AiClientServiceImpl geminiService;
+    private final PromptScoreRepository promptScoreRepository;
+    private final PromptRepository promptRepository;
+    private final PromptVersionRepository promptVersionRepository;
+    private final QuotaService quotaService;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     @Override
-    @Transactional
     public PromptScoreResult scorePrompt(String promptText, UUID lessonId) {
         log.info("Starting prompt scoring process");
 
@@ -74,17 +74,23 @@ public class PromptScoringServiceImpl implements PromptScoringService {
 
         // batch request for 6 dimension
         CompletableFuture<DimensionScore> instructionFuture = CompletableFuture
-                .supplyAsync(() -> scoreInstructionClarity(promptText));
+                .supplyAsync(() -> scoreInstructionClarity(promptText))
+                .exceptionally(ex -> handleScoreFailure("Instruction Clarity", ex));
         CompletableFuture<DimensionScore> contextFuture = CompletableFuture
-                .supplyAsync(() -> scoreContextCompleteness(promptText, detectedContext));
+                .supplyAsync(() -> scoreContextCompleteness(promptText, detectedContext))
+                .exceptionally(ex -> handleScoreFailure("Context Completeness", ex));
         CompletableFuture<DimensionScore> outputFuture = CompletableFuture
-                .supplyAsync(() -> scoreOutputSpecification(promptText));
+                .supplyAsync(() -> scoreOutputSpecification(promptText))
+                .exceptionally(ex -> handleScoreFailure("Output Specification", ex));
         CompletableFuture<DimensionScore> constraintFuture = CompletableFuture
-                .supplyAsync(() -> scoreConstraintStrength(promptText));
+                .supplyAsync(() -> scoreConstraintStrength(promptText))
+                .exceptionally(ex -> handleScoreFailure("Constraint Strength", ex));
         CompletableFuture<DimensionScore> alignmentFuture = CompletableFuture
-                .supplyAsync(() -> scoreCurriculumAlignment(promptText, finalLessonId));
+                .supplyAsync(() -> scoreCurriculumAlignment(promptText, finalLessonId))
+                .exceptionally(ex -> handleScoreFailure("Curriculum Alignment", ex));
         CompletableFuture<DimensionScore> pedagogicalFuture = CompletableFuture
-                .supplyAsync(() -> scorePedagogicalQuality(promptText));
+                .supplyAsync(() -> scorePedagogicalQuality(promptText))
+                .exceptionally(ex -> handleScoreFailure("Pedagogical Quality", ex));
 
         CompletableFuture.allOf(instructionFuture, contextFuture, outputFuture, constraintFuture, alignmentFuture,
                 pedagogicalFuture).join();
@@ -118,7 +124,6 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 .detectedContext(detectedContext)
                 .build();
 
-        // 5. Cache Result
         try {
             redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(result), Duration.ofHours(24));
         } catch (Exception e) {
@@ -198,6 +203,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 .suggestions(aiScore < 30
                         ? List.of("Consider making the instruction more explicit and direct")
                         : List.of())
+                .isSuccess(true)
                 .build();
     }
 
@@ -263,6 +269,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 .aiAssistedScore(aiScore)
                 .issues(issues)
                 .suggestions(List.of("Add missing contextual information for better AI output quality"))
+                .isSuccess(true)
                 .build();
 
     }
@@ -309,6 +316,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 .suggestions(totalScore < 50
                         ? List.of("Define clear output format and structure expectations")
                         : List.of())
+                .isSuccess(true)
                 .build();
 
     }
@@ -356,6 +364,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 .suggestions(totalScore < 60
                         ? List.of("Add constraints to prevent hallucination and off-topic content")
                         : List.of())
+                .isSuccess(true)
                 .build();
 
     }
@@ -364,14 +373,16 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         log.debug("Scoring curriculum alignment");
 
         if (lessonId == null) {
-            return new DimensionScore(
-                    "Curriculum Alignment",
-                    0.0,
-                    100.0,
-                    0.0,
-                    0.0,
-                    List.of("No lesson context available for alignment check"),
-                    List.of("Specify lesson or provide enough context to detect curriculum alignment"));
+            return DimensionScore.builder()
+                    .dimensionName("Curriculum Alignment")
+                    .score(0.0)
+                    .maxScore(100.0)
+                    .ruleBasedScore(0.0)
+                    .aiAssistedScore(0.0)
+                    .issues(List.of("No lesson context available for alignment check"))
+                    .suggestions(List.of("Specify lesson or provide enough context to detect curriculum alignment"))
+                    .isSuccess(false)
+                    .build();
         }
 
         CurriculumContextDetail curriculumContext = curriculumService.getContextDetail(lessonId);
@@ -393,6 +404,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 .suggestions(aiScore < 70
                         ? List.of("Align prompt more closely with curriculum learning objectives")
                         : List.of())
+                .isSuccess(true)
                 .build();
 
     }
@@ -432,6 +444,7 @@ public class PromptScoringServiceImpl implements PromptScoringService {
                 .suggestions(totalScore < 60
                         ? List.of("Enhance with active learning and assessment strategies")
                         : List.of())
+                .isSuccess(true)
                 .build();
 
     }
@@ -457,15 +470,15 @@ public class PromptScoringServiceImpl implements PromptScoringService {
 
     private String buildCurriculumContextString(CurriculumContextDetail context) {
         return String.format("""
-                Môn học: %s
-                Khối: %d
-                Học kỳ: %d
-                Chương %d: %s
-                Bài %d: %s
+                        Môn học: %s
+                        Khối: %d
+                        Học kỳ: %d
+                        Chương %d: %s
+                        Bài %d: %s
 
-                Nội dung bài học:
-                %s
-                """,
+                        Nội dung bài học:
+                        %s
+                        """,
                 context.subjectName(),
                 context.gradeLevel(),
                 context.semester(),
@@ -489,6 +502,35 @@ public class PromptScoringServiceImpl implements PromptScoringService {
             doSavePromptScore(promptId, versionId, scoreResult);
         } catch (Exception e) {
             log.error("Failed to save PromptScore async for prompt: {}", promptId, e);
+        }
+    }
+
+    @Override
+    @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void scoreAndSaveAsync(UUID promptId, UUID versionId, String promptText, UUID lessonId) {
+        try {
+            PromptScoreResult result = scorePrompt(promptText, lessonId);
+            doSavePromptScore(promptId, versionId, result);
+        } catch (Exception e) {
+            log.error("Failed to score and save async for prompt: {}", promptId, e);
+        }
+    }
+
+    @Override
+    public PromptScoreResult scorePromptWithQuota(UUID userId, String promptText, UUID lessonId) {
+        // Validate quota
+        int defaultTokenLimit = SEP490.EduPrompt.service.ai.AiClientService.DEFAULT_MAX_TOKEN;
+        quotaService.validateAndDecrementQuota(userId, SEP490.EduPrompt.enums.QuotaType.OPTIMIZATION, defaultTokenLimit,
+                true);
+
+        try {
+            PromptScoreResult result = scorePrompt(promptText, lessonId);
+            return result;
+        } catch (Exception e) {
+            log.error("Failed to score prompt for user: {}", userId, e);
+            quotaService.refundQuotaAsync(userId, SEP490.EduPrompt.enums.QuotaType.OPTIMIZATION, defaultTokenLimit);
+            throw e;
         }
     }
 
@@ -553,5 +595,19 @@ public class PromptScoringServiceImpl implements PromptScoringService {
         } catch (Exception e) {
             return String.valueOf(input.hashCode());
         }
+    }
+
+    private DimensionScore handleScoreFailure(String dimensionName, Throwable ex) {
+        log.error("Failed to score dimension: {}", dimensionName, ex);
+        return DimensionScore.builder()
+                .dimensionName(dimensionName)
+                .score(0.0)
+                .maxScore(100.0)
+                .ruleBasedScore(0.0)
+                .aiAssistedScore(0.0)
+                .issues(List.of("Failed to score this dimension: " + ex.getMessage()))
+                .suggestions(List.of("Try again later"))
+                .isSuccess(false)
+                .build();
     }
 }

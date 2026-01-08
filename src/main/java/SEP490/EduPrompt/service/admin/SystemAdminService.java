@@ -55,11 +55,15 @@ public interface SystemAdminService {
 
     DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
                                                 UserPrincipal currentUser);
+
     UpdateCollectionResponse updateCollection(UUID id, UpdateCollectionRequest request, UserPrincipal currentUser);
+
     UpdateGroupResponse updateGroup(UUID id, UpdateGroupRequest req, UserPrincipal currentUser);
 
     //Delete
     void softDeletePrompt(UUID promptId, UserPrincipal currentUser);
+
     void softDeleteCollection(UUID id, UserPrincipal currentUser);
+
     void softDeleteGroup(UUID id, UserPrincipal currentUser);
 }

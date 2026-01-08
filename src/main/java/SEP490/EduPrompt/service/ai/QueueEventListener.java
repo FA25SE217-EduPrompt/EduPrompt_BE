@@ -160,17 +160,14 @@ public class QueueEventListener {
 
         try {
             // Reserve quota
-            quotaService.validateAndDecrementQuota(data.userId, QuotaType.OPTIMIZATION, reservedTokens);
+            quotaService.validateAndDecrementQuota(data.userId, QuotaType.OPTIMIZATION, reservedTokens, true);
 
             // Call AI with timeout
-            ClientPromptResponse response = callAiWithTimeout(() ->
-                    aiClientService.optimizePrompt(
-                            data.prompt,
-                            data.input,
-                            data.temperature,
-                            data.maxTokens
-                    )
-            );
+            ClientPromptResponse response = callAiWithTimeout(() -> aiClientService.optimizePrompt(
+                    data.prompt,
+                    data.input,
+                    data.temperature,
+                    data.maxTokens));
 
             int tokensUsed = response.totalTokens();
 
@@ -284,20 +281,17 @@ public class QueueEventListener {
 
         try {
             // Reserve quota
-            quotaService.validateAndDecrementQuota(data.userId, QuotaType.TEST, reservedTokens);
+            quotaService.validateAndDecrementQuota(data.userId, QuotaType.TEST, reservedTokens, true);
 
             // Call AI with timeout
             long startTime = System.currentTimeMillis();
-            ClientPromptResponse response = callAiWithTimeout(() ->
-                    aiClientService.testPrompt(
-                            data.prompt,
-                            AiModel.parseAiModel(data.aiModel),
-                            data.inputText,
-                            data.temperature,
-                            data.maxTokens,
-                            data.topP
-                    )
-            );
+            ClientPromptResponse response = callAiWithTimeout(() -> aiClientService.testPrompt(
+                    data.prompt,
+                    AiModel.parseAiModel(data.aiModel),
+                    data.inputText,
+                    data.temperature,
+                    data.maxTokens,
+                    data.topP));
 
             int executionTime = (int) (System.currentTimeMillis() - startTime);
             int tokensUsed = response.totalTokens();
@@ -355,8 +349,7 @@ public class QueueEventListener {
 
             String signature = cloudinary.apiSignRequest(
                     uploadParams,
-                    cloudinary.config.apiSecret
-            );
+                    cloudinary.config.apiSecret);
             uploadParams.put("api_key", apiKey);
             uploadParams.put("signature", signature);
 
@@ -413,7 +406,8 @@ public class QueueEventListener {
     private void handleOptimizationFailure(UUID queueId, String errorMessage) {
         transactionTemplate.executeWithoutResult(status -> {
             OptimizationQueue item = queueRepository.findById(queueId).orElse(null);
-            if (item == null) return;
+            if (item == null)
+                return;
 
             item.setRetryCount(item.getRetryCount() + 1);
             item.setErrorMessage(errorMessage);
@@ -437,7 +431,8 @@ public class QueueEventListener {
     private void handleTestFailure(UUID usageId, String errorMessage) {
         transactionTemplate.executeWithoutResult(status -> {
             PromptUsage usage = usageRepository.findById(usageId).orElse(null);
-            if (usage == null) return;
+            if (usage == null)
+                return;
 
             usage.setStatus(QueueStatus.FAILED.name());
             usage.setErrorMessage(errorMessage);
@@ -472,7 +467,8 @@ public class QueueEventListener {
      * Helper to determine resource type for Cloudinary
      */
     private String determineResourceType(String contentType) {
-        if (contentType == null) return "auto";
+        if (contentType == null)
+            return "auto";
 
         if (contentType.startsWith("image") || contentType.equals("application/pdf")) {
             return "image"; // Treat PDF as image so it displays inline

@@ -5,6 +5,7 @@ import SEP490.EduPrompt.dto.request.prompt.GeneratePromptFromFileRequest;
 import SEP490.EduPrompt.dto.response.prompt.ClientPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.GeneratePromptFromFileResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptSections;
+import SEP490.EduPrompt.enums.QuotaType;
 import SEP490.EduPrompt.exception.client.AiProviderException;
 import SEP490.EduPrompt.exception.generic.InvalidFileException;
 import SEP490.EduPrompt.util.FileValidationUtil;
@@ -14,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Files;
@@ -26,15 +26,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PromptGenerationServiceImpl implements PromptGenerationService {
 
-    //    private final QuotaService quotaService;
+    private static final String UPLOAD_TOPIC = "file:upload";
+    private final QuotaService quotaService;
     private final AiClientService aiClientService;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, String> redisTemplate;
 
-    private static final String UPLOAD_TOPIC = "file:upload";
-
     @Override
-    @Transactional
     public GeneratePromptFromFileResponse generatePromptFromFile(
             UUID userId,
             MultipartFile file,
@@ -44,7 +42,8 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
                 userId, request.promptTask());
 
         // Validate quota
-//        quotaService.validateAndDecrementGenerationQuota(userId);
+        int defaultTokenLimit = AiClientService.DEFAULT_MAX_TOKEN;
+        quotaService.validateAndDecrementQuota(userId, QuotaType.TEST, defaultTokenLimit, true);
 
         FileValidationUtil.validateFile(file);
 
@@ -56,8 +55,7 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
             File geminiFile = aiClientService.uploadFileToGemini(
                     tempFile,
                     file.getOriginalFilename(),
-                    file.getContentType()
-            );
+                    file.getContentType());
 
             log.info("File uploaded to Gemini successfully for user {}", userId);
 
@@ -67,7 +65,7 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
                     geminiFile,
                     template,
                     request.customInstruction(),
-                    null // default model : GEMINI_2_5_FLASH
+                    null // default model : GEMINI_3_FLASH_PREVIEW
             );
 
             log.info("AI response received for user {}", userId);
@@ -81,15 +79,23 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
                     aiResponse.model(),
                     aiResponse.promptTokens(),
                     aiResponse.completionTokens(),
-                    aiResponse.totalTokens()
-            );
+                    aiResponse.totalTokens());
 
             log.info("Prompt generation completed successfully for user {}", userId);
+
+            // Refund unused tokens
+            int tokensUsed = aiResponse.totalTokens() != null ? aiResponse.totalTokens() : defaultTokenLimit;
+            if (tokensUsed < defaultTokenLimit) {
+                quotaService.refundQuotaAsync(userId, QuotaType.TEST,
+                        defaultTokenLimit - tokensUsed);
+            }
+
             return response;
 
         } catch (Exception e) {
             log.error("Error generating prompt from file for user {}: {}",
                     userId, e.getMessage(), e);
+            quotaService.refundQuotaAsync(userId, QuotaType.TEST, defaultTokenLimit);
             throw new AiProviderException("Failed to generate prompt: " + e.getMessage(), e);
         } finally {
             if (tempFile != null && tempFile.exists()) {
@@ -185,8 +191,7 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
             log.info("AI response content: {}", aiResponse);
             throw new AiProviderException(
                     "Failed to parse AI response. The AI may have returned invalid format.",
-                    e
-            );
+                    e);
         }
     }
 }

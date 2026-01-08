@@ -2,10 +2,7 @@ package SEP490.EduPrompt.dto.request.attachment;
 
 import SEP490.EduPrompt.enums.FileType;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
-
-import java.util.UUID;
 
 @Getter
 public class AttachmentRequest {

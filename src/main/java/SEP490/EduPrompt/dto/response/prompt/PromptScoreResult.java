@@ -9,13 +9,13 @@ import java.util.Map;
 
 @Builder
 public record PromptScoreResult(
-                Double overallScore,
-                DimensionScore instructionClarity,
-                DimensionScore contextCompleteness,
-                DimensionScore outputSpecification,
-                DimensionScore constraintStrength,
-                DimensionScore curriculumAlignment,
-                DimensionScore pedagogicalQuality,
-                Map<String, List<String>> weaknesses,
-                CurriculumContext detectedContext) {
+        Double overallScore,
+        DimensionScore instructionClarity,
+        DimensionScore contextCompleteness,
+        DimensionScore outputSpecification,
+        DimensionScore constraintStrength,
+        DimensionScore curriculumAlignment,
+        DimensionScore pedagogicalQuality,
+        Map<String, List<String>> weaknesses,
+        CurriculumContext detectedContext) {
 }

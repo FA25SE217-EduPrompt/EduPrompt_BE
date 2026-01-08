@@ -11,7 +11,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface PromptOptimizationService {
-    OptimizationQueueResponse requestOptimization(UUID userId, PromptOptimizationRequest request, String idempotencyKey);
+    OptimizationQueueResponse requestOptimization(UUID userId, PromptOptimizationRequest request,
+                                                  String idempotencyKey);
 
     OptimizationQueueResponse getOptimizationStatus(UUID queueId, UUID userId);
 
@@ -27,8 +28,8 @@ public interface PromptOptimizationService {
 
     void cancelOptimization(UUID queueId, UUID userId);
 
-    //new optimization
-    OptimizationResponse optimize(OptimizationRequest request);
+    // new optimization
+    OptimizationResponse optimize(UUID userId, OptimizationRequest request);
 
     OptimizationResponse getOptimizationResult(UUID versionId);
 }
