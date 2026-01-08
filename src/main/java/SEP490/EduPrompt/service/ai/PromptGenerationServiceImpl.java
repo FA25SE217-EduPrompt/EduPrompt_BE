@@ -7,6 +7,7 @@ import SEP490.EduPrompt.dto.response.prompt.GeneratePromptFromFileResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptSections;
 import SEP490.EduPrompt.exception.client.AiProviderException;
 import SEP490.EduPrompt.exception.generic.InvalidFileException;
+import SEP490.EduPrompt.util.FileValidationUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.types.File;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +46,7 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
         // Validate quota
 //        quotaService.validateAndDecrementGenerationQuota(userId);
 
-        validateFile(file);
+        FileValidationUtil.validateFile(file);
 
         java.io.File tempFile = null;
         try {
@@ -90,17 +91,16 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
             log.error("Error generating prompt from file for user {}: {}",
                     userId, e.getMessage(), e);
             throw new AiProviderException("Failed to generate prompt: " + e.getMessage(), e);
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                try {
+                    Files.deleteIfExists(tempFile.toPath());
+                    log.info("Temporary file deleted: {}", tempFile.getName());
+                } catch (Exception e) {
+                    log.warn("Failed to delete temporary file: {}", e.getMessage());
+                }
+            }
         }
-//        finally {
-//            if (tempFile != null && tempFile.exists()) {
-//                try {
-//                    Files.deleteIfExists(tempFile.toPath());
-//                    log.info("Temporary file deleted: {}", tempFile.getName());
-//                } catch (Exception e) {
-//                    log.warn("Failed to delete temporary file: {}", e.getMessage());
-//                }
-//            }
-//        }
     }
 
     /**
@@ -133,47 +133,6 @@ public class PromptGenerationServiceImpl implements PromptGenerationService {
             log.error("Failed to queue Cloudinary upload, file will not be saved", e);
             // Not fatal - prompt generation succeeded, only attachment save failed
         }
-    }
-
-    /**
-     * Validate uploaded file
-     */
-    private void validateFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new InvalidFileException("File is empty or null");
-        }
-
-        // Check file size (max 10MB)
-        long maxSize = 10 * 1024 * 1024; // 10MB
-        if (file.getSize() > maxSize) {
-            throw new InvalidFileException("File size exceeds maximum limit of 10MB");
-        }
-
-        // Check file type
-        String contentType = file.getContentType();
-        if (contentType == null) {
-            throw new InvalidFileException("File content type is unknown");
-        }
-
-        // Allow common document formats
-        if (!isAllowedFileType(contentType)) {
-            throw new InvalidFileException(
-                    "File type not supported. Allowed types: PDF, Word, Text, Images"
-            );
-        }
-
-        log.info("File validation passed: {} ({})", file.getOriginalFilename(), contentType);
-    }
-
-    /**
-     * Check if file type is allowed
-     */
-    private boolean isAllowedFileType(String contentType) {
-        return contentType.equals("application/pdf") ||
-                contentType.equals("application/msword") ||
-                contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
-                contentType.equals("text/plain") ||
-                contentType.startsWith("image/");
     }
 
     /**

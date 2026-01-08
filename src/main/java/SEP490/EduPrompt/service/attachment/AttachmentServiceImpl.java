@@ -9,15 +9,13 @@ import SEP490.EduPrompt.exception.client.CloudinaryUploadFailException;
 import SEP490.EduPrompt.exception.client.FileUploadFailException;
 import SEP490.EduPrompt.exception.client.SignatureGenerationException;
 import SEP490.EduPrompt.model.Attachment;
-import SEP490.EduPrompt.model.PromptVersion;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.AttachmentRepository;
 import SEP490.EduPrompt.repo.PromptVersionRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
-import com.cloudinary.AuthToken;
+import SEP490.EduPrompt.util.FileValidationUtil;
 import com.cloudinary.Cloudinary;
-import com.cloudinary.Url;
 import com.cloudinary.utils.ObjectUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,13 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -136,6 +131,7 @@ public class AttachmentServiceImpl implements AttachmentService {
     @Override
     @Transactional
     public AttachmentResponse uploadAttachment(MultipartFile file, UserPrincipal currentUser) {
+        FileValidationUtil.validateFile(file);
         try {
             String resourceType = determineResourceType(file);
             Map<String, Object> uploadParams = new HashMap<>();
