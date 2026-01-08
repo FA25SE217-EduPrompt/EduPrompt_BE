@@ -36,10 +36,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.security.MessageDigest;
 
 @Service
 @Slf4j
@@ -424,7 +424,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         }
 
         PromptScore optimizedScore = scoreRepository.findByVersionId(versionId)
-                .orElseThrow(() -> new RuntimeException("Score not found for version"));
+                .orElseThrow(() -> new ResourceNotFoundException("Score not found for version"));
 
         PromptScore originalScore = scoreRepository.findByPromptIdAndVersionIdIsNull(version.getPromptId())
                 .orElse(null);
