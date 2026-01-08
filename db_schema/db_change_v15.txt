@@ -114,3 +114,7 @@ CREATE TABLE prompt_scores (
 
 CREATE INDEX idx_prompt_scores_prompt ON prompt_scores(prompt_id);
 CREATE INDEX idx_prompt_scores_overall ON prompt_scores(overall_score DESC);
+
+-- avoid race condition risk: add unique constraint with prompt version
+alter table prompt_versions
+add  constraint uq_prompt_version unique (prompt_id, version_number)
