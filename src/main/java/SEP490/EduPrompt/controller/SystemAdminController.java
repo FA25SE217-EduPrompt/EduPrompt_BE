@@ -2,13 +2,18 @@ package SEP490.EduPrompt.controller;
 
 import SEP490.EduPrompt.dto.request.RegisterRequest;
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
+import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
 import SEP490.EduPrompt.dto.request.group.CreateGroupRequest;
+import SEP490.EduPrompt.dto.request.group.UpdateGroupRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
 import SEP490.EduPrompt.dto.request.systemAdmin.CreateSchoolSubscriptionRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
+import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
 import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
@@ -19,8 +24,10 @@ import SEP490.EduPrompt.dto.response.user.PageUserResponse;
 import SEP490.EduPrompt.service.admin.AdminService;
 import SEP490.EduPrompt.service.admin.SystemAdminService;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -34,6 +41,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+@Slf4j
 public class SystemAdminController {
 
     private final AdminService adminService;
@@ -142,5 +150,67 @@ public class SystemAdminController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         DetailPromptResponse response = sAdminService.createPromptInCollection(request, currentUser);
         return ResponseDto.success(response);
+    }
+    @PutMapping("/prompt/{promptId}/metadata")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<DetailPromptResponse> updatePromptMetadata(
+            @PathVariable UUID promptId,
+            @Valid @RequestBody UpdatePromptMetadataRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Updating metadata for prompt {} by user: {}", promptId, currentUser.getUserId());
+        DetailPromptResponse response = sAdminService.updatePromptMetadata(promptId, request, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @PutMapping("/prompt/{promptId}/visibility")
+    @Operation(summary = "collection id(NULLABLE) is for when the user want to change prompts that is PRIVATE/PUBLIC to GROUP/SCHOOL")
+    public ResponseDto<DetailPromptResponse> updatePromptVisibility(
+            @PathVariable UUID promptId,
+            @Valid @RequestBody UpdatePromptVisibilityRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Updating visibility for prompt {} by user: {}", promptId, currentUser.getUserId());
+        DetailPromptResponse response = sAdminService.updatePromptVisibility(promptId, request, currentUser);
+        return ResponseDto.success(response);
+    }
+    @PutMapping("/collection/{id}")
+    public ResponseDto<UpdateCollectionResponse> updateCollection(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateCollectionRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Updating collection: {} by user: {}", id, currentUser.getUserId());
+        UpdateCollectionResponse response = sAdminService.updateCollection(id, request, currentUser);
+        return ResponseDto.success(response);
+    }
+    @PutMapping("/group/{id}")
+    public ResponseDto<?> updateGroup(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateGroupRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Updating group {} by user: {}", id, currentUser.getUserId());
+        return ResponseDto.success(sAdminService.updateGroup(id, request, currentUser));
+    }
+    @DeleteMapping("/prompt/{id}")
+    public ResponseDto<Void> softDeletePrompt(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Soft-deleting prompt: {} by user: {}", id, currentUser.getUserId());
+        sAdminService.softDeletePrompt(id, currentUser);
+        return ResponseDto.success(null);
+    }
+    @DeleteMapping("/collection/{id}")
+    public ResponseDto<String> softDeleteCollection(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Deleting collection: {} by user: {}", id, currentUser.getUserId());
+        sAdminService.softDeleteCollection(id, currentUser);
+        return ResponseDto.success("Collection deleted successfully");
+    }
+    @DeleteMapping("/group/{id}")
+    public ResponseDto<String> softDeleteGroup(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Deleting group: {} by user: {}", id, currentUser.getUserId());
+        sAdminService.softDeleteGroup(id, currentUser);
+        return ResponseDto.success("Group deleted successfully");
     }
 }
