@@ -5,20 +5,21 @@ import SEP490.EduPrompt.enums.AiModel;
 import SEP490.EduPrompt.enums.QueueStatus;
 import SEP490.EduPrompt.enums.QuotaType;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
-import SEP490.EduPrompt.model.AiSuggestionLog;
-import SEP490.EduPrompt.model.OptimizationQueue;
-import SEP490.EduPrompt.model.Prompt;
-import SEP490.EduPrompt.model.PromptUsage;
-import SEP490.EduPrompt.repo.AiSuggestionLogRepository;
-import SEP490.EduPrompt.repo.OptimizationQueueRepository;
-import SEP490.EduPrompt.repo.PromptRepository;
-import SEP490.EduPrompt.repo.PromptUsageRepository;
+import SEP490.EduPrompt.model.*;
+import SEP490.EduPrompt.repo.*;
+import com.cloudinary.Cloudinary;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -35,12 +36,19 @@ public class QueueEventListener {
     private static final int AI_CALL_TIMEOUT_SECONDS = 60;
 
     private final OptimizationQueueRepository queueRepository;
+    private final UserRepository userRepository;
     private final PromptUsageRepository usageRepository;
     private final PromptRepository promptRepository;
     private final AiSuggestionLogRepository suggestionRepository;
     private final AiClientService aiClientService;
     private final QuotaService quotaService;
     private final TransactionTemplate transactionTemplate;
+    private final ObjectMapper objectMapper;
+    private final Cloudinary cloudinary;
+    private final AttachmentRepository attachmentRepository;
+
+    @Value("${cloudinary.api-key}")
+    private String apiKey;
 
     /**
      * Called when optimization request is queued
@@ -71,6 +79,21 @@ public class QueueEventListener {
 
         } catch (Exception e) {
             log.error("Failed to process test event: {}", message, e);
+        }
+    }
+
+    /**
+     * Called when file upload is requested
+     */
+    public void onFileUploadRequested(String message) {
+        try {
+            log.info("Received file upload event");
+
+            FileUploadEvent event = objectMapper.readValue(message, FileUploadEvent.class);
+            processFileUpload(event);
+
+        } catch (Exception e) {
+            log.error("Failed to process upload event: {}", message, e);
         }
     }
 
@@ -308,6 +331,83 @@ public class QueueEventListener {
     }
 
     /**
+     * Process file upload to Cloudinary and save attachment
+     */
+    private void processFileUpload(FileUploadEvent event) {
+        File tempFile = new File(event.getTempFilePath());
+
+        try {
+            if (!tempFile.exists()) {
+                log.error("Temporary file not found: {}", event.getTempFilePath());
+                return;
+            }
+
+            log.info("Uploading file to Cloudinary: {}", event.getOriginalFilename());
+
+            // Upload to Cloudinary
+            String resourceType = determineResourceType(event.getContentType());
+
+            Map<String, Object> uploadParams = new HashMap<>();
+            uploadParams.put("folder", "attachments");
+            uploadParams.put("resource_type", resourceType);
+            uploadParams.put("timestamp", System.currentTimeMillis() / 1000L);
+            uploadParams.put("type", "authenticated");
+
+            String signature = cloudinary.apiSignRequest(
+                    uploadParams,
+                    cloudinary.config.apiSecret
+            );
+            uploadParams.put("api_key", apiKey);
+            uploadParams.put("signature", signature);
+
+            Map uploadResult = cloudinary.uploader().upload(tempFile, uploadParams);
+
+            String publicId = (String) uploadResult.get("public_id");
+            String signedUrl = cloudinary.url()
+                    .resourceType(resourceType)
+                    .type("authenticated")
+                    .signed(true)
+                    .generate(publicId);
+
+            Long size = Long.valueOf(String.valueOf(uploadResult.get("bytes")));
+            String format = (String) uploadResult.get("resource_type");
+
+            log.info("File uploaded to Cloudinary successfully: {}", publicId);
+
+            // Save attachment in transaction
+            transactionTemplate.executeWithoutResult(status -> {
+                User creator = userRepository.getReferenceById(event.getUserId());
+
+                Attachment attachment = Attachment.builder()
+                        .url(signedUrl)
+                        .publicId(publicId)
+                        .fileName(event.getOriginalFilename())
+                        .fileType(format)
+                        .size(size)
+                        .createdAt(Instant.now())
+                        .createdBy(creator)
+                        .build();
+
+                attachmentRepository.save(attachment);
+                log.info("Attachment saved to database with publicId: {}", publicId);
+            });
+
+        } catch (Exception e) {
+            log.error("Failed to upload file to Cloudinary: {}", event.getOriginalFilename(), e);
+        } finally {
+            // Clean up temp file
+            try {
+                if (tempFile.exists()) {
+                    Files.deleteIfExists(tempFile.toPath());
+                    log.info("Temporary file deleted: {}", event.getTempFilePath());
+                }
+            } catch (Exception e) {
+                log.warn("Failed to delete temporary file: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
      * Handle optimization failure
      */
     private void handleOptimizationFailure(UUID queueId, String errorMessage) {
@@ -368,6 +468,21 @@ public class QueueEventListener {
         }
     }
 
+    /**
+     * Helper to determine resource type for Cloudinary
+     */
+    private String determineResourceType(String contentType) {
+        if (contentType == null) return "auto";
+
+        if (contentType.startsWith("image") || contentType.equals("application/pdf")) {
+            return "image"; // Treat PDF as image so it displays inline
+        } else if (contentType.startsWith("video")) {
+            return "video";
+        }
+
+        return "raw"; // Zip, Docx, etc.
+    }
+
     @FunctionalInterface
     private interface AiCallSupplier {
         ClientPromptResponse get() throws Exception;
@@ -400,5 +515,17 @@ public class QueueEventListener {
         Double temperature;
         int maxTokens;
         Double topP;
+    }
+
+    @lombok.Data
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    @lombok.Builder
+    public static class FileUploadEvent {
+        private UUID userId;
+        private String tempFilePath;
+        private String originalFilename;
+        private String contentType;
+        private Long fileSize;
     }
 }

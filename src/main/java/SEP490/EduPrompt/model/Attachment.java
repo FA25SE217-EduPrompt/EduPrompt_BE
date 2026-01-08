@@ -23,11 +23,6 @@ public class Attachment {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "prompt_version_id", nullable = false)
-    private PromptVersion promptVersion;
-
     @Size(max = 255)
     @Column(name = "public_id")
     private String publicId;

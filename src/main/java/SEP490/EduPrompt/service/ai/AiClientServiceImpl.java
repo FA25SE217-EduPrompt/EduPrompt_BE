@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.service.ai;
 
+import SEP490.EduPrompt.constant.PromptTemplateConstants;
 import SEP490.EduPrompt.dto.response.prompt.ClientPromptResponse;
 import SEP490.EduPrompt.enums.AiModel;
 import SEP490.EduPrompt.enums.OptimizationMode;
@@ -459,6 +460,151 @@ public class AiClientServiceImpl implements AiClientService {
         return cleaned;
     }
 
+    @Override
+    public File uploadFileToGemini(java.io.File file, String fileName, String mimeType) {
+        log.info("Uploading file {} to Gemini", fileName);
+
+        try {
+            UploadFileConfig config = UploadFileConfig.builder()
+                    .displayName(fileName)
+                    .mimeType(mimeType)
+                    .build();
+
+            File geminiFile = geminiClient.files.upload(file, config);
+
+            log.info("File uploaded successfully: {}", geminiFile.uri().orElse("unknown"));
+            return geminiFile;
+
+        } catch (Exception e) {
+            log.error("Failed to upload file to Gemini: {}", e.getMessage(), e);
+            throw new AiProviderException("Failed to upload file to Gemini: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public ClientPromptResponse generatePromptFromFileContext(
+            File file,
+            String template,
+            String customInstruction,
+            String model) {
+
+        String effectiveModel = (model != null && !model.isBlank())
+                ? model
+                : AiModel.GEMINI_2_5_FLASH.getName();
+
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Generating prompt from file with model: {}", effectiveModel);
+
+        try {
+            // Build the user prompt
+            StringBuilder promptBuilder = new StringBuilder();
+            promptBuilder.append("Based on the uploaded document, generate a structured prompt following this template:\n\n");
+            promptBuilder.append(template);
+
+            if (customInstruction != null && !customInstruction.isBlank()) {
+                promptBuilder.append("\n\n### Additional Requirements from Teacher:\n");
+                promptBuilder.append(customInstruction);
+            }
+
+            promptBuilder.append("\n\nIMPORTANT: Return your response as a valid JSON object with these exact fields: ");
+            promptBuilder.append("instruction, context, input_example, output_format, constraints");
+
+            String userPrompt = promptBuilder.toString();
+
+            // Build generation config
+            GenerateContentConfig config = GenerateContentConfig.builder()
+                    .temperature(DEFAULT_TEMPERATURE)
+                    .maxOutputTokens(DEFAULT_MAX_TOKEN)
+                    .topP(DEFAULT_TOP_P)
+                    .build();
+
+            // Build content with file and prompt
+            Content content = Content.builder()
+                    .role("user")
+                    .parts(
+                            Part.builder().text(userPrompt).build(),
+                            Part.builder()
+                                    .fileData(FileData.builder()
+                                            .fileUri(file.uri().get())
+                                            .mimeType(file.mimeType().get())
+                                            .build())
+                                    .build()
+                    )
+                    .build();
+
+            // System instruction
+            Content systemInstruction = Content.fromParts(
+                    Part.fromText(PromptTemplateConstants.buildSystemInstruction())
+            );
+
+            // Safety settings
+            ImmutableList<SafetySetting> safetySettings = ImmutableList.of(
+                    SafetySetting.builder()
+                            .category(HarmCategory.Known.HARM_CATEGORY_HATE_SPEECH)
+                            .threshold(HarmBlockThreshold.Known.BLOCK_ONLY_HIGH)
+                            .build(),
+                    SafetySetting.builder()
+                            .category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT)
+                            .threshold(HarmBlockThreshold.Known.BLOCK_LOW_AND_ABOVE)
+                            .build()
+            );
+
+            // Generate content
+            GenerateContentResponse response = geminiClient.models.generateContent(
+                    effectiveModel,
+                    content,
+                    config.toBuilder()
+                            .safetySettings(safetySettings)
+                            .systemInstruction(systemInstruction)
+                            .build()
+            );
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Prompt generation completed in {}ms", duration);
+
+            // Extract response
+            String responseContent = extractResponseContent(response);
+            String finishReason = extractFinishReason(response);
+
+            // Extract usage metadata
+            Integer promptTokens = null;
+            Integer completionTokens = null;
+            Integer totalTokens = null;
+
+            if (response.usageMetadata().isPresent()) {
+                var usageMetadata = response.usageMetadata().get();
+                promptTokens = usageMetadata.promptTokenCount().orElse(null);
+                completionTokens = usageMetadata.candidatesTokenCount().orElse(null);
+                totalTokens = usageMetadata.totalTokenCount().orElse(null);
+            }
+
+            return ClientPromptResponse.builder()
+                    .content(responseContent)
+                    .prompt(userPrompt)
+                    .model(effectiveModel)
+                    .temperature(Double.valueOf(DEFAULT_TEMPERATURE))
+                    .maxTokens(DEFAULT_MAX_TOKEN)
+                    .topP(Double.valueOf(DEFAULT_TOP_P))
+                    .promptTokens(promptTokens)
+                    .completionTokens(completionTokens)
+                    .totalTokens(totalTokens)
+                    .finishReason(finishReason)
+                    .id(null)
+                    .createdAt(Instant.now())
+                    .build();
+
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("Error generating prompt after {}ms: {}", duration, e.getMessage(), e);
+
+            if (e.getCause() instanceof java.net.SocketTimeoutException) {
+                throw new AiProviderException("Prompt generation timed out", e);
+            }
+            throw new AiProviderException("Failed to generate prompt: " + e.getMessage(), e);
+        }
+    }
+
     /**
      * Call OpenAI API with timeout handling
      */
@@ -652,6 +798,140 @@ public class AiClientServiceImpl implements AiClientService {
                         e);
             }
 
+            throw new AiProviderException("Failed to call Gemini API: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Upload file as context for gemini api request
+     */
+    protected File uploadFile(java.io.File file, String fileName, String mineType) {
+        UploadFileConfig config = UploadFileConfig.builder()
+                .displayName(fileName)
+                .mimeType(mineType)
+                .build();
+        return geminiClient.files.upload(file, config);
+    }
+
+    /**
+     * Call Gemini API with context from file uploaded through gemini file api
+     */
+    protected ClientPromptResponse callGeminiApiWithContext(
+            File file,
+            String prompt,
+            String model,
+            Double temperature,
+            Integer maxTokens,
+            Double topP) {
+
+        String effectiveModel = (model != null && !model.isBlank())
+                ? model
+                : AiModel.GEMINI_2_5_FLASH.getName();
+
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Calling Gemini API with model: {}", effectiveModel);
+
+        try {
+            // Build generation config
+            GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
+            if (temperature != null) {
+                configBuilder.temperature(temperature.floatValue());
+            }
+            if (maxTokens != null) {
+                configBuilder.maxOutputTokens(maxTokens);
+            }
+            if (topP != null) {
+                configBuilder.topP(topP.floatValue());
+            }
+
+            // Build content with user role and text part
+            Content content = Content.builder()
+                    .role("user")
+                    .parts(Part.builder()
+                                    .text(prompt)
+                                    .build(),
+                            Part.builder()
+                                    .fileData(FileData.builder()
+                                            .fileUri(file.uri().get())
+                                            .mimeType(file.mimeType().get())
+                                            .build())
+                                    .build())
+                    .build();
+
+            ImmutableList<SafetySetting> safetySettings =
+                    ImmutableList.of(
+                            SafetySetting.builder()
+                                    .category(HarmCategory.Known.HARM_CATEGORY_HATE_SPEECH)
+                                    .threshold(HarmBlockThreshold.Known.BLOCK_ONLY_HIGH)
+                                    .build(),
+                            SafetySetting.builder()
+                                    .category(HarmCategory.Known.HARM_CATEGORY_DANGEROUS_CONTENT)
+                                    .threshold(HarmBlockThreshold.Known.BLOCK_LOW_AND_ABOVE)
+                                    .build());
+
+            Content systemInstruction = Content.fromParts(Part.fromText("You are an experienced high-school teacher assistant and curriculum designer," +
+                    " familiar with secondary education standards and pedagogical best practices."));
+
+            // Generate content
+            GenerateContentResponse response = geminiClient.models.generateContent(
+                    effectiveModel,
+                    content,
+                    configBuilder
+                            .safetySettings(safetySettings)
+                            .systemInstruction(systemInstruction)
+                            .thinkingConfig(ThinkingConfig.builder().thinkingBudget(4096))
+                            .build()
+            );
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Gemini API call completed in {}ms", duration);
+
+            // Extract response content safely
+            String responseContent = extractResponseContent(response);
+            String finishReason = extractFinishReason(response);
+
+            // Extract usage metadata
+            Integer promptTokens = null;
+            Integer completionTokens = null;
+            Integer totalTokens = null;
+
+            if (response.usageMetadata().isPresent()) {
+                var usageMetadata = response.usageMetadata().get();
+                promptTokens = usageMetadata.promptTokenCount().orElse(null);
+                completionTokens = usageMetadata.candidatesTokenCount().orElse(null);
+                totalTokens = usageMetadata.totalTokenCount().orElse(null);
+            }
+
+            String responseId = UUID.randomUUID().toString();
+
+            return ClientPromptResponse.builder()
+                    .content(responseContent)
+                    .prompt(prompt)
+                    .model(effectiveModel)
+                    .temperature(temperature)
+                    .maxTokens(maxTokens)
+                    .topP(topP)
+                    .promptTokens(promptTokens)
+                    .completionTokens(completionTokens)
+                    .totalTokens(totalTokens)
+                    .finishReason(finishReason)
+                    .id(responseId)
+                    .createdAt(Instant.now())
+                    .build();
+
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("Error calling Gemini API after {}ms with model {}: {}",
+                    duration, effectiveModel, e.getMessage(), e);
+
+            // Check for timeout
+            if (e.getCause() instanceof java.net.SocketTimeoutException) {
+                throw new AiProviderException(
+                        String.format("Gemini request timed out after %d seconds", readTimeoutSeconds),
+                        e
+                );
+            }
             throw new AiProviderException("Failed to call Gemini API: " + e.getMessage(), e);
         }
     }
