@@ -20,7 +20,6 @@ import SEP490.EduPrompt.model.GroupMember;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.GroupMemberRepository;
 import SEP490.EduPrompt.repo.GroupRepository;
-import SEP490.EduPrompt.repo.SchoolRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import jakarta.transaction.Transactional;
@@ -55,7 +54,6 @@ import java.util.stream.Collectors;
 public class GroupServiceImpl implements GroupService {
 
     private final GroupRepository groupRepository;
-    private final SchoolRepository schoolRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final UserRepository userRepository;
 

@@ -1,7 +1,9 @@
 package SEP490.EduPrompt.service.ai;
 
+import SEP490.EduPrompt.dto.request.prompt.OptimizationRequest;
 import SEP490.EduPrompt.dto.request.prompt.PromptOptimizationRequest;
 import SEP490.EduPrompt.dto.response.prompt.OptimizationQueueResponse;
+import SEP490.EduPrompt.dto.response.prompt.OptimizationResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -24,4 +26,9 @@ public interface PromptOptimizationService {
     OptimizationQueueResponse retryOptimization(UUID queueId, UUID userId);
 
     void cancelOptimization(UUID queueId, UUID userId);
+
+    //new optimization
+    OptimizationResponse optimize(OptimizationRequest request);
+
+    OptimizationResponse getOptimizationResult(UUID versionId);
 }

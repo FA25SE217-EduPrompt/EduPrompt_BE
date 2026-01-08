@@ -11,7 +11,6 @@ import SEP490.EduPrompt.repo.PromptRepository;
 import SEP490.EduPrompt.repo.PromptViewLogRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
-import SEP490.EduPrompt.service.permission.PermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,7 +26,6 @@ public class PromptRatingServiceImpl implements PromptRatingService {
     private final UserRepository userRepository;
     private final PromptRatingRepository promptRatingRepository;
     private final PromptViewLogRepository promptViewLogRepository;
-    private final PermissionService permissionService;
 
     @Override
     @Transactional
