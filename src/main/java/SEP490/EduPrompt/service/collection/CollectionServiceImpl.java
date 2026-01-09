@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 
 import static SEP490.EduPrompt.enums.Visibility.parseVisibility;
 
-
 /**
  * Service implementation for managing prompt collections.
  * <p>
@@ -68,7 +67,6 @@ public class CollectionServiceImpl implements CollectionService {
     private final GroupRepository groupRepository;
     private final TagRepository tagRepository;
 
-
     private boolean isAdmin(UserPrincipal user) {
         String role = user.getRole();
         return isSystemAdmin(role) || isSchoolAdmin(role);
@@ -95,8 +93,8 @@ public class CollectionServiceImpl implements CollectionService {
         }
 
         // admin bypass
-        if (isSystemAdmin(currentUser.getRole())) return;
-
+        if (isSystemAdmin(currentUser.getRole()))
+            return;
 
         Visibility vis = parseVisibility(collection.getVisibility());
 
@@ -124,7 +122,8 @@ public class CollectionServiceImpl implements CollectionService {
                         collection.getGroup().getId(),
                         currentUserId,
                         "active");
-                if (!member) throw new AccessDeniedException("You are not a member of this group");
+                if (!member)
+                    throw new AccessDeniedException("You are not a member of this group");
             }
             default -> throw new AccessDeniedException("Unsupported visibility");
         }
@@ -214,7 +213,8 @@ public class CollectionServiceImpl implements CollectionService {
 
     @Override
     public CollectionResponse getCollectionById(UUID id, UserPrincipal currentUser) {
-        Collection collection = collectionRepository.findByIdAndIsDeletedFalse(id).orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
+        Collection collection = collectionRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
         validateAccess(collection, currentUser);
         return CollectionResponse.builder()
                 .id(collection.getId())
@@ -227,7 +227,8 @@ public class CollectionServiceImpl implements CollectionService {
 
     @Override
     @Transactional
-    public UpdateCollectionResponse updateCollection(UUID id, UpdateCollectionRequest request, UserPrincipal currentUser) {
+    public UpdateCollectionResponse updateCollection(UUID id, UpdateCollectionRequest request,
+                                                     UserPrincipal currentUser) {
         log.info("Updating collection: {} by user: {}", id, currentUser.getUserId());
 
         // Fetch collection
@@ -354,7 +355,15 @@ public class CollectionServiceImpl implements CollectionService {
         log.info("Retrieving collections for user: {} with pageable: {}", currentUserId, pageable);
 
         // Fetch collections created by the user, excluding deleted
-        Page<Collection> page = collectionRepository.findByCreatedByAndIsDeletedFalseOrderByCreatedAtDesc(currentUserId, pageable);
+        Page<Collection> page = collectionRepository.findByCreatedByAndIsDeletedFalseOrderByCreatedAtDesc(currentUserId,
+                pageable);
+
+        List<UUID> collectionIds = page.getContent().stream().map(Collection::getId).toList();
+        List<CollectionTag> allTags = collectionTagRepository.findByCollectionIdIn(collectionIds);
+        Map<UUID, List<Tag>> tagsByCollectionId = allTags.stream()
+                .collect(Collectors.groupingBy(
+                        ct -> ct.getCollection().getId(),
+                        Collectors.mapping(CollectionTag::getTag, Collectors.toList())));
 
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
@@ -363,7 +372,7 @@ public class CollectionServiceImpl implements CollectionService {
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
-                        .tags(mapCollectionTagsToTags(collection.getId()))
+                        .tags(tagsByCollectionId.getOrDefault(collection.getId(), Collections.emptyList()))
                         .createdAt(collection.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
@@ -384,7 +393,15 @@ public class CollectionServiceImpl implements CollectionService {
         log.info("Retrieving public collections with pageable: {}", pageable);
 
         // Fetch collections with PUBLIC visibility, excluding deleted
-        Page<Collection> page = collectionRepository.findByVisibilityAndIsDeletedFalseOrderByCreatedAtDesc("public", pageable);
+        Page<Collection> page = collectionRepository.findByVisibilityAndIsDeletedFalseOrderByCreatedAtDesc("public",
+                pageable);
+
+        List<UUID> collectionIds = page.getContent().stream().map(Collection::getId).toList();
+        List<CollectionTag> allTags = collectionTagRepository.findByCollectionIdIn(collectionIds);
+        Map<UUID, List<Tag>> tagsByCollectionId = allTags.stream()
+                .collect(Collectors.groupingBy(
+                        ct -> ct.getCollection().getId(),
+                        Collectors.mapping(CollectionTag::getTag, Collectors.toList())));
 
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
@@ -393,7 +410,7 @@ public class CollectionServiceImpl implements CollectionService {
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
-                        .tags(mapCollectionTagsToTags(collection.getId()))
+                        .tags(tagsByCollectionId.getOrDefault(collection.getId(), Collections.emptyList()))
                         .createdAt(collection.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
@@ -421,6 +438,13 @@ public class CollectionServiceImpl implements CollectionService {
         // Fetch all non-deleted collections
         Page<Collection> page = collectionRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc(pageable);
 
+        List<UUID> collectionIds = page.getContent().stream().map(Collection::getId).toList();
+        List<CollectionTag> allTags = collectionTagRepository.findByCollectionIdIn(collectionIds);
+        Map<UUID, List<Tag>> tagsByCollectionId = allTags.stream()
+                .collect(Collectors.groupingBy(
+                        ct -> ct.getCollection().getId(),
+                        Collectors.mapping(CollectionTag::getTag, Collectors.toList())));
+
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
@@ -428,7 +452,7 @@ public class CollectionServiceImpl implements CollectionService {
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
-                        .tags(mapCollectionTagsToTags(collection.getId()))
+                        .tags(tagsByCollectionId.getOrDefault(collection.getId(), Collections.emptyList()))
                         .createdAt(collection.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
@@ -446,7 +470,8 @@ public class CollectionServiceImpl implements CollectionService {
     @Override
     @Transactional
     public PageCollectionResponse listAllCollectionsForAdmin(UserPrincipal currentUser, Pageable pageable) {
-        log.info("Retrieving all collections (including deleted) for user: {} with pageable: {}", currentUser.getUserId(), pageable);
+        log.info("Retrieving all collections (including deleted) for user: {} with pageable: {}",
+                currentUser.getUserId(), pageable);
 
         // Restrict to SYSTEM_ADMIN only
         if (!isSystemAdmin(currentUser.getRole())) {
@@ -456,6 +481,13 @@ public class CollectionServiceImpl implements CollectionService {
         // Fetch all collections, including deleted
         Page<Collection> page = collectionRepository.findAll(pageable);
 
+        List<UUID> collectionIds = page.getContent().stream().map(Collection::getId).toList();
+        List<CollectionTag> allTags = collectionTagRepository.findByCollectionIdIn(collectionIds);
+        Map<UUID, List<Tag>> tagsByCollectionId = allTags.stream()
+                .collect(Collectors.groupingBy(
+                        ct -> ct.getCollection().getId(),
+                        Collectors.mapping(CollectionTag::getTag, Collectors.toList())));
+
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
@@ -463,7 +495,7 @@ public class CollectionServiceImpl implements CollectionService {
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
-                        .tags(mapCollectionTagsToTags(collection.getId()))
+                        .tags(tagsByCollectionId.getOrDefault(collection.getId(), Collections.emptyList()))
                         .createdAt(collection.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
@@ -497,181 +529,190 @@ public class CollectionServiceImpl implements CollectionService {
                 .map(CollectionTag::getTag)
                 .collect(Collectors.toList());
     }
-//    @Override
-//    @Transactional
-//    public UpdateCollectionResponse updateCollection(UUID id, UpdateCollectionRequest req, UserPrincipal currentUser) {
-//        UUID currentUserId = currentUser.getUserId();
-//
-//        Collection collection = collectionRepository.findByIdAndIsDeletedFalse(id)
-//                .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
-//
-//        boolean owner = collection.getCreatedBy().equals(currentUserId);
-//        if (!owner && !isAdmin(currentUser)) {
-//            throw new AccessDeniedException("Not allowed to update this collection");
-//        }
-//
-//        //TODO: we might need to check collection tags here (not allow illegal tags pass throw)
-//        // partial update
-//        if (req.name() != null) collection.setName(req.name());
-//        if (req.description() != null) collection.setDescription(req.description());
-//
-//        if (req.tags() != null) {
-//            collection.getCollectionTags().clear();
-//            for (AddTagRequest tagReq : req.tags()) {
-//                Tag tag = tagRepository.findByTypeAndValue(tagReq.type(), tagReq.value())
-//                        .orElseGet(() -> tagRepository.save(
-//                                Tag.builder()
-//                                        .type(tagReq.type())
-//                                        .value(tagReq.value())
-//                                        .build()));
-//                CollectionTag ct = CollectionTag.builder()
-//                        .collection(collection)
-//                        .tag(tag)
-//                        .createdAt(Instant.now())
-//                        .build();
-//                collection.getCollectionTags().add(ct);
-//            }
-//        }
-//
-//        if (req.visibility() != null) {
-//            Visibility vis = parseVisibility(req.visibility());
-//            Group group = null;
-//            if (vis == Visibility.GROUP) {
-//                if (req.groupId() == null)
-//                    throw new InvalidInputException("groupId is required for group visibility");
-//                group = groupRepository.findById(req.groupId())
-//                        .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
-//                boolean isAllowed = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
-//                        group.getId(),
-//                        currentUserId,
-//                        "active"
-//                );
-//                if (!isAllowed && !isAdmin(currentUser)) {
-//                    throw new AccessDeniedException("You must be a member of the group to create a group collection");
-//                }
-//            }
-//            collection.setVisibility(req.visibility());
-//            collection.setGroup(group);
-//        }
-//
-//        collection.setUpdatedBy(currentUserId);
-//        collection.setUpdatedAt(Instant.now());
-//        Collection updatedCol = collectionRepository.save(collection);
-//
-//        log.info("Collection updated: {} by user: {}", id, currentUserId);
-//
-//        return UpdateCollectionResponse.builder()
-//                .id(updatedCol.getId())
-//                .name(updatedCol.getName())
-//                .description(updatedCol.getDescription())
-//                .visibility(updatedCol.getVisibility())
-//                .tags(updatedCol.getTags())
-//                .updatedAt(updatedCol.getUpdatedAt())
-//                .build();
-//    }
-//
-//    @Override
-//    @Transactional
-//    public CollectionResponse getCollectionById(UUID id, UserPrincipal currentUser) {
-//        Optional<Collection> opt = collectionRepository.findByIdAndIsDeletedFalse(id);
-//        if (opt.isEmpty()) {
-//            // still allow admins to see deleted resources via separate endpoint
-//            throw new ResourceNotFoundException("Collection not found");
-//        }
-//        Collection collection = opt.get();
-//        validateAccess(collection, currentUser);
-//
-//        return CollectionResponse.builder()
-//                .id(collection.getId())
-//                .name(collection.getName())
-//                .description(collection.getDescription())
-//                .visibility(collection.getVisibility())
-//                .tags(collection.getTags())
-//                .createdAt(collection.getCreatedAt())
-//                .build();
-//    }
-//
-//    @Override
-//    @Transactional
-//    public void softDeleteCollection(UUID id, UserPrincipal currentUser) {
-//        UUID currentUserId = currentUser.getUserId();
-//        User currentUserEntity = userRepository.getReferenceById(currentUserId);
-//
-//        Optional<Collection> opt = collectionRepository.findByIdAndIsDeletedFalse(id);
-//        if (opt.isEmpty()) {
-//            throw new ResourceNotFoundException("Collection not found");
-//        }
-//        Collection collection = opt.get();
-//
-//        boolean owner = collection.getCreatedBy().equals(currentUserId);
-//        // only owner and admins can perform delete
-//        if (!owner && !isAdmin(currentUser)) {
-//            throw new AccessDeniedException("Not allowed to delete this collection");
-//        }
-//
-//        collection.setIsDeleted(true);
-//        collection.setDeletedAt(Instant.now());
-//        collection.setDeletedBy(currentUserEntity);
-//
-//        collectionRepository.save(collection);
-//        log.info("Collection soft-deleted: {} by user: {}", id, currentUserId);
-//    }
-//
-//    @Override
-//    @Transactional
-//    public PageCollectionResponse listMyCollections(UserPrincipal currentUser, Pageable pageable) {
-//        UUID currentUserId = currentUser.getUserId();
-//        Page<Collection> page = collectionRepository.findByCreatedByAndIsDeletedFalseOrderByCreatedAtDesc(currentUserId, pageable);
-//
-//        List<CollectionResponse> content = page.getContent().stream()
-//                .map(collection -> new CollectionResponse(
-//                        collection.getId(),
-//                        collection.getName(),
-//                        collection.getDescription(),
-//                        collection.getVisibility(),
-//                        collection.getTags(),
-//                        collection.getCreatedAt()
-//                ))
-//                .collect(Collectors.toList());
-//
-//        return PageCollectionResponse.builder()
-//                .content(content)
-//                .totalElements(page.getTotalElements())
-//                .totalPages(page.getTotalPages())
-//                .pageNumber(page.getNumber())
-//                .pageSize(page.getSize())
-//                .build();
-//    }
-//
-//    @Override
-//    @Transactional
-//    public PageCollectionResponse listPublicCollections(Pageable pageable) {
-//        Page<Collection> page = collectionRepository.findPublicCollections(pageable);
-//
-//        List<CollectionResponse> content = page.getContent().stream()
-//                .map(collection -> new CollectionResponse(
-//                        collection.getId(),
-//                        collection.getName(),
-//                        collection.getDescription(),
-//                        collection.getVisibility(),
-//                        collection.getTags(),
-//                        collection.getCreatedAt()
-//                ))
-//                .collect(Collectors.toList());
-//
-//        return PageCollectionResponse.builder()
-//                .content(content)
-//                .totalElements(page.getTotalElements())
-//                .totalPages(page.getTotalPages())
-//                .pageNumber(page.getNumber())
-//                .pageSize(page.getSize())
-//                .build();
-//    }
-//
-//    @Override
-//    @Transactional
-//    public long countMyCollections(UserPrincipal currentUser) {
-//        UUID currentUserId = currentUser.getUserId();
-//        return collectionRepository.countByCreatedByAndIsDeletedFalse(currentUserId);
-//    }
+    // @Override
+    // @Transactional
+    // public UpdateCollectionResponse updateCollection(UUID id,
+    // UpdateCollectionRequest req, UserPrincipal currentUser) {
+    // UUID currentUserId = currentUser.getUserId();
+    //
+    // Collection collection = collectionRepository.findByIdAndIsDeletedFalse(id)
+    // .orElseThrow(() -> new ResourceNotFoundException("Collection not found"));
+    //
+    // boolean owner = collection.getCreatedBy().equals(currentUserId);
+    // if (!owner && !isAdmin(currentUser)) {
+    // throw new AccessDeniedException("Not allowed to update this collection");
+    // }
+    //
+    // //TODO: we might need to check collection tags here (not allow illegal tags
+    // pass throw)
+    // // partial update
+    // if (req.name() != null) collection.setName(req.name());
+    // if (req.description() != null) collection.setDescription(req.description());
+    //
+    // if (req.tags() != null) {
+    // collection.getCollectionTags().clear();
+    // for (AddTagRequest tagReq : req.tags()) {
+    // Tag tag = tagRepository.findByTypeAndValue(tagReq.type(), tagReq.value())
+    // .orElseGet(() -> tagRepository.save(
+    // Tag.builder()
+    // .type(tagReq.type())
+    // .value(tagReq.value())
+    // .build()));
+    // CollectionTag ct = CollectionTag.builder()
+    // .collection(collection)
+    // .tag(tag)
+    // .createdAt(Instant.now())
+    // .build();
+    // collection.getCollectionTags().add(ct);
+    // }
+    // }
+    //
+    // if (req.visibility() != null) {
+    // Visibility vis = parseVisibility(req.visibility());
+    // Group group = null;
+    // if (vis == Visibility.GROUP) {
+    // if (req.groupId() == null)
+    // throw new InvalidInputException("groupId is required for group visibility");
+    // group = groupRepository.findById(req.groupId())
+    // .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
+    // boolean isAllowed = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
+    // group.getId(),
+    // currentUserId,
+    // "active"
+    // );
+    // if (!isAllowed && !isAdmin(currentUser)) {
+    // throw new AccessDeniedException("You must be a member of the group to create
+    // a group collection");
+    // }
+    // }
+    // collection.setVisibility(req.visibility());
+    // collection.setGroup(group);
+    // }
+    //
+    // collection.setUpdatedBy(currentUserId);
+    // collection.setUpdatedAt(Instant.now());
+    // Collection updatedCol = collectionRepository.save(collection);
+    //
+    // log.info("Collection updated: {} by user: {}", id, currentUserId);
+    //
+    // return UpdateCollectionResponse.builder()
+    // .id(updatedCol.getId())
+    // .name(updatedCol.getName())
+    // .description(updatedCol.getDescription())
+    // .visibility(updatedCol.getVisibility())
+    // .tags(updatedCol.getTags())
+    // .updatedAt(updatedCol.getUpdatedAt())
+    // .build();
+    // }
+    //
+    // @Override
+    // @Transactional
+    // public CollectionResponse getCollectionById(UUID id, UserPrincipal
+    // currentUser) {
+    // Optional<Collection> opt =
+    // collectionRepository.findByIdAndIsDeletedFalse(id);
+    // if (opt.isEmpty()) {
+    // // still allow admins to see deleted resources via separate endpoint
+    // throw new ResourceNotFoundException("Collection not found");
+    // }
+    // Collection collection = opt.get();
+    // validateAccess(collection, currentUser);
+    //
+    // return CollectionResponse.builder()
+    // .id(collection.getId())
+    // .name(collection.getName())
+    // .description(collection.getDescription())
+    // .visibility(collection.getVisibility())
+    // .tags(collection.getTags())
+    // .createdAt(collection.getCreatedAt())
+    // .build();
+    // }
+    //
+    // @Override
+    // @Transactional
+    // public void softDeleteCollection(UUID id, UserPrincipal currentUser) {
+    // UUID currentUserId = currentUser.getUserId();
+    // User currentUserEntity = userRepository.getReferenceById(currentUserId);
+    //
+    // Optional<Collection> opt =
+    // collectionRepository.findByIdAndIsDeletedFalse(id);
+    // if (opt.isEmpty()) {
+    // throw new ResourceNotFoundException("Collection not found");
+    // }
+    // Collection collection = opt.get();
+    //
+    // boolean owner = collection.getCreatedBy().equals(currentUserId);
+    // // only owner and admins can perform delete
+    // if (!owner && !isAdmin(currentUser)) {
+    // throw new AccessDeniedException("Not allowed to delete this collection");
+    // }
+    //
+    // collection.setIsDeleted(true);
+    // collection.setDeletedAt(Instant.now());
+    // collection.setDeletedBy(currentUserEntity);
+    //
+    // collectionRepository.save(collection);
+    // log.info("Collection soft-deleted: {} by user: {}", id, currentUserId);
+    // }
+    //
+    // @Override
+    // @Transactional
+    // public PageCollectionResponse listMyCollections(UserPrincipal currentUser,
+    // Pageable pageable) {
+    // UUID currentUserId = currentUser.getUserId();
+    // Page<Collection> page =
+    // collectionRepository.findByCreatedByAndIsDeletedFalseOrderByCreatedAtDesc(currentUserId,
+    // pageable);
+    //
+    // List<CollectionResponse> content = page.getContent().stream()
+    // .map(collection -> new CollectionResponse(
+    // collection.getId(),
+    // collection.getName(),
+    // collection.getDescription(),
+    // collection.getVisibility(),
+    // collection.getTags(),
+    // collection.getCreatedAt()
+    // ))
+    // .collect(Collectors.toList());
+    //
+    // return PageCollectionResponse.builder()
+    // .content(content)
+    // .totalElements(page.getTotalElements())
+    // .totalPages(page.getTotalPages())
+    // .pageNumber(page.getNumber())
+    // .pageSize(page.getSize())
+    // .build();
+    // }
+    //
+    // @Override
+    // @Transactional
+    // public PageCollectionResponse listPublicCollections(Pageable pageable) {
+    // Page<Collection> page = collectionRepository.findPublicCollections(pageable);
+    //
+    // List<CollectionResponse> content = page.getContent().stream()
+    // .map(collection -> new CollectionResponse(
+    // collection.getId(),
+    // collection.getName(),
+    // collection.getDescription(),
+    // collection.getVisibility(),
+    // collection.getTags(),
+    // collection.getCreatedAt()
+    // ))
+    // .collect(Collectors.toList());
+    //
+    // return PageCollectionResponse.builder()
+    // .content(content)
+    // .totalElements(page.getTotalElements())
+    // .totalPages(page.getTotalPages())
+    // .pageNumber(page.getNumber())
+    // .pageSize(page.getSize())
+    // .build();
+    // }
+    //
+    // @Override
+    // @Transactional
+    // public long countMyCollections(UserPrincipal currentUser) {
+    // UUID currentUserId = currentUser.getUserId();
+    // return collectionRepository.countByCreatedByAndIsDeletedFalse(currentUserId);
+    // }
 }

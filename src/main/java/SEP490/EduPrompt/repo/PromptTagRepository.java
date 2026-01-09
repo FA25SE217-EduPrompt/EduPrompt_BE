@@ -21,5 +21,8 @@ public interface PromptTagRepository extends JpaRepository<PromptTag, PromptTagI
     List<PromptTag> findExisting(@Param("promptId") UUID promptId, @Param("tagIds") List<UUID> tagIds);
 
     @EntityGraph(attributePaths = {"tag"})
+    List<PromptTag> findByPromptIdIn(List<UUID> promptIds);
+
+    @EntityGraph(attributePaths = {"tag"})
     List<PromptTag> findByPrompt_Id(UUID promptId);
 }

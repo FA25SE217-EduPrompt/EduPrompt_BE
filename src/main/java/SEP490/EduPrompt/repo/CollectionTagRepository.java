@@ -23,4 +23,7 @@ public interface CollectionTagRepository extends JpaRepository<CollectionTag, Co
 
     @EntityGraph(attributePaths = {"tag"})
     List<CollectionTag> findByCollection_Id(UUID collectionId);
+
+    @EntityGraph(attributePaths = {"tag"})
+    List<CollectionTag> findByCollectionIdIn(List<UUID> collectionIds);
 }

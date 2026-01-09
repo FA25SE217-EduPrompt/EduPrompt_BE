@@ -3,6 +3,7 @@ package SEP490.EduPrompt.repo;
 import SEP490.EduPrompt.model.Prompt;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -48,9 +49,11 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
     Page<Prompt> findByIsDeletedFalseOrderByUpdatedAtAsc(Pageable pageable);
 
     // Prompts by userId
+    @EntityGraph(attributePaths = {"user", "collection"})
     Page<Prompt> findByUserIdAndIsDeletedFalse(UUID userId, Pageable pageable);
 
     // Prompts by collectionId
+    @EntityGraph(attributePaths = {"user", "collection"})
     Page<Prompt> findByCollectionIdAndIsDeletedFalse(UUID collectionId, Pageable pageable);
 
     //
@@ -89,8 +92,7 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
     List<Prompt> findByIndexingStatusAndIsDeletedAndVisibilityAndGeminiFileIdIsNotNull(
             String indexingStatus,
             Boolean isDeleted,
-            String visibility
-    );
+            String visibility);
 
     List<Prompt> findByIndexingStatusAndIsDeleted(String indexingStatus, boolean isDeleted);
 

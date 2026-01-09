@@ -269,12 +269,20 @@ public class PromptServiceImpl implements PromptService {
         // Fetch prompts for the current user
         Page<Prompt> promptPage = promptRepository.findByUserIdAndIsDeletedFalse(currentUser.getUserId(), pageable);
 
+        // Batch fetch tags for all prompts
+        List<UUID> promptIds = promptPage.getContent().stream().map(Prompt::getId).toList();
+        List<PromptTag> allPromptTags = promptTagRepository.findByPromptIdIn(promptIds);
+
+        // Group tags by prompt ID
+        Map<UUID, List<Tag>> tagsByPromptId = allPromptTags.stream()
+                .collect(Collectors.groupingBy(
+                        pt -> pt.getPrompt().getId(),
+                        Collectors.mapping(PromptTag::getTag, Collectors.toList())));
+
         // Build response
         List<DetailPromptResponse> detailPromptRespons = promptPage.getContent().stream()
                 .map(prompt -> {
-                    List<Tag> tags = promptTagRepository.findByPromptId(prompt.getId()).stream()
-                            .map(PromptTag::getTag)
-                            .toList();
+                    List<Tag> tags = tagsByPromptId.getOrDefault(prompt.getId(), Collections.emptyList());
 
                     String userName = prompt.getUser() != null
                             ? prompt.getUser().getFirstName() + " " + prompt.getUser().getLastName()
@@ -322,6 +330,10 @@ public class PromptServiceImpl implements PromptService {
     @Transactional(readOnly = true)
     public PaginatedPromptResponse getNonPrivatePrompts(UserPrincipal currentUser, Pageable pageable) {
         Specification<Prompt> spec = (root, query, cb) -> {
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                root.fetch("user", JoinType.LEFT);
+                root.fetch("collection", JoinType.LEFT);
+            }
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(root.get("visibility").in(Visibility.PUBLIC.name(), Visibility.SCHOOL.name(),
                     Visibility.GROUP.name()));

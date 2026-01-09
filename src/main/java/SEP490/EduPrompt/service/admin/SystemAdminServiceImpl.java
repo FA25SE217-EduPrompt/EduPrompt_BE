@@ -109,6 +109,13 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         // Fetch all non-deleted collections
         Page<Collection> page = collectionRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc(pageable);
 
+        List<UUID> collectionIds = page.getContent().stream().map(Collection::getId).toList();
+        List<CollectionTag> allTags = collectionTagRepository.findByCollectionIdIn(collectionIds);
+        Map<UUID, List<Tag>> tagsByCollectionId = allTags.stream()
+                .collect(Collectors.groupingBy(
+                        ct -> ct.getCollection().getId(),
+                        Collectors.mapping(CollectionTag::getTag, Collectors.toList())));
+
         // Map to CollectionResponse
         List<CollectionResponse> content = page.getContent().stream()
                 .map(collection -> CollectionResponse.builder()
@@ -116,7 +123,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                         .name(collection.getName())
                         .description(collection.getDescription())
                         .visibility(collection.getVisibility())
-                        .tags(mapCollectionTagsToTags(collection.getId()))
+                        .tags(tagsByCollectionId.getOrDefault(collection.getId(), Collections.emptyList()))
                         .createdAt(collection.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
@@ -191,6 +198,14 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         }
         Page<Prompt> page;
         page = promptRepository.findAll(pageable);
+
+        List<UUID> promptIds = page.getContent().stream().map(Prompt::getId).toList();
+        List<PromptTag> allTags = promptTagRepository.findByPromptIdIn(promptIds);
+        Map<UUID, List<Tag>> tagsByPromptId = allTags.stream()
+                .collect(Collectors.groupingBy(
+                        pt -> pt.getPrompt().getId(),
+                        Collectors.mapping(PromptTag::getTag, Collectors.toList())));
+
         List<PromptAllResponse> content = page.getContent().stream()
                 .map(prompt -> PromptAllResponse.builder()
                         .id(prompt.getId())
@@ -215,7 +230,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                         .geminiFileId(prompt.getGeminiFileId())
                         .lastIndexedAt(prompt.getLastIndexedAt())
                         .indexingStatus(prompt.getIndexingStatus())
-                        .tags(mapPromptTagsToTags(prompt.getId()))
+                        .tags(tagsByPromptId.getOrDefault(prompt.getId(), Collections.emptyList()))
                         .shareToken(prompt.getShareToken())
                         .build())
                 .toList();
@@ -825,7 +840,9 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .name(updatedCollection.getName())
                 .description(updatedCollection.getDescription())
                 .visibility(updatedCollection.getVisibility())
-                .tags(mapCollectionTagsToTags(updatedCollection.getId()))
+                .tags(collectionTagRepository.findByCollection_Id(updatedCollection.getId()).stream()
+                        .map(CollectionTag::getTag)
+                        .collect(Collectors.toList()))
                 .build();
     }
 
@@ -930,21 +947,6 @@ public class SystemAdminServiceImpl implements SystemAdminService {
 
         groupRepository.save(group);
         log.info("Group soft-deleted: {} by user: {}", id, currentUserId);
-    }
-
-    // HELPER
-    private List<Tag> mapCollectionTagsToTags(UUID collectionId) {
-        List<CollectionTag> collectionTags = collectionTagRepository.findByCollectionId(collectionId);
-        return collectionTags.stream()
-                .map(CollectionTag::getTag)
-                .collect(Collectors.toList());
-    }
-
-    private List<Tag> mapPromptTagsToTags(UUID promptId) {
-        List<PromptTag> promptTags = promptTagRepository.findByPromptId(promptId);
-        return promptTags.stream()
-                .map(PromptTag::getTag)
-                .collect(Collectors.toList());
     }
 
     private DetailPromptResponse buildPromptResponse(Prompt prompt) {
