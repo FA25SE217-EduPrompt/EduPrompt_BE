@@ -2,6 +2,8 @@ package SEP490.EduPrompt.prompt;
 
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
+import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
@@ -890,5 +892,415 @@ class PromptServiceImplTest {
         // Assert
         assertEquals("Unknown", response.getFullName());
         assertNull(response.getCollectionName());
+    }
+
+    // ======================================================================//
+    // ====================== UPDATE PROMPT METADATA ========================//
+    // ======================================================================//
+
+    @Test
+    @DisplayName("Case 1: Update Metadata - Success - Full Update with Tags")
+    void updatePromptMetadata_WhenValidFullRequest_ShouldUpdateAllFields() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptMetadataRequest request = UpdatePromptMetadataRequest.builder()
+                .title("Updated Title")
+                .description("Updated Desc")
+                .instruction("Updated Instr")
+                .context("Updated Context")
+                .inputExample("Updated In")
+                .outputFormat("Updated Out")
+                .constraints("Updated Const")
+                .tagIds(List.of(UUID.randomUUID()))
+                .build();
+
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .title("Old Title")
+                .userId(userId)
+                .user(user)
+                .build();
+
+        Tag tag = Tag.builder().id(UUID.randomUUID()).value("New Tag").build();
+
+        // 1. Mock Find
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // 2. Mock Permission
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+
+        // 3. Mock Tags
+        when(tagRepository.findAllById(request.getTagIds())).thenReturn(List.of(tag));
+
+        // 4. Mock Save
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        DetailPromptResponse response = promptService.updatePromptMetadata(promptId, request, currentUser);
+
+        // Assert
+        assertEquals("Updated Title", response.getTitle());
+        assertEquals("Updated Desc", response.getDescription());
+
+        // Verify Prompt Updated fields
+        assertEquals("Updated Instr", prompt.getInstruction());
+        assertEquals("Updated Const", prompt.getConstraints());
+        assertEquals(userId, prompt.getUpdatedBy());
+
+        // Verify Tag Updates (Delete old, Save new)
+        verify(promptTagRepository).deleteByPromptId(promptId);
+        verify(promptTagRepository).saveAll(promptTagCaptor.capture());
+        assertEquals(1, promptTagCaptor.getValue().size());
+        assertEquals(tag.getId(), promptTagCaptor.getValue().get(0).getTag().getId());
+    }
+
+    @Test
+    @DisplayName("Case 2: Update Metadata - Success - Partial Update (Only Title)")
+    void updatePromptMetadata_WhenPartialRequest_ShouldUpdateOnlyProvidedFields() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptMetadataRequest request = UpdatePromptMetadataRequest.builder()
+                .title("New Title Only")
+                .build(); // Other fields null
+
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .title("Old Title")
+                .description("Old Desc") // Should stay
+                .user(user)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        DetailPromptResponse response = promptService.updatePromptMetadata(promptId, request, currentUser);
+
+        // Assert
+        assertEquals("New Title Only", prompt.getTitle());
+        assertEquals("Old Desc", prompt.getDescription()); // Unchanged
+
+        // Verify Tags were NOT touched because tagIds was null
+        verify(promptTagRepository, never()).deleteByPromptId(any());
+    }
+
+    @Test
+    @DisplayName("Case 3: Update Metadata - Success - Empty Tag List (Clear Tags)")
+    void updatePromptMetadata_WhenEmptyTagList_ShouldRemoveAllTags() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptMetadataRequest request = UpdatePromptMetadataRequest.builder()
+                .tagIds(Collections.emptyList()) // Empty list explicitly
+                .build();
+
+        Prompt prompt = Prompt.builder().id(promptId).user(user).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        promptService.updatePromptMetadata(promptId, request, currentUser);
+
+        // Assert
+        verify(promptTagRepository).deleteByPromptId(promptId);
+        verify(promptTagRepository, never()).saveAll(any()); // No new tags to save
+    }
+
+    @Test
+    @DisplayName("Case 4: Update Metadata - Fail - Prompt Not Found")
+    void updatePromptMetadata_WhenPromptNotFound_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptMetadataRequest request = UpdatePromptMetadataRequest.builder().build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.updatePromptMetadata(promptId, request, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 5: Update Metadata - Fail - Access Denied")
+    void updatePromptMetadata_WhenAccessDenied_ShouldThrowAccessDeniedException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptMetadataRequest request = UpdatePromptMetadataRequest.builder().build();
+        Prompt prompt = Prompt.builder().id(promptId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.updatePromptMetadata(promptId, request, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 6: Update Metadata - Fail - Tags Not Found")
+    void updatePromptMetadata_WhenTagsNotFound_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptMetadataRequest request = UpdatePromptMetadataRequest.builder()
+                .tagIds(List.of(UUID.randomUUID()))
+                .build();
+        Prompt prompt = Prompt.builder().id(promptId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(tagRepository.findAllById(anyList())).thenReturn(Collections.emptyList()); // No tags found
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.updatePromptMetadata(promptId, request, currentUser));
+    }
+
+    // ======================================================================//
+    // ====================== UPDATE PROMPT VISIBILITY ======================//
+    // ======================================================================//
+
+    @Test
+    @DisplayName("Case 1: Update Visibility - Success - Simple Change (PUBLIC)")
+    void updatePromptVisibility_WhenSimpleChange_ShouldUpdateVisibility() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptVisibilityRequest request = UpdatePromptVisibilityRequest.builder()
+                .visibility("PUBLIC")
+                .build();
+
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .visibility("PRIVATE")
+                .user(user)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        DetailPromptResponse response = promptService.updatePromptVisibility(promptId, request, currentUser);
+
+        // Assert
+        assertEquals("PUBLIC", response.getVisibility());
+    }
+
+    @Test
+    @DisplayName("Case 2: Update Visibility - Success - Auto-Remove From Collection")
+    void updatePromptVisibility_WhenCollectionValidationFails_ShouldRemoveFromCollection() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptVisibilityRequest request = UpdatePromptVisibilityRequest.builder()
+                .visibility("PRIVATE")
+                .build();
+
+        Collection collection = Collection.builder().id(UUID.randomUUID()).build();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .visibility("PUBLIC")
+                .collection(collection) // Currently in collection
+                .user(user)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+
+        // Mock Validation Failure -> triggers catch block
+        doThrow(new IllegalArgumentException("Collection cannot contain private prompts"))
+                .when(permissionService).validateCollectionVisibility(collection, "PRIVATE");
+
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        DetailPromptResponse response = promptService.updatePromptVisibility(promptId, request, currentUser);
+
+        // Assert
+        assertEquals("PRIVATE", response.getVisibility());
+        assertNull(response.getCollectionName()); // Should be removed from collection
+        assertNull(prompt.getCollection());
+    }
+
+    @Test
+    @DisplayName("Case 3: Update Visibility - Success - GROUP (Move to Collection)")
+    void updatePromptVisibility_WhenMovingToGroupCollection_ShouldUpdateSuccess() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID newCollectionId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+
+        UpdatePromptVisibilityRequest request = UpdatePromptVisibilityRequest.builder()
+                .visibility("GROUP")
+                .collectionId(newCollectionId) // Moving here
+                .build();
+
+        Prompt prompt = Prompt.builder().id(promptId).user(user).build(); // Standalone initially
+
+        Collection newCollection = Collection.builder()
+                .id(newCollectionId)
+                .groupId(groupId) // Has Group
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+
+        when(collectionRepository.findById(newCollectionId)).thenReturn(Optional.of(newCollection));
+
+        // Checks
+        when(permissionService.canEditCollection(currentUser, newCollection)).thenReturn(true);
+        when(permissionService.isGroupMember(currentUser, groupId)).thenReturn(true);
+        doNothing().when(permissionService).validateCollectionVisibility(newCollection, "GROUP");
+
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        promptService.updatePromptVisibility(promptId, request, currentUser);
+
+        // Assert
+        assertEquals("GROUP", prompt.getVisibility());
+        assertEquals(newCollection, prompt.getCollection());
+    }
+
+    @Test
+    @DisplayName("Case 4: Update Visibility - Fail - Invalid Enum Value")
+    void updatePromptVisibility_WhenInvalidEnum_ShouldThrowInvalidInputException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptVisibilityRequest request = UpdatePromptVisibilityRequest.builder()
+                .visibility("INVALID_ENUM")
+                .build();
+
+        Prompt prompt = Prompt.builder().id(promptId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+
+        // Act & Assert
+        assertThrows(InvalidInputException.class,
+                () -> promptService.updatePromptVisibility(promptId, request, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 5: Update Visibility - Fail - GROUP without Collection")
+    void updatePromptVisibility_WhenGroupNoCollection_ShouldThrowInvalidInputException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UpdatePromptVisibilityRequest request = UpdatePromptVisibilityRequest.builder()
+                .visibility("GROUP")
+                .collectionId(null) // No new collection
+                .build();
+
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .collection(null) // No existing collection
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+
+        // Act & Assert
+        assertThrows(InvalidInputException.class,
+                () -> promptService.updatePromptVisibility(promptId, request, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 6: Update Visibility - Fail - GROUP Collection has No Group")
+    void updatePromptVisibility_WhenGroupCollectionHasNoGroupId_ShouldThrowException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID collId = UUID.randomUUID();
+        UpdatePromptVisibilityRequest request = UpdatePromptVisibilityRequest.builder()
+                .visibility("GROUP")
+                .collectionId(collId)
+                .build();
+
+        Prompt prompt = Prompt.builder().id(promptId).build();
+        Collection collection = Collection.builder().id(collId).groupId(null).build(); // No Group
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(collectionRepository.findById(collId)).thenReturn(Optional.of(collection));
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class,
+                () -> promptService.updatePromptVisibility(promptId, request, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 7: Update Visibility - Fail - Not Group Member")
+    void updatePromptVisibility_WhenNotGroupMember_ShouldThrowAccessDenied() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID collId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+
+        UpdatePromptVisibilityRequest request = UpdatePromptVisibilityRequest.builder()
+                .visibility("GROUP")
+                .collectionId(collId)
+                .build();
+
+        Prompt prompt = Prompt.builder().id(promptId).build();
+        Collection collection = Collection.builder().id(collId).groupId(groupId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(collectionRepository.findById(collId)).thenReturn(Optional.of(collection));
+
+        when(permissionService.canEditCollection(currentUser, collection)).thenReturn(true);
+        // Fail here
+        when(permissionService.isGroupMember(currentUser, groupId)).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.updatePromptVisibility(promptId, request, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 8: Update Visibility - Fail - SCHOOL (User No School)")
+    void updatePromptVisibility_WhenSchoolAndUserNoSchool_ShouldThrowInvalidInputException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UserPrincipal noSchoolUser = UserPrincipal.builder().userId(userId).schoolId(null).build();
+
+        UpdatePromptVisibilityRequest request = UpdatePromptVisibilityRequest.builder()
+                .visibility("SCHOOL")
+                .build();
+
+        Prompt prompt = Prompt.builder().id(promptId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(noSchoolUser, prompt)).thenReturn(true);
+
+        // Act & Assert
+        assertThrows(InvalidInputException.class,
+                () -> promptService.updatePromptVisibility(promptId, request, noSchoolUser));
+    }
+
+    @Test
+    @DisplayName("Case 9: Update Visibility - Fail - Adding to Collection Access Denied")
+    void updatePromptVisibility_WhenAddingToCollectionDenied_ShouldThrowAccessDenied() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID collId = UUID.randomUUID();
+
+        UpdatePromptVisibilityRequest request = UpdatePromptVisibilityRequest.builder()
+                .visibility("PUBLIC")
+                .collectionId(collId)
+                .build();
+
+        Prompt prompt = Prompt.builder().id(promptId).build();
+        Collection collection = Collection.builder().id(collId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(collectionRepository.findById(collId)).thenReturn(Optional.of(collection));
+
+        // Fail: User cannot edit target collection
+        when(permissionService.canEditCollection(currentUser, collection)).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.updatePromptVisibility(promptId, request, currentUser));
     }
 }
