@@ -1,9 +1,7 @@
 package SEP490.EduPrompt.prompt;
 
 import SEP490.EduPrompt.dto.request.prompt.*;
-import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
-import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
-import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.*;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
@@ -15,6 +13,8 @@ import SEP490.EduPrompt.repo.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.permission.PermissionService;
 import SEP490.EduPrompt.service.prompt.PromptServiceImpl;
+import SEP490.EduPrompt.service.prompt.PromptVersionService;
+import SEP490.EduPrompt.service.prompt.PromptVersionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,9 +54,13 @@ class PromptServiceImplTest {
     @Mock private GroupRepository groupRepository;
     @Mock private UserRepository userRepository;
     @Mock private PermissionService permissionService;
+    @Mock private PromptVersionRepository promptVersionRepository;
 
     @InjectMocks
     private PromptServiceImpl promptService;
+
+    @InjectMocks
+    private PromptVersionServiceImpl promptVersionService;
 
     @Captor
     private ArgumentCaptor<Prompt> promptCaptor;
@@ -1561,5 +1565,305 @@ class PromptServiceImplTest {
                 () -> promptService.softDeletePrompt(promptId, currentUser));
 
         verify(promptRepository, never()).save(any());
+    }
+
+    // ======================================================================//
+    // ========================= PROMPT VIEW LOG ============================//
+    // ======================================================================//
+
+    // Method: logPromptView (3 Cases)
+    @Test
+    @DisplayName("Case 1: Log View - Success - First View (Decrements Quota)")
+    void logPromptView_WhenFirstTimeView_ShouldSaveLogAndDecrementQuota() {
+        // Arrange
+        CreatePromptViewLogRequest request = new CreatePromptViewLogRequest(UUID.randomUUID());
+        Prompt prompt = Prompt.builder().id(request.promptId()).build();
+
+        UserQuota quota = UserQuota.builder()
+                .userId(userId)
+                .promptUnlockRemaining(5)
+                .build();
+
+        // Mock basic retrievals
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(promptRepository.findById(request.promptId())).thenReturn(Optional.of(prompt));
+        when(userQuotaRepository.findByUserId(userId)).thenReturn(Optional.of(quota));
+
+        // Mock Log Lookup -> Empty (First time)
+        when(promptViewLogRepository.findPromptViewLogByPromptIdAndUserId(request.promptId(), userId))
+                .thenReturn(Optional.empty());
+
+        // Mock Save
+        when(promptViewLogRepository.save(any(PromptViewLog.class))).thenAnswer(i -> {
+            PromptViewLog log = i.getArgument(0);
+            log.setId(UUID.randomUUID());
+            return log;
+        });
+
+        // Act
+        PromptViewLogResponse response = promptService.logPromptView(currentUser, request);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(request.promptId(), response.promptId());
+
+        // Critical Business Logic Check: Quota must decrease
+        assertEquals(4, quota.getPromptUnlockRemaining());
+        verify(userQuotaRepository).save(quota);
+        verify(promptViewLogRepository).save(any(PromptViewLog.class));
+    }
+
+    @Test
+    @DisplayName("Case 2: Log View - Success - Repeat View (No Quota Cost)")
+    void logPromptView_WhenAlreadyViewed_ShouldReturnExistingLogWithoutDecrementing() {
+        // Arrange
+        CreatePromptViewLogRequest request = new CreatePromptViewLogRequest(UUID.randomUUID());
+        Prompt prompt = Prompt.builder().id(request.promptId()).build();
+        UserQuota quota = UserQuota.builder().promptUnlockRemaining(5).build();
+
+        PromptViewLog existingLog = PromptViewLog.builder()
+                .id(UUID.randomUUID())
+                .user(user)
+                .prompt(prompt)
+                .build();
+
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(promptRepository.findById(request.promptId())).thenReturn(Optional.of(prompt));
+        when(userQuotaRepository.findByUserId(userId)).thenReturn(Optional.of(quota));
+
+        // Mock Log Lookup -> Present (Already viewed)
+        when(promptViewLogRepository.findPromptViewLogByPromptIdAndUserId(request.promptId(), userId))
+                .thenReturn(Optional.of(existingLog));
+
+        // Act
+        PromptViewLogResponse response = promptService.logPromptView(currentUser, request);
+
+        // Assert
+        assertEquals(response.id(), response.id());
+        assertEquals(5, quota.getPromptUnlockRemaining()); // Quota MUST NOT change
+        verify(promptViewLogRepository, never()).save(any());
+        verify(userQuotaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Case 3: Log View - Fail - Quota Exceeded (First View)")
+    void logPromptView_WhenQuotaExceededAndNotViewed_ShouldThrowQuotaExceededException() {
+        // Arrange
+        CreatePromptViewLogRequest request = new CreatePromptViewLogRequest(UUID.randomUUID());
+        Prompt prompt = Prompt.builder().id(request.promptId()).build();
+
+        UserQuota quota = UserQuota.builder()
+                .userId(userId)
+                .promptUnlockRemaining(0) // Empty Quota
+                .quotaResetDate(Instant.now())
+                .build();
+
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(promptRepository.findById(request.promptId())).thenReturn(Optional.of(prompt));
+        when(userQuotaRepository.findByUserId(userId)).thenReturn(Optional.of(quota));
+
+        // Not viewed yet
+        when(promptViewLogRepository.findPromptViewLogByPromptIdAndUserId(request.promptId(), userId))
+                .thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(QuotaExceededException.class,
+                () -> promptService.logPromptView(currentUser, request));
+
+        verify(promptViewLogRepository, never()).save(any());
+    }
+
+    // Method: hasUserViewedPrompt (2 Cases)
+    @Test
+    @DisplayName("Case 1: Has Viewed - Returns True")
+    void hasUserViewedPrompt_WhenLogExists_ShouldReturnTrue() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        when(promptViewLogRepository.findPromptViewLogByPromptIdAndUserId(promptId, userId))
+                .thenReturn(Optional.of(new PromptViewLog()));
+
+        // Act
+        boolean result = promptService.hasUserViewedPrompt(currentUser, promptId);
+
+        // Assert
+        assertTrue(result);
+    }
+
+    @Test
+    @DisplayName("Case 2: Has Viewed - Returns False")
+    void hasUserViewedPrompt_WhenLogMissing_ShouldReturnFalse() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        when(promptViewLogRepository.findPromptViewLogByPromptIdAndUserId(promptId, userId))
+                .thenReturn(Optional.empty());
+
+        // Act
+        boolean result = promptService.hasUserViewedPrompt(currentUser, promptId);
+
+        // Assert
+        assertFalse(result);
+    }
+
+    // ======================================================================//
+    // ========================= PROMPT VERSIONING ==========================//
+    // ======================================================================//
+
+    // Method: createPromptVersion (2 Cases)
+    @Test
+    @DisplayName("Case 2: Create Version - Fail - Prompt Not Found")
+    void createPromptVersion_WhenPromptMissing_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        when(promptRepository.findById(promptId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.createPromptVersion(promptId, CreatePromptVersionRequest.builder().build(), currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 3: Create Version - Fail - Access Denied")
+    void createPromptVersion_WhenNoEditPermission_ShouldThrowAccessDeniedException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder().id(promptId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.createPromptVersion(promptId, CreatePromptVersionRequest.builder().build(), currentUser));
+    }
+
+    // Method: getPromptVersions (2 Cases)
+    @Test
+    @DisplayName("Case 1: Get Versions - Success - Returns Sorted List")
+    void getPromptVersions_WhenAuthorized_ShouldReturnSortedVersions() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder().id(promptId).build();
+        PromptVersion v1 = PromptVersion.builder().prompt(prompt).versionNumber(1).build();
+        PromptVersion v2 = PromptVersion.builder().prompt(prompt).versionNumber(2).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canAccessPrompt(prompt, currentUser)).thenReturn(true);
+        when(promptVersionRepository.findByPromptIdOrderByVersionNumberDesc(promptId))
+                .thenReturn(List.of(v2, v1));
+
+        // Act
+        List<PromptVersionResponse> response = promptService.getPromptVersions(promptId, currentUser);
+
+        // Assert
+        assertEquals(2, response.size());
+        assertEquals(2, response.get(0).versionNumber()); // Descending order check
+    }
+
+    @Test
+    @DisplayName("Case 2: Get Versions - Fail - Access Denied")
+    void getPromptVersions_WhenAccessDenied_ShouldThrowAccessDeniedException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder().id(promptId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canAccessPrompt(prompt, currentUser)).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.getPromptVersions(promptId, currentUser));
+    }
+
+    // Method: rollbackToVersion (4 Cases)
+    @Test
+    @DisplayName("Case 1: Rollback - Success - Updates Prompt Data")
+    void rollbackToVersion_WhenValid_ShouldUpdatePromptFieldsAndCurrentVersion() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .instruction("Current Instruction")
+                .build();
+
+        PromptVersion targetVersion = PromptVersion.builder()
+                .id(versionId)
+                .prompt(prompt) // Correct association
+                .instruction("Old Instruction")
+                .constraints("Old Constraints")
+                .inputExample("Old Input")
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(promptVersionRepository.findById(versionId)).thenReturn(Optional.of(targetVersion));
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        DetailPromptResponse response = promptService.rollbackToVersion(promptId, versionId, currentUser);
+
+        // Assert
+        assertEquals("Old Instruction", prompt.getInstruction()); // Content updated
+        assertEquals("Old Constraints", prompt.getConstraints());
+        assertEquals(targetVersion, prompt.getCurrentVersion());  // Metadata updated
+        assertEquals(userId, prompt.getUpdatedBy());
+    }
+
+    @Test
+    @DisplayName("Case 2: Rollback - Fail - Version Mismatch (Different Prompt)")
+    void rollbackToVersion_WhenVersionNotBelongToPrompt_ShouldThrowInvalidActionException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+
+        Prompt prompt = Prompt.builder().id(promptId).build();
+        Prompt otherPrompt = Prompt.builder().id(UUID.randomUUID()).build(); // Different Prompt
+
+        PromptVersion version = PromptVersion.builder()
+                .id(versionId)
+                .prompt(otherPrompt) // Version linked to other prompt
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(promptVersionRepository.findById(versionId)).thenReturn(Optional.of(version));
+
+        // Act & Assert
+        assertThrows(InvalidActionException.class,
+                () -> promptService.rollbackToVersion(promptId, versionId, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 3: Rollback - Fail - Access Denied")
+    void rollbackToVersion_WhenNoEditPermission_ShouldThrowAccessDeniedException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder().id(promptId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.rollbackToVersion(promptId, versionId, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 4: Rollback - Fail - Version Not Found")
+    void rollbackToVersion_WhenVersionNotFound_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder().id(promptId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(promptVersionRepository.findById(versionId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.rollbackToVersion(promptId, versionId, currentUser));
     }
 }
