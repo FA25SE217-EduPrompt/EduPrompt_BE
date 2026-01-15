@@ -1,9 +1,6 @@
 package SEP490.EduPrompt.prompt;
 
-import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
-import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
-import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
-import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
+import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
@@ -1302,5 +1299,267 @@ class PromptServiceImplTest {
         // Act & Assert
         assertThrows(AccessDeniedException.class,
                 () -> promptService.updatePromptVisibility(promptId, request, currentUser));
+    }
+
+    // ======================================================================//
+    // ========================== FILTER PROMPTS ============================//
+    // ======================================================================//
+
+    @Test
+    @DisplayName("Case 1: Filter Prompts - Success - Valid Request Returns Results")
+    void filterPrompts_WhenRequestIsValid_ShouldReturnPaginatedResponse() {
+        // Arrange
+        PromptFilterRequest request = new PromptFilterRequest(
+                userId, "CollName", null, null, null, null, "Title", false
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Prompt prompt = Prompt.builder()
+                .id(UUID.randomUUID())
+                .title("Filtered Prompt")
+                .user(user)
+                .build();
+
+        Page<Prompt> promptPage = new PageImpl<>(List.of(prompt));
+
+        // 1. Mock Validation Checks (All pass)
+        when(collectionRepository.existsByNameIgnoreCase("CollName")).thenReturn(true);
+
+        // 2. Mock Repository Find
+        when(promptRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(promptPage);
+
+        // Act
+        PaginatedPromptResponse response = promptService.filterPrompts(request, currentUser, pageable);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(1, response.getTotalElements());
+        assertEquals("Filtered Prompt", response.getContent().get(0).getTitle());
+
+        // Verify Validation was called
+        verify(collectionRepository).existsByNameIgnoreCase("CollName");
+    }
+
+    @Test
+    @DisplayName("Case 2: Filter Prompts - Fail - Include Deleted but Not Admin")
+    void filterPrompts_WhenIncludeDeletedAndNotAdmin_ShouldThrowAccessDeniedException() {
+        // Arrange
+        PromptFilterRequest request = new PromptFilterRequest(
+                null, null, null, null, null, null, null, true // True = Include Deleted
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(permissionService.isSystemAdmin(currentUser)).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.filterPrompts(request, currentUser, pageable));
+    }
+
+    @Test
+    @DisplayName("Case 3: Filter Prompts - Fail - Collection Not Found")
+    void filterPrompts_WhenCollectionNotFound_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        PromptFilterRequest request = new PromptFilterRequest(
+                null, "Unknown Collection", null, null, null, null, null, false
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(collectionRepository.existsByNameIgnoreCase("Unknown Collection")).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.filterPrompts(request, currentUser, pageable));
+    }
+
+    @Test
+    @DisplayName("Case 4: Filter Prompts - Fail - School Not Found")
+    void filterPrompts_WhenSchoolNotFound_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        PromptFilterRequest request = new PromptFilterRequest(
+                null, null, null, null, "Unknown School", null, null, false
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(schoolRepository.existsByNameIgnoreCase("Unknown School")).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.filterPrompts(request, currentUser, pageable));
+    }
+
+    @Test
+    @DisplayName("Case 5: Filter Prompts - Fail - Group Not Found")
+    void filterPrompts_WhenGroupNotFound_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        PromptFilterRequest request = new PromptFilterRequest(
+                null, null, null, null, null, "Unknown Group", null, false
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(groupRepository.existsByNameIgnoreCase("Unknown Group")).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.filterPrompts(request, currentUser, pageable));
+    }
+
+    @Test
+    @DisplayName("Case 6: Filter Prompts - Fail - Tag Types Not Found")
+    void filterPrompts_WhenTagTypesMissing_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        List<String> tagTypes = List.of("SUBJECT", "LEVEL");
+        PromptFilterRequest request = new PromptFilterRequest(
+                null, null, tagTypes, null, null, null, null, false
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Tag existingTag = Tag.builder().type("SUBJECT").build();
+        // Only returns SUBJECT, missing LEVEL
+        when(tagRepository.findAllByTypeIn(tagTypes)).thenReturn(List.of(existingTag));
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.filterPrompts(request, currentUser, pageable));
+    }
+
+    @Test
+    @DisplayName("Case 7: Filter Prompts - Fail - Tag Values Not Found")
+    void filterPrompts_WhenTagValuesMissing_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        List<String> tagValues = List.of("Math", "History");
+        PromptFilterRequest request = new PromptFilterRequest(
+                null, null, null, tagValues, null, null, null, false
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Tag existingTag = Tag.builder().value("Math").build();
+        // Only returns Math, missing History
+        when(tagRepository.findAllByValueIn(tagValues)).thenReturn(List.of(existingTag));
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.filterPrompts(request, currentUser, pageable));
+    }
+
+    @Test
+    @DisplayName("Case 8: Filter Prompts - Success - Empty Result Set")
+    void filterPrompts_WhenNoMatches_ShouldReturnEmptyPage() {
+        // Arrange
+        PromptFilterRequest request = new PromptFilterRequest(
+                null, null, null, null, null, null, "NonExistent", false
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(promptRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(Page.empty());
+
+        // Act
+        PaginatedPromptResponse response = promptService.filterPrompts(request, currentUser, pageable);
+
+        // Assert
+        assertTrue(response.getContent().isEmpty());
+        assertEquals(0, response.getTotalElements());
+    }
+
+    // ======================================================================//
+    // ======================== SOFT DELETE PROMPT ==========================//
+    // ======================================================================//
+
+    @Test
+    @DisplayName("Case 1: Soft Delete - Success - Mark Prompt as Deleted")
+    void softDeletePrompt_WhenValid_ShouldSetIsDeletedTrue() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .isDeleted(false)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        promptService.softDeletePrompt(promptId, currentUser);
+
+        // Assert
+        assertTrue(prompt.getIsDeleted());
+        assertNotNull(prompt.getDeletedAt());
+        verify(promptRepository).save(prompt);
+    }
+
+    @Test
+    @DisplayName("Case 2: Soft Delete - Fail - Prompt Not Found")
+    void softDeletePrompt_WhenPromptNotFound_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        when(promptRepository.findById(promptId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.softDeletePrompt(promptId, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 3: Soft Delete - Fail - Already Deleted (Standard User)")
+    void softDeletePrompt_WhenAlreadyDeletedAndNotAdmin_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .isDeleted(true) // Already deleted
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.isSystemAdmin(currentUser)).thenReturn(false);
+
+        // Act & Assert
+        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+                () -> promptService.softDeletePrompt(promptId, currentUser));
+
+        assertEquals("Prompt not found or already deleted", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Case 4: Soft Delete - Success - Already Deleted (System Admin)")
+    void softDeletePrompt_WhenAlreadyDeletedButIsAdmin_ShouldSucceed() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .isDeleted(true)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.isSystemAdmin(currentUser)).thenReturn(true); // Is Admin
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(true);
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        promptService.softDeletePrompt(promptId, currentUser);
+
+        // Assert
+        verify(promptRepository).save(prompt);
+        assertTrue(prompt.getIsDeleted());
+    }
+
+    @Test
+    @DisplayName("Case 5: Soft Delete - Fail - Access Denied")
+    void softDeletePrompt_WhenNoEditPermission_ShouldThrowAccessDeniedException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .isDeleted(false)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canEditPrompt(currentUser, prompt)).thenReturn(false); // Denied
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.softDeletePrompt(promptId, currentUser));
+
+        verify(promptRepository, never()).save(any());
     }
 }
