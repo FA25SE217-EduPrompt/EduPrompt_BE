@@ -1866,4 +1866,195 @@ class PromptServiceImplTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> promptService.rollbackToVersion(promptId, versionId, currentUser));
     }
+
+    // ======================================================================//
+    // ========================== PROMPT SHARING ============================//
+    // ======================================================================//
+
+    // Method: sharePrompt (3 Cases)
+    @Test
+    @DisplayName("Case 1: Share Prompt - Success - Generates New Token")
+    void sharePrompt_WhenNotSharedBefore_ShouldGenerateTokenAndReturnUrl() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .userId(userId) // Owner
+                .shareToken(null)
+                .build();
+
+        // Inject @Value("${share_url}")
+        org.springframework.test.util.ReflectionTestUtils.setField(promptService, "shareUrl", "https://app.com/share/");
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        String result = promptService.sharePrompt(promptId, currentUser);
+
+        // Assert
+        assertNotNull(prompt.getShareToken()); // Token generated
+        assertTrue(result.contains("https://app.com/share/" + promptId));
+        assertTrue(result.contains("token=" + prompt.getShareToken()));
+        verify(promptRepository).save(prompt);
+    }
+
+    @Test
+    @DisplayName("Case 2: Share Prompt - Success - Returns Existing Token (Idempotent)")
+    void sharePrompt_WhenAlreadyShared_ShouldReturnExistingLinkWithoutUpdate() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID existingToken = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .userId(userId) // Owner
+                .shareToken(existingToken)
+                .build();
+
+        org.springframework.test.util.ReflectionTestUtils.setField(promptService, "shareUrl", "https://app.com/share/");
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // Act
+        String result = promptService.sharePrompt(promptId, currentUser);
+
+        // Assert
+        assertTrue(result.contains("token=" + existingToken));
+        // Verify save is NEVER called because token existed
+        verify(promptRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Case 3: Share Prompt - Fail - Not Owner")
+    void sharePrompt_WhenUserNotOwner_ShouldThrowAccessDeniedException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .userId(UUID.randomUUID()) // Different user
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.sharePrompt(promptId, currentUser));
+    }
+
+    // Method: getSharedPrompt (4 Cases)
+    @Test
+    @DisplayName("Case 1: Get Shared - Success - Valid Token and Active Prompt")
+    void getSharedPrompt_WhenTokenMatches_ShouldReturnResponse() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        UUID token = UUID.randomUUID();
+
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .title("Shared Prompt")
+                .shareToken(token)
+                .isDeleted(false)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // Act
+        PromptShareResponse response = promptService.getSharedPrompt(promptId, token);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals("Shared Prompt", response.title());
+        assertEquals(token, response.shareToken());
+    }
+
+    @Test
+    @DisplayName("Case 2: Get Shared - Fail - Prompt Deleted")
+    void getSharedPrompt_WhenPromptDeleted_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .isDeleted(true)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.getSharedPrompt(promptId, UUID.randomUUID()));
+    }
+
+    @Test
+    @DisplayName("Case 3: Get Shared - Fail - Token Mismatch")
+    void getSharedPrompt_WhenTokenIncorrect_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .shareToken(UUID.randomUUID()) // Real token
+                .isDeleted(false)
+                .build();
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.getSharedPrompt(promptId, UUID.randomUUID())); // Wrong token
+    }
+
+    @Test
+    @DisplayName("Case 4: Get Shared - Fail - Token Null")
+    void getSharedPrompt_WhenTokenNull_ShouldThrowAccessDeniedException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .shareToken(UUID.randomUUID())
+                .isDeleted(false)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.getSharedPrompt(promptId, null));
+    }
+
+    // Method: revokeShare (2 Cases)
+    @Test
+    @DisplayName("Case 1: Revoke Share - Success - Clears Token")
+    void revokeShare_WhenAuthorized_ShouldSetTokenNullAndSave() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .shareToken(UUID.randomUUID())
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canAccessPrompt(prompt, currentUser)).thenReturn(true);
+        when(promptRepository.save(any(Prompt.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Act
+        promptService.revokeShare(promptId, currentUser);
+
+        // Assert
+        assertNull(prompt.getShareToken());
+        verify(promptRepository).save(prompt);
+    }
+
+    @Test
+    @DisplayName("Case 2: Revoke Share - Fail - Access Denied")
+    void revokeShare_WhenNotAuthorized_ShouldThrowAccessDeniedException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder().id(promptId).build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(permissionService.canAccessPrompt(prompt, currentUser)).thenReturn(false);
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.revokeShare(promptId, currentUser));
+
+        verify(promptRepository, never()).save(any());
+    }
 }

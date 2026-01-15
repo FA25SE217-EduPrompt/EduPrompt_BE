@@ -1,7 +1,9 @@
 package SEP490.EduPrompt.dto.request.prompt;
 
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 
+@Builder
 public record CreatePromptVersionRequest(
         String instruction,
         String context,
