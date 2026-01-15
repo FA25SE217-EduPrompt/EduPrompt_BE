@@ -4,6 +4,8 @@ import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PaginatedDetailPromptResponse;
+import SEP490.EduPrompt.dto.response.prompt.PaginatedPromptResponse;
+import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
@@ -27,6 +29,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -630,5 +633,262 @@ class PromptServiceImplTest {
         // Verify fallback logic
         assertEquals("Unknown", result.getFullName()); // Should default to "Unknown"
         assertNull(result.getCollectionName());        // Should be null
+    }
+
+    // ======================================================================//
+    // ====================== GET NON PRIVATE PROMPTS =======================//
+    // ======================================================================//
+
+    @Test
+    @DisplayName("Case 1: Get Non-Private - Success - Returns Allowed Prompts")
+    void getNonPrivatePrompts_WhenPromptsExistAndAuthorized_ShouldReturnList() {
+        // Arrange
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // 1. Create Prompts with different visibilities
+        Prompt publicPrompt = Prompt.builder()
+                .id(UUID.randomUUID())
+                .title("Public Prompt")
+                .visibility(Visibility.PUBLIC.name())
+                .build();
+
+        Prompt schoolPrompt = Prompt.builder()
+                .id(UUID.randomUUID())
+                .title("School Prompt")
+                .visibility(Visibility.SCHOOL.name())
+                .build();
+
+        List<Prompt> dbPrompts = List.of(publicPrompt, schoolPrompt);
+        Page<Prompt> promptPage = new PageImpl<>(dbPrompts);
+
+        // 2. Mock DB Retrieval (Specification is used, so we match any spec)
+        when(promptRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(promptPage);
+
+        // 3. Mock Permission Service (In-memory filtering)
+        // Public should be allowed
+        when(permissionService.canFilterPrompt(publicPrompt, currentUser)).thenReturn(true);
+        // School prompt allowed (assume same school)
+        when(permissionService.canFilterPrompt(schoolPrompt, currentUser)).thenReturn(true);
+
+        // Act
+        PaginatedPromptResponse response = promptService.getNonPrivatePrompts(currentUser, pageable);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(2, response.getContent().size()); // Both returned
+        assertEquals("Public Prompt", response.getContent().get(0).getTitle());
+        assertEquals("School Prompt", response.getContent().get(1).getTitle());
+    }
+
+    @Test
+    @DisplayName("Case 2: Get Non-Private - Success - Filters Out Unauthorized Prompts")
+    void getNonPrivatePrompts_WhenSomeUnauthorized_ShouldFilterThemOut() {
+        // Arrange
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Prompt publicPrompt = Prompt.builder()
+                .id(UUID.randomUUID())
+                .visibility(Visibility.PUBLIC.name())
+                .build();
+
+        Prompt differentSchoolPrompt = Prompt.builder()
+                .id(UUID.randomUUID())
+                .visibility(Visibility.SCHOOL.name())
+                .build();
+
+        List<Prompt> dbPrompts = List.of(publicPrompt, differentSchoolPrompt);
+        Page<Prompt> promptPage = new PageImpl<>(dbPrompts);
+
+        when(promptRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(promptPage);
+
+        // Mock Permission Service: Allow Public, Deny Different School
+        when(permissionService.canFilterPrompt(publicPrompt, currentUser)).thenReturn(true);
+        when(permissionService.canFilterPrompt(differentSchoolPrompt, currentUser)).thenReturn(false);
+
+        // Act
+        PaginatedPromptResponse response = promptService.getNonPrivatePrompts(currentUser, pageable);
+
+        // Assert
+        assertEquals(1, response.getContent().size()); // Only 1 returned
+        assertEquals(publicPrompt.getId(), response.getContent().get(0).getId());
+    }
+
+    @Test
+    @DisplayName("Case 3: Get Non-Private - Success - Empty Database Result")
+    void getNonPrivatePrompts_WhenNoPromptsInDB_ShouldReturnEmptyList() {
+        // Arrange
+        Pageable pageable = PageRequest.of(0, 10);
+        when(promptRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(Page.empty());
+
+        // Act
+        PaginatedPromptResponse response = promptService.getNonPrivatePrompts(currentUser, pageable);
+
+        // Assert
+        assertTrue(response.getContent().isEmpty());
+        // Verify permission service was never called since list was empty
+        verify(permissionService, never()).canFilterPrompt(any(), any());
+    }
+
+    // ======================================================================//
+    // ========================= GET PROMPT BY ID ===========================//
+    // ======================================================================//
+
+    @Test
+    @DisplayName("Case 1: Get Prompt By ID - Success - Valid Prompt with Tags")
+    void getPromptById_WhenFoundAndAuthorized_ShouldReturnDetailsWithTags() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+
+        // Mock User & Collection for mapping
+        User owner = User.builder().firstName("Alice").lastName("Smith").build();
+        Collection collection = Collection.builder().name("Physics Set").build();
+
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .title("Detailed Prompt")
+                .instruction("Do this")
+                .isDeleted(false)
+                .user(owner)
+                .collection(collection)
+                .build();
+
+        Tag tag = Tag.builder().id(UUID.randomUUID()).type("LEVEL").value("Hard").build();
+        PromptTag promptTag = PromptTag.builder().tag(tag).build();
+
+        // 1. Mock Find
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // 2. Mock Access Check (Success)
+        doNothing().when(permissionService).validatePromptAccess(prompt, currentUser);
+
+        // 3. Mock Tags
+        when(promptTagRepository.findByPromptId(promptId)).thenReturn(List.of(promptTag));
+
+        // Act
+        DetailPromptResponse response = promptService.getPromptById(promptId, currentUser);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(promptId, response.getId());
+        assertEquals("Detailed Prompt", response.getTitle());
+        assertEquals("Alice Smith", response.getFullName());
+        assertEquals("Physics Set", response.getCollectionName());
+
+        // Check Tags
+        assertEquals(1, response.getTags().size());
+        assertEquals("Hard", response.getTags().get(0).getValue());
+    }
+
+    @Test
+    @DisplayName("Case 2: Get Prompt By ID - Fail - Prompt Not Found In DB")
+    void getPromptById_WhenIdNotFound_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        when(promptRepository.findById(promptId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> promptService.getPromptById(promptId, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 3: Get Prompt By ID - Fail - Prompt Soft Deleted (Standard User)")
+    void getPromptById_WhenDeletedAndUserNotAdmin_ShouldThrowResourceNotFoundException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .isDeleted(true) // <--- Deleted
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // Not Admin
+        when(permissionService.isSystemAdmin(currentUser)).thenReturn(false);
+
+        // Act & Assert
+        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+                () -> promptService.getPromptById(promptId, currentUser));
+
+        // Ensure message implies deletion or not found
+        assertTrue(ex.getMessage().contains("deleted"));
+    }
+
+    @Test
+    @DisplayName("Case 4: Get Prompt By ID - Success - Prompt Soft Deleted (System Admin)")
+    void getPromptById_WhenDeletedButUserIsAdmin_ShouldReturnPrompt() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .title("Deleted Prompt")
+                .isDeleted(true) // <--- Deleted
+                .user(user)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // IS Admin
+        when(permissionService.isSystemAdmin(currentUser)).thenReturn(true);
+
+        // Access Check Mock
+        doNothing().when(permissionService).validatePromptAccess(prompt, currentUser);
+
+        // Tags Mock
+        when(promptTagRepository.findByPromptId(promptId)).thenReturn(Collections.emptyList());
+
+        // Act
+        DetailPromptResponse response = promptService.getPromptById(promptId, currentUser);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals("Deleted Prompt", response.getTitle());
+    }
+
+    @Test
+    @DisplayName("Case 5: Get Prompt By ID - Fail - Access Denied (Service Check Fails)")
+    void getPromptById_WhenPermissionServiceDenies_ShouldThrowAccessDeniedException() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .isDeleted(false)
+                .visibility(Visibility.PRIVATE.name())
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+
+        // Mock permission check failing
+        doThrow(new AccessDeniedException("This prompt is private"))
+                .when(permissionService).validatePromptAccess(prompt, currentUser);
+
+        // Act & Assert
+        assertThrows(AccessDeniedException.class,
+                () -> promptService.getPromptById(promptId, currentUser));
+    }
+
+    @Test
+    @DisplayName("Case 6: Get Prompt By ID - Success - Null User/Collection Handling")
+    void getPromptById_WhenPromptHasNullRelations_ShouldHandleGracefully() {
+        // Arrange
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .title("Orphan Prompt")
+                .user(null)         // Null User
+                .collection(null)   // Null Collection
+                .isDeleted(false)
+                .build();
+
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        doNothing().when(permissionService).validatePromptAccess(prompt, currentUser);
+        when(promptTagRepository.findByPromptId(promptId)).thenReturn(Collections.emptyList());
+
+        // Act
+        DetailPromptResponse response = promptService.getPromptById(promptId, currentUser);
+
+        // Assert
+        assertEquals("Unknown", response.getFullName());
+        assertNull(response.getCollectionName());
     }
 }
