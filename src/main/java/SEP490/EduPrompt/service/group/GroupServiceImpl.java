@@ -11,15 +11,18 @@ import SEP490.EduPrompt.dto.response.group.UpdateGroupResponse;
 import SEP490.EduPrompt.dto.response.groupMember.GroupMemberResponse;
 import SEP490.EduPrompt.dto.response.groupMember.PageGroupMemberResponse;
 import SEP490.EduPrompt.enums.GroupRole;
+import SEP490.EduPrompt.enums.GroupStatus;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
 import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.Group;
 import SEP490.EduPrompt.model.GroupMember;
+import SEP490.EduPrompt.model.School;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.GroupMemberRepository;
 import SEP490.EduPrompt.repo.GroupRepository;
+import SEP490.EduPrompt.repo.SchoolRepository;
 import SEP490.EduPrompt.repo.UserRepository;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import jakarta.transaction.Transactional;
@@ -55,6 +58,7 @@ public class GroupServiceImpl implements GroupService {
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final SchoolRepository  schoolRepository;
     private final UserRepository userRepository;
 
     private boolean isAdmin(UserPrincipal user) {
@@ -114,20 +118,16 @@ public class GroupServiceImpl implements GroupService {
             throw new AccessDeniedException("Only admins or teachers can create groups");
         }
 
-//        // SCHOOL_ADMIN and TEACHER must belong to a school
-//        UUID schoolId = currentUser.getSchoolId();
-//        if (schoolId == null && !Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
-//            throw new AccessDeniedException("You must be associated with a school to create a group");
-//        }
-//        School school = null;
-//        if (schoolId != null) {
-//            school = schoolRepository.findById(schoolId)
-//                    .orElseThrow(() -> new ResourceNotFoundException("School not found"));
-//        }
+        UUID schoolId = currentUser.getSchoolId();
+        School school = null;
+        if (schoolId != null) {
+            school = schoolRepository.findById(schoolId)
+                    .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        }
 
         Group group = Group.builder()
                 .name(req.name())
-                .school(null)
+                .school(school)
                 .createdBy(creator)
                 .updatedBy(creator)
                 .isActive(true)
@@ -142,15 +142,15 @@ public class GroupServiceImpl implements GroupService {
         groupMemberRepository.save(GroupMember.builder()
                 .group(saved)
                 .user(creator)
-                .role("admin")
-                .status("active")
+                .role(GroupRole.ADMIN.name())
+                .status(GroupStatus.ACTIVE.name())
                 .joinedAt(Instant.now())
                 .build());
 
         return CreateGroupResponse.builder()
                 .id(saved.getId())
                 .name(saved.getName())
-                .schoolId(saved.getSchool() != null ? saved.getSchool().getId() : null)
+                .schoolId(saved.getSchool() != null ? saved.getSchoolId() : null)
                 .isActive(saved.getIsActive())
                 .createdAt(saved.getCreatedAt())
                 .build();
@@ -165,7 +165,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Only group admins or system/school admins can update
         boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                id, currentUserId, "active", List.of(GroupRole.ADMIN.name())
+                id, currentUserId, GroupStatus.ACTIVE.name(), List.of(GroupRole.ADMIN.name())
         );
         if (!isGroupAdmin && !isAdmin(currentUser)) {
             throw new AccessDeniedException("Only group admins or system/school admins can update this group");
@@ -174,7 +174,7 @@ public class GroupServiceImpl implements GroupService {
         // SCHOOL_ADMIN can only update groups in their school
         if (Role.SCHOOL_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
             UUID currentSchoolId = currentUser.getSchoolId();
-            UUID groupSchoolId = group.getSchool() != null ? group.getSchool().getId() : null;
+            UUID groupSchoolId = group.getSchool() != null ? group.getSchoolId() : null;
             if (groupSchoolId == null || !groupSchoolId.equals(currentSchoolId)) {
                 throw new AccessDeniedException("You can only update groups in your school");
             }
@@ -208,7 +208,7 @@ public class GroupServiceImpl implements GroupService {
         return UpdateGroupResponse.builder()
                 .id(group.getId())
                 .name(group.getName())
-                .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
+                .schoolId(group.getSchool() != null ? group.getSchoolId() : null)
                 .isActive(group.getIsActive())
                 .updatedAt(group.getUpdatedAt())
                 .build();
@@ -223,7 +223,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Only group admins or system/school admins can add members
         boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                id, currentUserId, "active", List.of(GroupRole.ADMIN.name())
+                id, currentUserId, GroupStatus.ACTIVE.name(), List.of(GroupRole.ADMIN.name())
         );
         if (!isGroupAdmin && !isAdmin(currentUser)) {
             throw new AccessDeniedException("Only group admins or system/school admins can add members to this group");
@@ -232,7 +232,7 @@ public class GroupServiceImpl implements GroupService {
         // SCHOOL_ADMIN can only manage groups in their school
         if (Role.SCHOOL_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
             UUID currentSchoolId = currentUser.getSchoolId();
-            UUID groupSchoolId = group.getSchool() != null ? group.getSchool().getId() : null;
+            UUID groupSchoolId = group.getSchool() != null ? group.getSchoolId() : null;
             if (groupSchoolId == null || !groupSchoolId.equals(currentSchoolId)) {
                 throw new AccessDeniedException("You can only manage groups in your school");
             }
@@ -286,7 +286,7 @@ public class GroupServiceImpl implements GroupService {
         return UpdateGroupResponse.builder()
                 .id(group.getId())
                 .name(group.getName())
-                .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
+                .schoolId(group.getSchool() != null ? group.getSchoolId() : null)
                 .isActive(group.getIsActive())
                 .updatedAt(group.getUpdatedAt())
                 .build();
@@ -301,7 +301,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Only group admins or system/school admins can remove members
         boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                id, currentUserId, "active", List.of(GroupRole.ADMIN.name())
+                id, currentUserId, GroupStatus.ACTIVE.name(), List.of(GroupRole.ADMIN.name())
         );
         if (!isGroupAdmin && !isAdmin(currentUser)) {
             throw new AccessDeniedException("Only group admins or system/school admins can remove members from this group");
@@ -310,7 +310,7 @@ public class GroupServiceImpl implements GroupService {
         // SCHOOL_ADMIN can only manage groups in their school
         if (Role.SCHOOL_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
             UUID currentSchoolId = currentUser.getSchoolId();
-            UUID groupSchoolId = group.getSchool() != null ? group.getSchool().getId() : null;
+            UUID groupSchoolId = group.getSchool() != null ? group.getSchoolId() : null;
             if (groupSchoolId == null || !groupSchoolId.equals(currentSchoolId)) {
                 throw new AccessDeniedException("You can only manage groups in your school");
             }
@@ -350,7 +350,7 @@ public class GroupServiceImpl implements GroupService {
         return GroupResponse.builder()
                 .id(group.getId())
                 .name(group.getName())
-                .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
+                .schoolId(group.getSchool() != null ? group.getSchoolId() : null)
                 .isActive(group.getIsActive())
                 .createdAt(group.getCreatedAt())
                 .build();
@@ -365,7 +365,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Only group admins or system/school admins can delete
         boolean isGroupAdmin = groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                id, currentUserId, "active", List.of("admin")
+                id, currentUserId, GroupStatus.ACTIVE.name(), List.of(GroupRole.ADMIN.name())
         );
         if (!isGroupAdmin && !isAdmin(currentUser)) {
             throw new AccessDeniedException("Only group admins or system/school admins can delete this group");
@@ -374,7 +374,7 @@ public class GroupServiceImpl implements GroupService {
         // SCHOOL_ADMIN can only delete groups in their school
         if (Role.SCHOOL_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
             UUID currentSchoolId = currentUser.getSchoolId();
-            UUID groupSchoolId = group.getSchool() != null ? group.getSchool().getId() : null;
+            UUID groupSchoolId = group.getSchool() != null ? group.getSchoolId(): null;
             if (groupSchoolId == null || !groupSchoolId.equals(currentSchoolId)) {
                 throw new InvalidActionException("You can only delete groups in your school");
             }
@@ -402,13 +402,13 @@ public class GroupServiceImpl implements GroupService {
             }
         } else {
             // Non-admins see groups they are active members of
-            page = groupRepository.findByUserIdAndStatusAndIsActiveTrue(currentUserId, "active", pageable);
+            page = groupRepository.findByUserIdAndStatusAndIsActiveTrue(currentUserId, GroupStatus.ACTIVE.name(), pageable);
         }
 
         List<GroupResponse> content = page.getContent().stream()
                 .map(group -> GroupResponse.builder()
                         .name(group.getName())
-                        .schoolId(group.getSchool() != null ? group.getSchool().getId() : null)
+                        .schoolId(group.getSchool() != null ? group.getSchoolId() : null)
                         .isActive(group.getIsActive())
                         .createdAt(group.getCreatedAt())
                         .build())
