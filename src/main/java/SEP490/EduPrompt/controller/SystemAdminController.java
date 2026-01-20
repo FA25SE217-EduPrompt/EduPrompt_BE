@@ -10,12 +10,18 @@ import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
 import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
 import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
 import SEP490.EduPrompt.dto.request.systemAdmin.CreateSchoolSubscriptionRequest;
+import SEP490.EduPrompt.dto.request.systemAdmin.PageTeacherTokenUsageLogResponse;
+import SEP490.EduPrompt.dto.request.systemAdmin.SchoolSubscriptionTokenStatusResponse;
+import SEP490.EduPrompt.dto.request.systemAdmin.TeacherTokenMonthlyUsageResponse;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
 import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
+import SEP490.EduPrompt.dto.response.payment.MonthlyPaymentSummaryResponse;
+import SEP490.EduPrompt.dto.response.payment.PagePaymentAdminResponse;
+import SEP490.EduPrompt.dto.response.payment.PaymentAdminListResponse;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
 import SEP490.EduPrompt.dto.response.systemAdmin.SchoolSubscriptionResponse;
@@ -28,6 +34,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -35,6 +42,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -218,5 +226,82 @@ public class SystemAdminController {
         log.info("Deleting group: {} by user: {}", id, currentUser.getUserId());
         sAdminService.softDeleteGroup(id, currentUser);
         return ResponseDto.success("Group deleted successfully");
+    }
+
+    @GetMapping("/payments-summary-monthly")
+    @Operation(summary = "Get monthly payment summary (admin view)")
+    public ResponseDto<List<MonthlyPaymentSummaryResponse>> getMonthlyPaymentSummary(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        List<MonthlyPaymentSummaryResponse> summary = sAdminService.getMonthlyPaymentSummary(currentUser);
+        return ResponseDto.success(summary);
+    }
+
+    @GetMapping("/all-payments")
+    @Operation(summary = "Get paginated list of all payments (admin view)")
+    public ResponseDto<PagePaymentAdminResponse> listAllPayments(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String yearMonth,   // format: 2024-12
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        PagePaymentAdminResponse payments = sAdminService.listAllPayments(
+                currentUser, pageable, status, yearMonth);
+
+        return ResponseDto.success(payments);
+    }
+
+    // Simple current token status for all active school subscriptions
+    @GetMapping("/school-subscriptions-tokens")
+    @Operation(summary = "View current token remaining for school subscriptions")
+    public ResponseDto<List<SchoolSubscriptionTokenStatusResponse>> getSchoolTokenStatus(
+            @RequestParam(required = false) Boolean activeOnly,  // default true
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        List<SchoolSubscriptionTokenStatusResponse> result =
+                sAdminService.getSchoolTokenStatus(currentUser, Boolean.TRUE.equals(activeOnly));
+        return ResponseDto.success(result);
+    }
+
+    // List all token usage logs (paginated)
+    @GetMapping("/teacher-token-usage")
+    @Operation(summary = "List all teacher token usage logs (paginated)")
+    public ResponseDto<PageTeacherTokenUsageLogResponse> listAllTeacherTokenUsage(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        PageTeacherTokenUsageLogResponse result =
+                sAdminService.listAllTeacherTokenUsage(currentUser, pageable);
+        return ResponseDto.success(result);
+    }
+
+    // List usage logs for one specific school subscription
+    @GetMapping("/school-subscriptions/{subscriptionId}/token-usage")
+    @Operation(summary = "List teacher token usage for a specific school subscription")
+    public ResponseDto<PageTeacherTokenUsageLogResponse> listTokenUsageBySubscription(
+            @PathVariable UUID subscriptionId,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        PageTeacherTokenUsageLogResponse result =
+                sAdminService.listTokenUsageBySubscription(currentUser, subscriptionId, pageable);
+        return ResponseDto.success(result);
+    }
+
+    // Monthly aggregated usage (all schools)
+    @GetMapping("/teacher-token/usage-monthly")
+    @Operation(summary = "Monthly summary of teacher token usage (all schools)")
+    public ResponseDto<List<TeacherTokenMonthlyUsageResponse>> getMonthlyTokenUsageSummary(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        List<TeacherTokenMonthlyUsageResponse> result =
+                sAdminService.getMonthlyTokenUsageSummary(currentUser);
+        return ResponseDto.success(result);
     }
 }
