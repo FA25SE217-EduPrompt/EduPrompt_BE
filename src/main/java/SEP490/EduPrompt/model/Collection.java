@@ -76,7 +76,7 @@ public class Collection {
     @Column(name = "group_id", insertable = false, updatable = false)
     private UUID groupId;
 
-    @OneToMany(mappedBy = "collection", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "collection", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<CollectionTag> collectionTags;
 
 }
