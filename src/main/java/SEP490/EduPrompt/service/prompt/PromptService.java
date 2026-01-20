@@ -4,6 +4,7 @@ import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.prompt.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -52,4 +53,8 @@ public interface PromptService {
     PromptShareResponse getSharedPrompt(UUID promptId, UUID token);
 
     void revokeShare(UUID promptId, UserPrincipal currentUser);
+
+    PaginatedGroupSharedPromptResponse getGroupSharedPrompts(UserPrincipal currentUser, Pageable pageable);
+
+    AddPromptToCollectionResponse addPromptToCollection(AddPromptToCollectionRequest request, UserPrincipal currentUser);
 }

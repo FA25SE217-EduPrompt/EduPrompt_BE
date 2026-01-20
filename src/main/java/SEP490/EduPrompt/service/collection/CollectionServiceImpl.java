@@ -7,6 +7,7 @@ import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
 import SEP490.EduPrompt.dto.response.prompt.TagDTO;
+import SEP490.EduPrompt.enums.GroupStatus;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
@@ -149,7 +150,7 @@ public class CollectionServiceImpl implements CollectionService {
                     .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
             // Verify membership for creation
             boolean isMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
-                    group.getId(), currentUserId, "active");
+                    group.getId(), currentUserId, GroupStatus.ACTIVE.name());
             if (!isMember) {
                 throw new AccessDeniedException("You must be a group member to create a group-visible collection");
             }
@@ -262,7 +263,7 @@ public class CollectionServiceImpl implements CollectionService {
             }
             group = groupRepository.findById(groupId)
                     .orElseThrow(() -> new ResourceNotFoundException("Group not found with ID: " + groupId));
-            if (!groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, currentUser.getUserId(), "active")) {
+            if (!groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, currentUser.getUserId(), GroupStatus.ACTIVE.name())) {
                 throw new AccessDeniedException("You must be an active member of the group to set GROUP visibility");
             }
         }

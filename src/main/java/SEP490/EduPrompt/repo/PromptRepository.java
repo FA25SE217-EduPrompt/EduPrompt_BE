@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -121,4 +122,13 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
     Optional<Prompt> findByGeminiFileIdStartingWith(String prefix);
 
     List<Prompt> findByLessonId(UUID lessonId);
+
+    @Query("SELECT p FROM Prompt p " +
+            "WHERE p.collection.group.id IN :groupIds " +
+            "AND p.collection.visibility = :visibility " +
+            "AND p.isDeleted = false " +
+            "AND p.collection.isDeleted = false")
+    Page<Prompt> findGroupSharedPrompts(@Param("groupIds") Set<UUID> groupIds,
+                                        @Param("visibility") String visibility,
+                                        Pageable pageable);
 }
