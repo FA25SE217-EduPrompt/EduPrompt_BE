@@ -8,6 +8,9 @@ import SEP490.EduPrompt.dto.request.prompt.CreatePromptCollectionRequest;
 import SEP490.EduPrompt.dto.request.prompt.CreatePromptRequest;
 import SEP490.EduPrompt.dto.request.prompt.UpdatePromptMetadataRequest;
 import SEP490.EduPrompt.dto.request.prompt.UpdatePromptVisibilityRequest;
+import SEP490.EduPrompt.dto.request.systemAdmin.PageTeacherTokenUsageLogResponse;
+import SEP490.EduPrompt.dto.request.systemAdmin.SchoolSubscriptionTokenStatusResponse;
+import SEP490.EduPrompt.dto.request.systemAdmin.TeacherTokenMonthlyUsageResponse;
 import SEP490.EduPrompt.dto.request.tag.CreateTagBatchRequest;
 import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
@@ -17,12 +20,16 @@ import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.GroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
 import SEP490.EduPrompt.dto.response.group.UpdateGroupResponse;
+import SEP490.EduPrompt.dto.response.payment.MonthlyPaymentSummaryResponse;
+import SEP490.EduPrompt.dto.response.payment.PagePaymentAdminResponse;
+import SEP490.EduPrompt.dto.response.payment.PaymentAdminListResponse;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
 import SEP490.EduPrompt.dto.response.prompt.PromptAllResponse;
 import SEP490.EduPrompt.dto.response.prompt.TagDTO;
 import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
 import SEP490.EduPrompt.dto.response.tag.TagResponse;
+import SEP490.EduPrompt.dto.response.teacherTokenUsed.TeacherTokenUsageLogResponse;
 import SEP490.EduPrompt.dto.response.user.PageUserResponse;
 import SEP490.EduPrompt.dto.response.user.UserResponse;
 import SEP490.EduPrompt.enums.Visibility;
@@ -41,8 +48,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -61,7 +72,10 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private final CollectionTagRepository collectionTagRepository;
     private final PermissionService permissionService;
     private final TagRepository tagRepository;
+    private final PaymentRepository paymentRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final SchoolSubscriptionRepository schoolSubscriptionRepository;
+    private final TeacherTokenUsageLogRepository teacherTokenUsageLogRepository;
 
     // ========================================================
     // ======================LIST ALL==========================
@@ -949,6 +963,244 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         log.info("Group soft-deleted: {} by user: {}", id, currentUserId);
     }
 
+    //
+    @Override
+    @Transactional
+    public List<MonthlyPaymentSummaryResponse> getMonthlyPaymentSummary(UserPrincipal currentUser) {
+        if (!permissionService.isSystemAdmin(currentUser)) {
+            throw new AccessDeniedException("You do not have permission to view payment summary");
+        }
+
+        // Using query with grouping (you need to add this query to PaymentRepository)
+        List<Object[]> rawSummary = paymentRepository.getMonthlyPaymentSummaryRaw();
+
+        return rawSummary.stream()
+                .map(row -> {
+                    int year  = ((Number) row[0]).intValue();
+                    int month = ((Number) row[1]).intValue();
+
+                    long totalCount   = ((Number) row[2]).longValue();
+                    long totalAmount  = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+                    long pendingCount = ((Number) row[4]).longValue();
+                    long successCount = ((Number) row[5]).longValue();
+                    long failedCount  = row[6] != null ? ((Number) row[6]).longValue() : 0L;
+
+                    double avg = successCount > 0 ? (double) totalAmount / successCount : 0.0;
+
+                    return MonthlyPaymentSummaryResponse.builder()
+                            .year(year)
+                            .month(month)
+                            .monthName(Month.of(month).name())
+                            .totalAmount(totalAmount)
+                            .totalTransactions(totalCount)
+                            .successfulCount(successCount)
+                            .pendingCount(pendingCount)
+                            .failedCount(failedCount)
+                            .averageAmount(avg)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public PagePaymentAdminResponse listAllPayments(
+            UserPrincipal currentUser,
+            Pageable pageable,
+            String status,
+            String yearMonth) {
+
+        if (!permissionService.isSystemAdmin(currentUser)) {
+            throw new AccessDeniedException("You do not have permission to view payments");
+        }
+
+        Page<Payment> page;
+
+        // Optional filters - simple version (you can make more sophisticated later)
+        if (StringUtils.hasText(yearMonth) && yearMonth.matches("\\d{4}-\\d{2}")) {
+            String[] parts = yearMonth.split("-");
+            int year = Integer.parseInt(parts[0]);
+            int month = Integer.parseInt(parts[1]);
+
+            LocalDate startDate = LocalDate.of(year, month, 1);
+            LocalDate endDate   = startDate.plusMonths(1);
+
+            Instant start = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+            Instant end   = endDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+
+            page = paymentRepository.findByCreatedAtBetween(start, end, pageable);
+        } else if (StringUtils.hasText(status)) {
+            page = paymentRepository.findByStatus(status.trim().toUpperCase(), pageable);
+        } else {
+            page = paymentRepository.findAll(pageable);
+        }
+
+        List<PaymentAdminListResponse> content = page.getContent().stream()
+                .map(p -> {
+                    User u = p.getUser();
+                    String fullName = (u.getFirstName() != null ? u.getFirstName() + " " : "") +
+                            (u.getLastName() != null ? u.getLastName() : "");
+
+                    SubscriptionTier tier = p.getTier();
+
+                    return PaymentAdminListResponse.builder()
+                            .id(p.getId())
+                            .userId(p.getUserId())
+                            .email(u.getEmail())
+                            .fullName(fullName.trim().isEmpty() ? null : fullName.trim())
+                            .tierId(tier != null ? tier.getId() : null)
+                            .tierName(tier != null ? tier.getName() : null)
+                            .amount(p.getAmount())
+                            .orderInfo(p.getOrderInfo())
+                            .status(p.getStatus())
+                            .createdAt(p.getCreatedAt())
+                            .paidAt(p.getPaidAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        log.info("Admin fetched {} payments (page {}, size {}, total {})",
+                content.size(), page.getNumber(), page.getSize(), page.getTotalElements());
+
+        return PagePaymentAdminResponse.builder()
+                .content(content)
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public List<SchoolSubscriptionTokenStatusResponse> getSchoolTokenStatus(
+            UserPrincipal currentUser, boolean activeOnly) {
+
+        if (!permissionService.isSystemAdmin(currentUser)) {
+            throw new AccessDeniedException("You do not have permission to view school token status");
+        }
+
+        List<SchoolSubscription> subscriptions;
+        if (activeOnly) {
+            subscriptions = schoolSubscriptionRepository.findByIsActiveTrueOrderByCreatedAtDesc();
+        } else {
+            subscriptions = schoolSubscriptionRepository.findAllByOrderByCreatedAtDesc();
+        }
+
+        return subscriptions.stream()
+                .map(sub -> {
+                    School school = sub.getSchool();
+                    int used = sub.getSchoolTokenPool() - sub.getSchoolTokenRemaining();
+
+                    return SchoolSubscriptionTokenStatusResponse.builder()
+                            .id(sub.getId())
+                            .schoolId(school.getId())
+                            .schoolName(school.getName())
+                            .schoolTokenPool(sub.getSchoolTokenPool())
+                            .schoolTokenRemaining(sub.getSchoolTokenRemaining())
+                            .tokensUsed(used < 0 ? 0 : used)
+                            .quotaResetDate(sub.getQuotaResetDate())
+                            .isActive(sub.getIsActive())
+                            .endDate(sub.getEndDate())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public PageTeacherTokenUsageLogResponse listAllTeacherTokenUsage(
+            UserPrincipal currentUser, Pageable pageable) {
+
+        if (!permissionService.isSystemAdmin(currentUser)) {
+            throw new AccessDeniedException("You do not have permission to view token usage logs");
+        }
+
+        Page<TeacherTokenUsageLog> page = teacherTokenUsageLogRepository
+                .findAllByOrderByUsedAtDesc(pageable);
+
+        return mapToPageResponse(page);
+    }
+
+    @Override
+    @Transactional
+    public PageTeacherTokenUsageLogResponse listTokenUsageBySubscription(
+            UserPrincipal currentUser, UUID subscriptionId, Pageable pageable) {
+
+        if (!permissionService.isSystemAdmin(currentUser)) {
+            throw new AccessDeniedException("You do not have permission to view token usage logs");
+        }
+
+        Page<TeacherTokenUsageLog> page = teacherTokenUsageLogRepository
+                .findBySchoolSubscriptionIdOrderByUsedAtDesc(subscriptionId, pageable);
+
+        return mapToPageResponse(page);
+    }
+
+    @Override
+    @Transactional
+    public List<TeacherTokenMonthlyUsageResponse> getMonthlyTokenUsageSummary(
+            UserPrincipal currentUser) {
+
+        if (!permissionService.isSystemAdmin(currentUser)) {
+            throw new AccessDeniedException("You do not have permission to view token usage summary");
+        }
+
+        // You need this query in the repository
+        List<Object[]> raw = teacherTokenUsageLogRepository.getMonthlyUsageSummaryRaw();
+
+        return raw.stream()
+                .map(row -> {
+                    int year = ((Number) row[0]).intValue();
+                    int month = ((Number) row[1]).intValue();
+                    long totalTokens = ((Number) row[2]).longValue();
+                    long entryCount = ((Number) row[3]).longValue();
+                    long uniqueUsers = ((Number) row[4]).longValue();
+
+                    return TeacherTokenMonthlyUsageResponse.builder()
+                            .year(year)
+                            .month(month)
+                            .monthName(Month.of(month).name())
+                            .totalTokensUsed(totalTokens)
+                            .usageCount(entryCount)
+                            .uniqueTeachers(uniqueUsers)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    // Private helper (reuse for both list endpoints)
+    private PageTeacherTokenUsageLogResponse mapToPageResponse(Page<TeacherTokenUsageLog> page) {
+        List<TeacherTokenUsageLogResponse> content = page.getContent().stream()
+                .map(log -> {
+                    User teacher = log.getUser();
+                    String fullName = (teacher.getFirstName() != null ? teacher.getFirstName() + " " : "") +
+                            (teacher.getLastName() != null ? teacher.getLastName() : "");
+
+                    return TeacherTokenUsageLogResponse.builder()
+                            .id(log.getId())
+                            .userId(log.getUserId())
+                            .schoolSubscriptionId(log.getSchoolSubscriptionId())
+                            .subscriptionTierId(log.getSubscriptionTierId())
+                            .tokensUsed(log.getTokensUsed())
+                            .usedAt(log.getUsedAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        log.info("Admin fetched {} token usage logs (page {}, size {}, total {})",
+                content.size(), page.getNumber(), page.getSize(), page.getTotalElements());
+
+        return PageTeacherTokenUsageLogResponse.builder()
+                .content(content)
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .build();
+    }
+
+    //========================================================
     private DetailPromptResponse buildPromptResponse(Prompt prompt) {
         List<Tag> tags = promptTagRepository.findByPromptId(prompt.getId()).stream()
                 .map(PromptTag::getTag)
