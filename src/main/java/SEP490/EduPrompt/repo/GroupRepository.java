@@ -37,6 +37,12 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 
     boolean existsByNameIgnoreCase(String name);
 
+    long countBySchoolIdAndIsActiveTrue(UUID schoolId);
+
+    long countByCreatedByIdAndIsActiveTrue(UUID createdById);
+
+    boolean existsByNameAndSchoolIdAndIsActiveTrue(String name, UUID schoolId);
+
     Optional<Group> findByNameIgnoreCase(String name);
 
 

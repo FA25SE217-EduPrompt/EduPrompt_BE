@@ -15,11 +15,7 @@ public record AddGroupMembersRequest(
 ) {
     public record MemberRequest(
             @NotNull
-            UUID userId,
-            @Size(max = 50)
-            String role,
-            @Size(max = 50)
-            String status
+            UUID userId
     ) {
     }
 }

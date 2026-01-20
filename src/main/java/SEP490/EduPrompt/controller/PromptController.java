@@ -224,4 +224,26 @@ public class PromptController {
         DetailPromptResponse response = promptService.rollbackToVersion(promptId, versionId, currentUser);
         return ResponseDto.success(response);
     }
+
+    @GetMapping("/my-group-shared")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<PaginatedGroupSharedPromptResponse> groupSharedPrompt(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        log.info("Getting group shared prompt");
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(promptService.getGroupSharedPrompts(currentUser, pageable));
+    }
+
+    @PostMapping("/add-to-collection")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<AddPromptToCollectionResponse> addPromptToCollection(
+            @Valid @RequestBody AddPromptToCollectionRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        AddPromptToCollectionResponse response = promptService.addPromptToCollection(request, currentUser);
+        return ResponseDto.success(response);
+    }
 }

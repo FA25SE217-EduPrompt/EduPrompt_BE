@@ -4,6 +4,7 @@ import SEP490.EduPrompt.model.GroupMember;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -29,4 +30,15 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
 
     boolean existsByGroupIdAndUserIdAndStatusAndRoleIn(UUID groupId, UUID currentUserId, String status, List<String> roles);
 
+    long countByGroupIdAndStatus(UUID groupId, String status);
+
+    long countByGroupIdAndRoleAndStatus(UUID groupId, String role, String status);
+
+    @Modifying
+    @Query("UPDATE GroupMember gm SET gm.status = :status WHERE gm.group.id = :groupId")
+    void updateStatusByGroupId(UUID groupId, String status);
+
+    Page<GroupMember> findByGroupIdAndStatus(UUID groupId, String status, Pageable pageable);
+
+    List<GroupMember> findByUserIdAndStatus(UUID userId, String status);
 }
