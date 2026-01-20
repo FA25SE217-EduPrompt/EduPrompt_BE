@@ -664,6 +664,21 @@ public class PromptServiceImpl implements PromptService {
                 .isPresent();
     }
 
+    @Transactional(readOnly = true)
+    @Override
+    public List<ViewedPromptItem> hasUserViewedPrompts(UserPrincipal principal, HasViewedPromptRequest request) {
+        UUID userId = principal.getUserId();
+
+        Set<UUID> viewedPromptIds = promptViewLogRepository.findAllByUserId(userId).stream()
+                .map(PromptViewLog::getPrompt)
+                .map(Prompt::getId)
+                .collect(Collectors.toSet());
+
+        return request.promptIds().stream()
+                .map(id -> new ViewedPromptItem(id, viewedPromptIds.contains(id)))
+                .toList();
+    }
+
     @Override
     public PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request) {
         User user = userRepository.getReferenceById(currentUser.getUserId());
@@ -695,6 +710,41 @@ public class PromptServiceImpl implements PromptService {
                     return promptViewLogRepository.save(newLog);
                 });
         return toResponse(viewLog);
+    }
+
+    @Transactional
+    @Override
+    public boolean logPromptViews(UserPrincipal principal, PromptViewLogCreateRequest request) {
+        UUID userId = principal.getUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        boolean allSuccess = true;
+
+        for (UUID promptId : request.promptIds()) {
+            try {
+                Prompt prompt = promptRepository.findById(promptId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+
+                permissionService.validatePromptAccess(prompt, principal);
+
+                Optional<PromptViewLog> existingLog = promptViewLogRepository.findByUserIdAndPromptId(userId, promptId);
+
+                if (existingLog.isEmpty()) {
+                    PromptViewLog newLog = PromptViewLog.builder()
+                            .user(user)
+                            .prompt(prompt)
+                            .createdAt(Instant.now())
+                            .build();
+                    promptViewLogRepository.save(newLog);
+                }
+            } catch (Exception e) {
+                allSuccess = false;
+                log.error("Failed to log view for prompt {} by user {}: {}", promptId, userId, e.getMessage());
+            }
+        }
+
+        return allSuccess;
     }
 
     // ======================================================================//

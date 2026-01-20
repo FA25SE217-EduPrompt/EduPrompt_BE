@@ -39,7 +39,11 @@ public interface PromptService {
 
     boolean hasUserViewedPrompt(UserPrincipal currentUser, UUID promptId);
 
-    PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request);
+    List<ViewedPromptItem> hasUserViewedPrompts(UserPrincipal principal, HasViewedPromptRequest request);
+
+    PromptViewLogResponse logPromptView(UserPrincipal principal, CreatePromptViewLogRequest request);
+
+    boolean logPromptViews(UserPrincipal principal, PromptViewLogCreateRequest request);
 
     PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
                                               UserPrincipal currentUser);
