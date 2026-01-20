@@ -39,4 +39,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
     void updateStatusByGroupId(UUID groupId, String status);
 
     Page<GroupMember> findByGroupIdAndStatus(UUID groupId, String status, Pageable pageable);
+
+    List<GroupMember> findByUserIdAndStatus(UUID userId, String status);
 }

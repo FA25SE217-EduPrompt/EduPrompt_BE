@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.service.permission;
 
 import SEP490.EduPrompt.enums.GroupRole;
+import SEP490.EduPrompt.enums.GroupStatus;
 import SEP490.EduPrompt.enums.Role;
 import SEP490.EduPrompt.enums.Visibility;
 import SEP490.EduPrompt.exception.auth.AccessDeniedException;
@@ -126,7 +127,7 @@ public class PermissionServiceImpl implements PermissionService {
     public boolean isGroupMember(UserPrincipal user, UUID groupId) {
         if (user == null || groupId == null)
             return false;
-        return groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, user.getUserId(), "active");
+        return groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, user.getUserId(), GroupStatus.ACTIVE.name());
     }
 
     @Override
