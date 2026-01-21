@@ -1,8 +1,6 @@
 package SEP490.EduPrompt.service.user;
 
 import SEP490.EduPrompt.dto.response.user.UserSchoolResponse;
-import SEP490.EduPrompt.enums.Role;
-import SEP490.EduPrompt.exception.auth.AccessDeniedException;
 import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.UserRepository;

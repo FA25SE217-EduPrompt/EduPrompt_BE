@@ -5,11 +5,11 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record PagePaymentAdminResponse (
+public record PagePaymentAdminResponse(
         List<PaymentAdminListResponse> content,
         long totalElements,
         int totalPages,
         int pageNumber,
         int pageSize
-){
+) {
 }

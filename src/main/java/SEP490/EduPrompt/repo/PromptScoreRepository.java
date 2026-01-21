@@ -21,17 +21,17 @@ public interface PromptScoreRepository extends JpaRepository<PromptScore, UUID> 
     List<PromptScore> findByPromptIdOrderByCreatedAtDesc(UUID promptId);
 
     @Query("""
-        SELECT new SEP490.EduPrompt.dto.response.prompt.PromptScoreResponse(
-            p.id,
-            p.title,
-            ps.overallScore,
-            p.createdAt,
-            p.updatedAt
-        )
-        FROM PromptScore ps
-        JOIN ps.prompt p
-        WHERE p.isDeleted = false
-        ORDER BY ps.overallScore DESC NULLS LAST, p.updatedAt DESC
-        """)
+            SELECT new SEP490.EduPrompt.dto.response.prompt.PromptScoreResponse(
+                p.id,
+                p.title,
+                ps.overallScore,
+                p.createdAt,
+                p.updatedAt
+            )
+            FROM PromptScore ps
+            JOIN ps.prompt p
+            WHERE p.isDeleted = false
+            ORDER BY ps.overallScore DESC NULLS LAST, p.updatedAt DESC
+            """)
     Page<PromptScoreResponse> findPromptsWithOverallScore(Pageable pageable);
 }

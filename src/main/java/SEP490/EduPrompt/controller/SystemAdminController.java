@@ -21,7 +21,6 @@ import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
 import SEP490.EduPrompt.dto.response.payment.MonthlyPaymentSummaryResponse;
 import SEP490.EduPrompt.dto.response.payment.PagePaymentAdminResponse;
-import SEP490.EduPrompt.dto.response.payment.PaymentAdminListResponse;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
 import SEP490.EduPrompt.dto.response.prompt.PagePromptScoreResponse;
@@ -35,7 +34,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -310,7 +308,7 @@ public class SystemAdminController {
     public ResponseDto<PagePromptScoreResponse> getRankedPrompts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @AuthenticationPrincipal UserPrincipal currentUser ) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
 
         Pageable pageable = PageRequest.of(page, size);
 

@@ -27,7 +27,6 @@ import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
 import SEP490.EduPrompt.dto.response.tag.TagResponse;
 import SEP490.EduPrompt.dto.response.user.PageUserResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
-import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;

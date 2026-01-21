@@ -3,15 +3,15 @@ package SEP490.EduPrompt.dto.response.prompt;
 import lombok.Builder;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
+
 @Builder
-public record AddPromptToCollectionResponse (
+public record AddPromptToCollectionResponse(
         UUID id,
         UUID collectionId,
         String title,
         String description,
         String visibility,
         Instant updatedAt
-){
+) {
 }

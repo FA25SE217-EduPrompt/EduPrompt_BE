@@ -1,6 +1,7 @@
 package SEP490.EduPrompt.dto.request.collection;
 
 import jakarta.validation.constraints.NotNull;
+
 import java.util.UUID;
 
 public record AssignCollectionToGroupRequest(

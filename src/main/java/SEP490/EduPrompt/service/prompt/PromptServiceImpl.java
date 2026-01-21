@@ -373,7 +373,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable,
-            UUID collectionId) {
+                                                            UUID collectionId) {
         if (collectionId == null) {
             throw new InvalidInputException("Collection ID must not be null");
         }
@@ -388,8 +388,8 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional(readOnly = true)
     public PaginatedPromptResponse filterPrompts(PromptFilterRequest request,
-            UserPrincipal currentUser,
-            Pageable pageable) {
+                                                 UserPrincipal currentUser,
+                                                 Pageable pageable) {
 
         // VALIDATION – runs BEFORE any DB call
         validateFilterRequest(request, currentUser);
@@ -438,7 +438,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
-            UserPrincipal currentUser) {
+                                                     UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found!!"));
@@ -513,7 +513,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
-            UserPrincipal currentUser) {
+                                                       UserPrincipal currentUser) {
         // Fetch prompt
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
@@ -722,7 +722,7 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional
     public PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
-            UserPrincipal currentUser) {
+                                                     UserPrincipal currentUser) {
         Prompt prompt = promptRepository.findById(promptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt not found with ID: " + promptId));
 
@@ -906,7 +906,7 @@ public class PromptServiceImpl implements PromptService {
     @Transactional
     @Override
     public AddPromptToCollectionResponse addPromptToCollection(AddPromptToCollectionRequest request,
-            UserPrincipal currentUser) {
+                                                               UserPrincipal currentUser) {
         UUID currentUserId = currentUser.getUserId();
 
         // Fetch the existing prompt
@@ -1207,10 +1207,10 @@ public class PromptServiceImpl implements PromptService {
     }
 
     private Predicate buildTagPredicate(Root<Prompt> root,
-            CriteriaQuery<?> query,
-            CriteriaBuilder cb,
-            String field, // "type" or "value"
-            List<String> values) {
+                                        CriteriaQuery<?> query,
+                                        CriteriaBuilder cb,
+                                        String field, // "type" or "value"
+                                        List<String> values) {
 
         Subquery<UUID> subquery = query.subquery(UUID.class);
         Root<PromptTag> pt = subquery.from(PromptTag.class);

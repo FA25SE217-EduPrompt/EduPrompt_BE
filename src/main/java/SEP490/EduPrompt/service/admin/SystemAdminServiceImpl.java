@@ -974,14 +974,14 @@ public class SystemAdminServiceImpl implements SystemAdminService {
 
         return rawSummary.stream()
                 .map(row -> {
-                    int year  = ((Number) row[0]).intValue();
+                    int year = ((Number) row[0]).intValue();
                     int month = ((Number) row[1]).intValue();
 
-                    long totalCount   = ((Number) row[2]).longValue();
-                    long totalAmount  = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+                    long totalCount = ((Number) row[2]).longValue();
+                    long totalAmount = row[3] != null ? ((Number) row[3]).longValue() : 0L;
                     long pendingCount = ((Number) row[4]).longValue();
                     long successCount = ((Number) row[5]).longValue();
-                    long failedCount  = row[6] != null ? ((Number) row[6]).longValue() : 0L;
+                    long failedCount = row[6] != null ? ((Number) row[6]).longValue() : 0L;
 
                     double avg = successCount > 0 ? (double) totalAmount / successCount : 0.0;
 
@@ -1021,10 +1021,10 @@ public class SystemAdminServiceImpl implements SystemAdminService {
             int month = Integer.parseInt(parts[1]);
 
             LocalDate startDate = LocalDate.of(year, month, 1);
-            LocalDate endDate   = startDate.plusMonths(1);
+            LocalDate endDate = startDate.plusMonths(1);
 
             Instant start = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-            Instant end   = endDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+            Instant end = endDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
 
             page = paymentRepository.findByCreatedAtBetween(start, end, pageable);
         } else if (StringUtils.hasText(status)) {

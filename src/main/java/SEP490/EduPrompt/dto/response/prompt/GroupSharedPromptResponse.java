@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Builder
-public record GroupSharedPromptResponse (
+public record GroupSharedPromptResponse(
         UUID id,
         String title,
         String description,
@@ -17,5 +17,5 @@ public record GroupSharedPromptResponse (
         UUID groupId, // Added field for group name
         Instant createdAt,
         Instant updatedAt
-){
+) {
 }

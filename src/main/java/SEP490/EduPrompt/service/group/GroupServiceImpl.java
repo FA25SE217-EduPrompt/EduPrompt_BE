@@ -58,7 +58,7 @@ public class GroupServiceImpl implements GroupService {
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
-    private final SchoolRepository  schoolRepository;
+    private final SchoolRepository schoolRepository;
     private final UserRepository userRepository;
 
     @Value("${group.max-size:100}")
@@ -386,7 +386,7 @@ public class GroupServiceImpl implements GroupService {
         // SCHOOL_ADMIN can only delete groups in their school
         if (Role.SCHOOL_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
             UUID currentSchoolId = currentUser.getSchoolId();
-            UUID groupSchoolId = group.getSchool() != null ? group.getSchoolId(): null;
+            UUID groupSchoolId = group.getSchool() != null ? group.getSchoolId() : null;
             if (groupSchoolId == null || !groupSchoolId.equals(currentSchoolId)) {
                 throw new InvalidActionException("You can only delete groups in your school");
             }

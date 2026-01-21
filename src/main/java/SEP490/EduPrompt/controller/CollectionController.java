@@ -6,7 +6,6 @@ import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
-import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.collection.CollectionService;
 import io.swagger.v3.oas.annotations.Operation;

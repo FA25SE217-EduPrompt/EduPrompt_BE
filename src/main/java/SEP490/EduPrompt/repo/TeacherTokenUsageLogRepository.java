@@ -23,15 +23,15 @@ public interface TeacherTokenUsageLogRepository extends JpaRepository<TeacherTok
     Page<TeacherTokenUsageLog> findAllByOrderByUsedAtDesc(Pageable pageable);
 
     @Query(value = """
-            SELECT
-        CAST(EXTRACT(YEAR FROM used_at) AS INTEGER) AS year,
-        CAST(EXTRACT(MONTH FROM used_at) AS INTEGER) AS month,
-        SUM(tokens_used) AS total_tokens,
-        COUNT(*) AS entry_count,
-        COUNT(DISTINCT user_id) AS unique_teachers
-    FROM teacher_token_usage_log
-    GROUP BY EXTRACT(YEAR FROM used_at), EXTRACT(MONTH FROM used_at)
-    ORDER BY year DESC, month DESC
-    """, nativeQuery = true)
+                    SELECT
+                CAST(EXTRACT(YEAR FROM used_at) AS INTEGER) AS year,
+                CAST(EXTRACT(MONTH FROM used_at) AS INTEGER) AS month,
+                SUM(tokens_used) AS total_tokens,
+                COUNT(*) AS entry_count,
+                COUNT(DISTINCT user_id) AS unique_teachers
+            FROM teacher_token_usage_log
+            GROUP BY EXTRACT(YEAR FROM used_at), EXTRACT(MONTH FROM used_at)
+            ORDER BY year DESC, month DESC
+            """, nativeQuery = true)
     List<Object[]> getMonthlyUsageSummaryRaw();
 }
