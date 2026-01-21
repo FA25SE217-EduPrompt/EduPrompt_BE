@@ -23,10 +23,7 @@ import SEP490.EduPrompt.dto.response.group.UpdateGroupResponse;
 import SEP490.EduPrompt.dto.response.payment.MonthlyPaymentSummaryResponse;
 import SEP490.EduPrompt.dto.response.payment.PagePaymentAdminResponse;
 import SEP490.EduPrompt.dto.response.payment.PaymentAdminListResponse;
-import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
-import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
-import SEP490.EduPrompt.dto.response.prompt.PromptAllResponse;
-import SEP490.EduPrompt.dto.response.prompt.TagDTO;
+import SEP490.EduPrompt.dto.response.prompt.*;
 import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
 import SEP490.EduPrompt.dto.response.tag.TagResponse;
 import SEP490.EduPrompt.dto.response.teacherTokenUsed.TeacherTokenUsageLogResponse;
@@ -76,6 +73,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private final GroupMemberRepository groupMemberRepository;
     private final SchoolSubscriptionRepository schoolSubscriptionRepository;
     private final TeacherTokenUsageLogRepository teacherTokenUsageLogRepository;
+    private final PromptScoreRepository promptScoreRepository;
 
     // ========================================================
     // ======================LIST ALL==========================
@@ -1198,6 +1196,22 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .pageNumber(page.getNumber())
                 .pageSize(page.getSize())
                 .build();
+    }
+
+    @Transactional
+    @Override
+    public PagePromptScoreResponse getPromptsWithScores(Pageable pageable) {
+
+        Page<PromptScoreResponse> pageResult =
+                promptScoreRepository.findPromptsWithOverallScore(pageable);
+
+        return new PagePromptScoreResponse(
+                pageResult.getContent(),
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages(),
+                pageResult.getNumber(),
+                pageResult.getSize()
+        );
     }
 
     //========================================================

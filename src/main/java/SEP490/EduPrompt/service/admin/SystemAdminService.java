@@ -22,10 +22,12 @@ import SEP490.EduPrompt.dto.response.payment.MonthlyPaymentSummaryResponse;
 import SEP490.EduPrompt.dto.response.payment.PagePaymentAdminResponse;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
+import SEP490.EduPrompt.dto.response.prompt.PagePromptScoreResponse;
 import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
 import SEP490.EduPrompt.dto.response.tag.TagResponse;
 import SEP490.EduPrompt.dto.response.user.PageUserResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -85,4 +87,6 @@ public interface SystemAdminService {
             UserPrincipal currentUser, UUID subscriptionId, Pageable pageable);
 
     List<TeacherTokenMonthlyUsageResponse> getMonthlyTokenUsageSummary(UserPrincipal currentUser);
+
+    PagePromptScoreResponse getPromptsWithScores(Pageable pageable);
 }
