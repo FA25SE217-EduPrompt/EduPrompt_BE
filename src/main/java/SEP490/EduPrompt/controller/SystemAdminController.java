@@ -24,6 +24,7 @@ import SEP490.EduPrompt.dto.response.payment.PagePaymentAdminResponse;
 import SEP490.EduPrompt.dto.response.payment.PaymentAdminListResponse;
 import SEP490.EduPrompt.dto.response.prompt.DetailPromptResponse;
 import SEP490.EduPrompt.dto.response.prompt.PagePromptAllResponse;
+import SEP490.EduPrompt.dto.response.prompt.PagePromptScoreResponse;
 import SEP490.EduPrompt.dto.response.systemAdmin.SchoolSubscriptionResponse;
 import SEP490.EduPrompt.dto.response.tag.PageTagResponse;
 import SEP490.EduPrompt.dto.response.user.PageUserResponse;
@@ -303,5 +304,17 @@ public class SystemAdminController {
         List<TeacherTokenMonthlyUsageResponse> result =
                 sAdminService.getMonthlyTokenUsageSummary(currentUser);
         return ResponseDto.success(result);
+    }
+
+    @GetMapping("/prompts-score")
+    public ResponseDto<PagePromptScoreResponse> getRankedPrompts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser ) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        PagePromptScoreResponse response = sAdminService.getPromptsWithScores(pageable);
+        return ResponseDto.success(response);
     }
 }
