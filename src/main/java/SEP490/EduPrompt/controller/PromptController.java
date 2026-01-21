@@ -190,6 +190,17 @@ public class PromptController {
         return ResponseDto.success(viewed);
     }
 
+    @PostMapping("/prompt-view-log/batch-viewed")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "Check view status for multiple prompts")
+    public ResponseDto<List<PromptViewStatusResponse>> hasViewedBatch(
+            @RequestBody List<UUID> promptIds,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        List<PromptViewStatusResponse> response = promptService.hasUserViewedPromptBatch(principal, promptIds);
+        return ResponseDto.success(response);
+    }
+
     @PostMapping("/{promptId}/versions")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     @Operation(summary = "Create a new version for a prompt")
@@ -222,6 +233,27 @@ public class PromptController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Rolling back prompt {} to version {} by user: {}", promptId, versionId, currentUser.getUserId());
         DetailPromptResponse response = promptService.rollbackToVersion(promptId, versionId, currentUser);
+        return ResponseDto.success(response);
+    }
+
+    @GetMapping("/my-group-shared")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<PaginatedGroupSharedPromptResponse> groupSharedPrompt(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.info("Getting group shared prompt");
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseDto.success(promptService.getGroupSharedPrompts(currentUser, pageable));
+    }
+
+    @PostMapping("/add-to-collection")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<AddPromptToCollectionResponse> addPromptToCollection(
+            @Valid @RequestBody AddPromptToCollectionRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        AddPromptToCollectionResponse response = promptService.addPromptToCollection(request, currentUser);
         return ResponseDto.success(response);
     }
 }

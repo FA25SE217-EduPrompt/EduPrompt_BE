@@ -1,12 +1,15 @@
 package SEP490.EduPrompt.controller;
 
+import SEP490.EduPrompt.dto.request.collection.AssignCollectionToGroupRequest;
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
+import SEP490.EduPrompt.exception.auth.InvalidInputException;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.collection.CollectionService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -155,5 +158,16 @@ public class CollectionController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Counting collections for user: {}", currentUser.getUserId());
         return ResponseDto.success(collectionService.countMyCollections(currentUser));
+    }
+
+    @PostMapping("/assign-to-group")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "Assign an existing collection to a group (changes visibility to GROUP)")
+    public ResponseDto<UpdateCollectionResponse> assignCollectionToGroup(
+            @Valid @RequestBody AssignCollectionToGroupRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        UpdateCollectionResponse response = collectionService.assignCollectionToGroup(request, currentUser);
+        return ResponseDto.success(response);
     }
 }

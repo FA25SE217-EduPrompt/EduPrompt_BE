@@ -4,6 +4,7 @@ import SEP490.EduPrompt.dto.request.prompt.*;
 import SEP490.EduPrompt.dto.response.prompt.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,18 +22,18 @@ public interface PromptService {
     PaginatedPromptResponse getPromptsByUserId(UserPrincipal currentUser, Pageable pageable, UUID userId);
 
     PaginatedPromptResponse getPromptsByCollectionId(UserPrincipal currentUser, Pageable pageable,
-                                                     UUID collectionId);
+            UUID collectionId);
 
     DetailPromptResponse updatePromptMetadata(UUID promptId, UpdatePromptMetadataRequest request,
-                                              UserPrincipal currentUser);
+            UserPrincipal currentUser);
 
     DetailPromptResponse updatePromptVisibility(UUID promptId, UpdatePromptVisibilityRequest request,
-                                                UserPrincipal currentUser);
+            UserPrincipal currentUser);
 
     void softDeletePrompt(UUID promptId, UserPrincipal currentUser);
 
     PaginatedPromptResponse filterPrompts(PromptFilterRequest request, UserPrincipal currentUser,
-                                          Pageable pageable);
+            Pageable pageable);
 
     DetailPromptResponse getPromptById(UUID promptId, UserPrincipal currentUser);
 
@@ -40,8 +41,10 @@ public interface PromptService {
 
     PromptViewLogResponse logPromptView(UserPrincipal currentUser, CreatePromptViewLogRequest request);
 
+    List<PromptViewStatusResponse> hasUserViewedPromptBatch(UserPrincipal currentUser, List<UUID> promptIds);
+
     PromptVersionResponse createPromptVersion(UUID promptId, CreatePromptVersionRequest request,
-                                              UserPrincipal currentUser);
+            UserPrincipal currentUser);
 
     List<PromptVersionResponse> getPromptVersions(UUID promptId, UserPrincipal currentUser);
 
@@ -52,4 +55,9 @@ public interface PromptService {
     PromptShareResponse getSharedPrompt(UUID promptId, UUID token);
 
     void revokeShare(UUID promptId, UserPrincipal currentUser);
+
+    PaginatedGroupSharedPromptResponse getGroupSharedPrompts(UserPrincipal currentUser, Pageable pageable);
+
+    AddPromptToCollectionResponse addPromptToCollection(AddPromptToCollectionRequest request,
+            UserPrincipal currentUser);
 }
