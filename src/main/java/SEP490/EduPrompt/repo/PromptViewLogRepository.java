@@ -4,6 +4,7 @@ import SEP490.EduPrompt.model.PromptViewLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,4 +12,6 @@ import java.util.UUID;
 public interface PromptViewLogRepository extends JpaRepository<PromptViewLog, UUID> {
 
     Optional<PromptViewLog> findPromptViewLogByPromptIdAndUserId(UUID promptId, UUID userId);
+
+    List<PromptViewLog> findByPromptIdInAndUserId(List<UUID> promptIds, UUID userId);
 }

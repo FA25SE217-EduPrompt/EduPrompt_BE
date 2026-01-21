@@ -190,6 +190,17 @@ public class PromptController {
         return ResponseDto.success(viewed);
     }
 
+    @PostMapping("/prompt-view-log/batch-viewed")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "Check view status for multiple prompts")
+    public ResponseDto<List<PromptViewStatusResponse>> hasViewedBatch(
+            @RequestBody List<UUID> promptIds,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        List<PromptViewStatusResponse> response = promptService.hasUserViewedPromptBatch(principal, promptIds);
+        return ResponseDto.success(response);
+    }
+
     @PostMapping("/{promptId}/versions")
     @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
     @Operation(summary = "Create a new version for a prompt")
@@ -230,8 +241,7 @@ public class PromptController {
     public ResponseDto<PaginatedGroupSharedPromptResponse> groupSharedPrompt(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @AuthenticationPrincipal UserPrincipal currentUser
-    ) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Getting group shared prompt");
         Pageable pageable = PageRequest.of(page, size);
         return ResponseDto.success(promptService.getGroupSharedPrompts(currentUser, pageable));
