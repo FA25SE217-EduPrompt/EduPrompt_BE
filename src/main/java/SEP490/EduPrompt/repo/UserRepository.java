@@ -28,4 +28,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Page<User> findAll(Pageable pageable);
 
     List<User> findAllByEmailIn(Collection<String> emails);
+
+    List<User> findBySchoolIdAndIsActiveTrue(UUID schoolId);
 }
