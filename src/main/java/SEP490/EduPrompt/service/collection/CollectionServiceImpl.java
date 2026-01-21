@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.service.collection;
 
+import SEP490.EduPrompt.dto.request.collection.AssignCollectionToGroupRequest;
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
 import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
@@ -66,6 +67,7 @@ public class CollectionServiceImpl implements CollectionService {
     private final UserRepository userRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupRepository groupRepository;
+    private final PromptRepository promptRepository;
     private final TagRepository tagRepository;
 
     private boolean isAdmin(UserPrincipal user) {
@@ -516,6 +518,90 @@ public class CollectionServiceImpl implements CollectionService {
         return collectionRepository.countByCreatedByAndIsDeletedFalse(currentUser.getUserId());
     }
 
+    @Override
+    @Transactional
+    public UpdateCollectionResponse assignCollectionToGroup(
+            AssignCollectionToGroupRequest request,
+            UserPrincipal currentUser) {
+
+        UUID collectionId = request.collectionId();
+        UUID groupId = request.groupId();
+        UUID currentUserId = currentUser.getUserId();
+
+        // 1. Fetch collection
+        Collection collection = collectionRepository.findById(collectionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found with ID: " + collectionId));
+
+        if (Boolean.TRUE.equals(collection.getIsDeleted()) && !isSystemAdmin(currentUser.getRole())) {
+            throw new ResourceNotFoundException("Collection not found or has been deleted");
+        }
+
+        // 2. Permission to edit collection
+        if (!permissionService.canEditCollection(currentUser, collection)) {
+            throw new AccessDeniedException("You do not have permission to modify this collection");
+        }
+
+        // 3. Fetch target group
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found with ID: " + groupId));
+
+        if (!Boolean.TRUE.equals(group.getIsActive())) {
+            throw new InvalidActionException("Cannot assign collection to an inactive group");
+        }
+
+        // 4. Check if collection is already assigned to another group
+        if (collection.getGroup() != null) {
+            if (collection.getGroup().getId().equals(groupId)) {
+                log.info("Collection {} is already assigned to group {}. No changes made.", collectionId, groupId);
+                return buildUpdateCollectionResponse(collection);
+            } else {
+                throw new InvalidActionException("This collection is already assigned to another group. " +
+                        "Please remove it from the current group first.");
+            }
+        }
+
+        // 5. Verify user is active member of the target group
+        boolean isActiveMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
+                groupId, currentUserId, GroupStatus.ACTIVE.name());
+        if (!isActiveMember) {
+            throw new AccessDeniedException("You must be an active member of the group to assign a collection to it");
+        }
+
+        // 6. School consistency check
+        if (group.getSchoolId() != null && !group.getSchoolId().equals(currentUser.getSchoolId())) {
+            throw new AccessDeniedException("You must belong to the same school as the target group");
+        }
+
+        // 7. Update collection visibility and group
+        collection.setVisibility(Visibility.GROUP.name());
+        collection.setGroup(group);
+        collection.setUpdatedBy(currentUserId);
+        collection.setUpdatedAt(Instant.now());
+
+        Collection updatedCollection = collectionRepository.save(collection);
+
+        // 8. Update prompts in the collection
+        List<Prompt> prompts = promptRepository.findByCollectionIdAndIsDeletedFalse(collectionId); // you need to add this method
+
+        for (Prompt prompt : prompts) {
+            if (!Visibility.PUBLIC.name().equals(prompt.getVisibility())) {
+                prompt.setVisibility(Visibility.GROUP.name());
+                prompt.setUpdatedBy(currentUserId);
+                prompt.setUpdatedAt(Instant.now());
+            }
+        }
+
+        if (!prompts.isEmpty()) {
+            promptRepository.saveAll(prompts);
+            log.info("Updated visibility of {} prompts in collection {} to GROUP", prompts.size(), collectionId);
+        }
+
+        log.info("Collection {} successfully assigned to group {} by user {}", collectionId, groupId, currentUserId);
+
+        return buildUpdateCollectionResponse(updatedCollection);
+    }
+
+
     // Helper method
     protected List<Tag> mapCollectionTagsToTags(UUID collectionId) {
         List<CollectionTag> collectionTags = collectionTagRepository.findByCollectionId(collectionId);
@@ -529,6 +615,16 @@ public class CollectionServiceImpl implements CollectionService {
         return set.stream()
                 .map(CollectionTag::getTag)
                 .collect(Collectors.toList());
+    }
+
+    private UpdateCollectionResponse buildUpdateCollectionResponse(Collection collection) {
+        return UpdateCollectionResponse.builder()
+                .name(collection.getName())
+                .description(collection.getDescription())
+                .visibility(collection.getVisibility())
+                .tags(mapCollectionTagsToTags(collection.getId()))
+                .updatedAt(collection.getUpdatedAt())
+                .build();
     }
     // @Override
     // @Transactional

@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.service.collection;
 
+import SEP490.EduPrompt.dto.request.collection.AssignCollectionToGroupRequest;
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
 import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
@@ -30,5 +31,10 @@ public interface CollectionService {
     PageCollectionResponse listAllCollectionsForAdmin(UserPrincipal currentUser, Pageable pageable);
 
     long countMyCollections(UserPrincipal currentUser);
+
+    UpdateCollectionResponse assignCollectionToGroup(
+            AssignCollectionToGroupRequest request,
+            UserPrincipal currentUser
+    );
 
 }
