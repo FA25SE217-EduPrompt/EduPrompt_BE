@@ -35,6 +35,9 @@ public class PromptViewLog {
     @JoinColumn(name = "prompt_id", nullable = false)
     private Prompt prompt;
 
+    @Column(name = "prompt_id", nullable = false, insertable = false, updatable = false)
+    private UUID promptId;
+
     @NotNull
     @ColumnDefault("now()")
     @Column(name = "created_at", nullable = false)
