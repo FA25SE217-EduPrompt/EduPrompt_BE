@@ -5,8 +5,10 @@ import SEP490.EduPrompt.dto.request.group.UpdateGroupRequest;
 import SEP490.EduPrompt.dto.request.groupMember.AddGroupMembersRequest;
 import SEP490.EduPrompt.dto.request.groupMember.RemoveGroupMemberRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
+import SEP490.EduPrompt.dto.response.group.PageGroupResponse;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.group.GroupService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -84,5 +86,20 @@ public class GroupController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         log.info("Retrieving group {} by user: {}", groupId, currentUser.getUserId());
         return ResponseDto.success(groupService.getGroupById(groupId, currentUser));
+    }
+
+    @GetMapping("/my-groups")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    @Operation(summary = "Get paginated list of groups the current user has access to")
+    public ResponseDto<PageGroupResponse> getMyGroups(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        PageGroupResponse response = groupService.listMyGroups(currentUser, pageable);
+
+        return ResponseDto.success(response);
     }
 }
