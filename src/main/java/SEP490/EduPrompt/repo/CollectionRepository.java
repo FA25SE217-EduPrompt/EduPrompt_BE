@@ -1,5 +1,7 @@
 package SEP490.EduPrompt.repo;
 
+import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
+import SEP490.EduPrompt.dto.response.collection.CollectionWithGroupResponse;
 import SEP490.EduPrompt.model.Collection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,4 +40,10 @@ public interface CollectionRepository extends JpaRepository<Collection, UUID> {
             WHERE c.id = :id AND c.isDeleted = false
             """)
     Optional<Collection> findActiveById(@Param("id") UUID id);
+
+    @Query("SELECT DISTINCT c FROM Collection c " +
+            "LEFT JOIN FETCH c.user " +
+            "WHERE c.groupId = :groupId " +
+            "AND c.isDeleted = false")
+    List<Collection> findAllByGroupId(@Param("groupId") UUID groupId);
 }
