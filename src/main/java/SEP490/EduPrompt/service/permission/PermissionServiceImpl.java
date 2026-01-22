@@ -127,7 +127,7 @@ public class PermissionServiceImpl implements PermissionService {
     public boolean isGroupMember(UserPrincipal user, UUID groupId) {
         if (user == null || groupId == null)
             return false;
-        return groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, user.getUserId(), GroupStatus.ACTIVE.name());
+        return groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, user.getUserId(), GroupStatus.ACTIVE.name().toLowerCase());
     }
 
     @Override
@@ -140,7 +140,7 @@ public class PermissionServiceImpl implements PermissionService {
         if (user == null || groupId == null)
             return false;
         return groupMemberRepository.existsByGroupIdAndUserIdAndRoleIn(groupId, user.getUserId(),
-                List.of(GroupRole.ADMIN.name()));
+                List.of(GroupRole.ADMIN.name().toLowerCase()));
     }
 
     @Override

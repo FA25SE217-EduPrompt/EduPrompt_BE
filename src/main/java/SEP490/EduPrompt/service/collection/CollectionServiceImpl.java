@@ -149,7 +149,7 @@ public class CollectionServiceImpl implements CollectionService {
                     .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
             // Verify membership for creation
             boolean isMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
-                    group.getId(), currentUserId, GroupStatus.ACTIVE.name());
+                    group.getId(), currentUserId, GroupStatus.ACTIVE.name().toLowerCase());
             if (!isMember) {
                 throw new AccessDeniedException("You must be a group member to create a group-visible collection");
             }
@@ -262,7 +262,7 @@ public class CollectionServiceImpl implements CollectionService {
             }
             group = groupRepository.findById(groupId)
                     .orElseThrow(() -> new ResourceNotFoundException("Group not found with ID: " + groupId));
-            if (!groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, currentUser.getUserId(), GroupStatus.ACTIVE.name())) {
+            if (!groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, currentUser.getUserId(), GroupStatus.ACTIVE.name().toLowerCase())) {
                 throw new AccessDeniedException("You must be an active member of the group to set GROUP visibility");
             }
         }
@@ -559,7 +559,7 @@ public class CollectionServiceImpl implements CollectionService {
 
         // 5. Verify user is active member of the target group
         boolean isActiveMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
-                groupId, currentUserId, GroupStatus.ACTIVE.name());
+                groupId, currentUserId, GroupStatus.ACTIVE.name().toLowerCase());
         if (!isActiveMember) {
             throw new AccessDeniedException("You must be an active member of the group to assign a collection to it");
         }
