@@ -3,13 +3,11 @@ package SEP490.EduPrompt.service.collection;
 import SEP490.EduPrompt.dto.request.collection.AssignCollectionToGroupRequest;
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
-import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
-import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
-import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
-import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
+import SEP490.EduPrompt.dto.response.collection.*;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface CollectionService {
@@ -37,4 +35,5 @@ public interface CollectionService {
             UserPrincipal currentUser
     );
 
+    List<CollectionWithGroupResponse> getCollectionsByGroup(UUID groupId);
 }

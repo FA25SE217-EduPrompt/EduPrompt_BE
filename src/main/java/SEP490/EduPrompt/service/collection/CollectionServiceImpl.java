@@ -3,10 +3,7 @@ package SEP490.EduPrompt.service.collection;
 import SEP490.EduPrompt.dto.request.collection.AssignCollectionToGroupRequest;
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
-import SEP490.EduPrompt.dto.response.collection.CollectionResponse;
-import SEP490.EduPrompt.dto.response.collection.CreateCollectionResponse;
-import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
-import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
+import SEP490.EduPrompt.dto.response.collection.*;
 import SEP490.EduPrompt.dto.response.prompt.TagDTO;
 import SEP490.EduPrompt.enums.GroupStatus;
 import SEP490.EduPrompt.enums.Role;
@@ -601,6 +598,16 @@ public class CollectionServiceImpl implements CollectionService {
         return buildUpdateCollectionResponse(updatedCollection);
     }
 
+    @Transactional
+    @Override
+    public List<CollectionWithGroupResponse> getCollectionsByGroup(UUID groupId) {
+        List<Collection> collections = collectionRepository.findAllByGroupId(groupId);
+
+        return collections.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
 
     // Helper method
     protected List<Tag> mapCollectionTagsToTags(UUID collectionId) {
@@ -624,6 +631,19 @@ public class CollectionServiceImpl implements CollectionService {
                 .visibility(collection.getVisibility())
                 .tags(mapCollectionTagsToTags(collection.getId()))
                 .updatedAt(collection.getUpdatedAt())
+                .build();
+    }
+
+    private CollectionWithGroupResponse mapToResponse(Collection c) {
+        // Handle potential null User safely
+        String username = (c.getUser() != null) ? c.getUser().getLastName() : "Unknown User";
+
+        return CollectionWithGroupResponse.builder()
+                .id(c.getId())
+                .name(username)
+                .description(c.getDescription())
+                .visibility(c.getVisibility())
+                .groupId(c.getGroupId())
                 .build();
     }
     // @Override

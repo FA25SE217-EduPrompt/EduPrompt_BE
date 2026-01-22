@@ -4,8 +4,10 @@ import SEP490.EduPrompt.dto.request.collection.AssignCollectionToGroupRequest;
 import SEP490.EduPrompt.dto.request.collection.CreateCollectionRequest;
 import SEP490.EduPrompt.dto.request.collection.UpdateCollectionRequest;
 import SEP490.EduPrompt.dto.response.ResponseDto;
+import SEP490.EduPrompt.dto.response.collection.CollectionWithGroupResponse;
 import SEP490.EduPrompt.dto.response.collection.PageCollectionResponse;
 import SEP490.EduPrompt.dto.response.collection.UpdateCollectionResponse;
+import SEP490.EduPrompt.model.Collection;
 import SEP490.EduPrompt.service.auth.UserPrincipal;
 import SEP490.EduPrompt.service.collection.CollectionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +20,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -168,5 +172,13 @@ public class CollectionController {
 
         UpdateCollectionResponse response = collectionService.assignCollectionToGroup(request, currentUser);
         return ResponseDto.success(response);
+    }
+
+    @GetMapping("/group/{groupId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseDto<List<CollectionWithGroupResponse>> getCollectionsByGroup(
+            @PathVariable UUID groupId
+    ) {
+        return ResponseDto.success(collectionService.getCollectionsByGroup(groupId));
     }
 }
