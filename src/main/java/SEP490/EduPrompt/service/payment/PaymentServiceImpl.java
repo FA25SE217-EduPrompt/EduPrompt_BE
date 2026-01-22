@@ -158,7 +158,7 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             user.setSubscriptionTier(tier);
             userRepo.saveAndFlush(user);
-            quotaService.syncUserQuotaWithSubscriptionTier(user.getId());
+            quotaService.syncUserQuotaWithSubscriptionTier(user);
         } catch (Exception e) {
             //might need a better rollback for those quota if error
             payment.setStatus(PaymentStatus.FAILED.name());
