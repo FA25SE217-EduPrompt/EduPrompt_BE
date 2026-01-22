@@ -379,14 +379,10 @@ public class QuotaServiceImpl implements QuotaService {
     @Transactional
     public void syncUserQuotaWithSubscriptionTier(User user) {
 
-        UUID subscriptionTierId = user.getSubscriptionTierId();
         UUID userId = user.getId();
+        SubscriptionTier tier = user.getSubscriptionTier();
 
-        log.info("Sync quota for user: {} with subscription: {}", userId, subscriptionTierId);
-
-        SubscriptionTier tier = subscriptionTierRepository.findById(subscriptionTierId)
-                .orElse(getFreeTier().orElseThrow());
-
+        log.info("Sync quota for user: {} with subscription: {}", userId, tier.getId());
         UserQuota userQuota = userQuotaRepository.findByUserId(userId)
                 .orElseGet(() -> UserQuota.builder()
                         .userId(userId)
