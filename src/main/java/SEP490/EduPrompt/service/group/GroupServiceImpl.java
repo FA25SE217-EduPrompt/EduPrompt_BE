@@ -397,7 +397,7 @@ public class GroupServiceImpl implements GroupService {
         group.setUpdatedAt(Instant.now());
 
         groupRepository.save(group);
-        groupMemberRepository.updateStatusByGroupId(id, GroupStatus.REMOVED.name());
+        groupMemberRepository.updateStatusByGroupId(id, GroupStatus.REMOVED.name().toLowerCase());
 
         log.info("Group soft-deleted: {} by user: {}", id, currentUserId);
     }

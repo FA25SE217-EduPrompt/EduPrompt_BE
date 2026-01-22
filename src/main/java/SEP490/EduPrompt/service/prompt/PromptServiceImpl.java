@@ -857,7 +857,7 @@ public class PromptServiceImpl implements PromptService {
         UUID currentUserId = currentUser.getUserId();
 
         List<GroupMember> memberships = groupMemberRepository.findByUserIdAndStatus(currentUserId,
-                GroupStatus.ACTIVE.name());
+                GroupStatus.ACTIVE.name().toLowerCase());
         Set<UUID> groupIds = memberships.stream()
                 .map(GroupMember::getGroup)
                 .map(Group::getId)
@@ -955,7 +955,7 @@ public class PromptServiceImpl implements PromptService {
             Group group = groupRepository.findById(collection.getGroup().getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
             if (!groupMemberRepository.existsByGroupIdAndUserIdAndStatus(group.getId(), currentUserId,
-                    GroupStatus.ACTIVE.name())) {
+                    GroupStatus.ACTIVE.name().toLowerCase())) {
                 throw new AccessDeniedException("You must be an active member of the group for GROUP visibility");
             }
         }

@@ -2,7 +2,6 @@ package SEP490.EduPrompt.service.group;
 
 import SEP490.EduPrompt.dto.request.group.CreateGroupRequest;
 import SEP490.EduPrompt.dto.request.group.UpdateGroupRequest;
-import SEP490.EduPrompt.dto.request.groupMember.AddGroupMembersRequest;
 import SEP490.EduPrompt.dto.request.groupMember.RemoveGroupMemberRequest;
 import SEP490.EduPrompt.dto.response.group.CreateGroupResponse;
 import SEP490.EduPrompt.dto.response.group.GroupResponse;
@@ -35,7 +34,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -111,7 +113,7 @@ class GroupServiceImplTest {
                 .id(memberId)
                 .group(group)
                 .user(user)
-                .role(GroupRole.ADMIN.name())
+                .role(GroupRole.ADMIN.name().toLowerCase())
                 .status("active")
                 .joinedAt(Instant.now())
                 .build();
@@ -206,7 +208,7 @@ class GroupServiceImplTest {
         UpdateGroupRequest request = new UpdateGroupRequest("Updated Group", true);
         when(groupRepository.findByIdAndIsActiveTrue(groupId)).thenReturn(Optional.of(group));
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name())))).thenReturn(true);
+                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name().toLowerCase())))).thenReturn(true);
         when(userRepository.getReferenceById(userId)).thenReturn(user);
         when(groupRepository.save(any(Group.class))).thenReturn(group);
 
@@ -236,7 +238,7 @@ class GroupServiceImplTest {
         UpdateGroupRequest request = new UpdateGroupRequest("Updated Group", true);
         when(groupRepository.findByIdAndIsActiveTrue(groupId)).thenReturn(Optional.of(group));
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name())))).thenReturn(false);
+                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name().toLowerCase())))).thenReturn(false);
 
         // Act & Assert
         assertThrows(AccessDeniedException.class, () -> groupService.updateGroup(groupId, request, teacherPrincipal));
@@ -312,7 +314,7 @@ class GroupServiceImplTest {
                 .id(UUID.randomUUID())
                 .group(group)
                 .user(anotherAdminUser)
-                .role(GroupRole.ADMIN.name())
+                .role(GroupRole.ADMIN.name().toLowerCase())
                 .status("active")
                 .joinedAt(Instant.now())
                 .build();
@@ -321,7 +323,7 @@ class GroupServiceImplTest {
 
         when(groupRepository.findByIdAndIsActiveTrue(groupId)).thenReturn(Optional.of(group));
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name())))).thenReturn(true);
+                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name().toLowerCase())))).thenReturn(true);
         when(groupMemberRepository.findByGroupIdAndUserId(groupId, memberId)).thenReturn(Optional.of(groupMember));
         when(userRepository.getReferenceById(userId)).thenReturn(user);
         when(groupRepository.save(any(Group.class))).thenReturn(group);
@@ -335,7 +337,7 @@ class GroupServiceImplTest {
         verify(groupRepository).save(any(Group.class));
         verify(groupRepository).findByIdAndIsActiveTrue(groupId);
         verify(groupMemberRepository).existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name())));
+                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name().toLowerCase())));
         verify(groupMemberRepository).findByGroupIdAndUserId(groupId, memberId);
         verify(userRepository).getReferenceById(userId);
         verifyNoMoreInteractions(groupRepository, groupMemberRepository, userRepository);
@@ -348,7 +350,7 @@ class GroupServiceImplTest {
         RemoveGroupMemberRequest request = new RemoveGroupMemberRequest(userId);
         when(groupRepository.findByIdAndIsActiveTrue(groupId)).thenReturn(Optional.of(group));
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name())))).thenReturn(true);
+                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name().toLowerCase())))).thenReturn(true);
         when(groupMemberRepository.findByGroupIdAndUserId(groupId, userId)).thenReturn(Optional.of(groupMember));
 
         // Act & Assert
@@ -363,7 +365,7 @@ class GroupServiceImplTest {
 
         when(groupRepository.findByIdAndIsActiveTrue(groupId)).thenReturn(Optional.of(group));
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name())))).thenReturn(true);
+                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name().toLowerCase())))).thenReturn(true);
         when(groupMemberRepository.findByGroupIdAndUserId(groupId, memberId)).thenReturn(Optional.of(groupMember));
 
         // Act & Assert
@@ -532,7 +534,7 @@ class GroupServiceImplTest {
         assertNotNull(response);
         assertEquals(1, response.content().size());
         assertEquals(userId, response.content().get(0).userId());
-        assertEquals(GroupRole.ADMIN.name(), response.content().get(0).role());
+        assertEquals(GroupRole.ADMIN.name().toLowerCase(), response.content().get(0).role());
     }
 
     @Test
@@ -563,7 +565,7 @@ class GroupServiceImplTest {
     void isGroupAdmin_Success() {
         // Arrange
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name())))).thenReturn(true);
+                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name().toLowerCase())))).thenReturn(true);
 
         // Act
         boolean isAdmin = groupService.isGroupAdmin(groupId, teacherPrincipal);
@@ -576,7 +578,7 @@ class GroupServiceImplTest {
     void isGroupAdmin_NotAdmin_ReturnsFalse() {
         // Arrange
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatusAndRoleIn(
-                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name())))).thenReturn(false);
+                eq(groupId), eq(userId), eq("active"), eq(List.of(GroupRole.ADMIN.name().toLowerCase())))).thenReturn(false);
 
         // Act
         boolean isAdmin = groupService.isGroupAdmin(groupId, teacherPrincipal);
