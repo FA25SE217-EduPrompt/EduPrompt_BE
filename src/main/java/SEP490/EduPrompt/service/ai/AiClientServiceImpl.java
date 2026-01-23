@@ -318,12 +318,12 @@ public class AiClientServiceImpl implements AiClientService {
 
                         OPTIMIZATION RULES (SAFE MODE):
                         1. Preserve teacher's intent 100%% - do not change the core request
-                                2. Preserve ALL existing sections (Content, Input Example, Output Format, etc.) - DO NOT DELETE ANY TEXT
+                                2. Preserve ALL existing sections (Instruction, Context, Input Example, Output Format and Constraint) - DO NOT DELETE ANY TEXT - ONLY ADD IF TEXT IS TOO SHORT TO FORM A PROPER PROMPT
                                 3. Only add missing structural elements identified in weaknesses
                                 4. Add output format specification if missing
                                 5. Add curriculum reference from the context provided
                                 6. Keep the same language and tone
-                                7. Make minimal additions
+                                7. Make medium additions
                                 8. Do not add activities or change teaching approach
 
                         Return ONLY the optimized prompt text, nothing else.
@@ -363,8 +363,8 @@ public class AiClientServiceImpl implements AiClientService {
                         7. Target appropriate Bloom's taxonomy level (Analysis/Application for high school)
                         8. Maintain Vietnamese educational context and terminology
 
-                        Format the optimized prompt clearly with sections.
-                        Mark new additions with [ADDED] at the start of new sections.
+                        Format the optimized prompt clearly with 5 sections as original prompt (Instruction, Context, Input Example, Output Format, Constraint).
+                        Mark new additions with [ADDED] (can add multiple additions for each section if able) at the start of new sections.
 
                         Return ONLY the optimized prompt text.
                         """,
