@@ -11,6 +11,7 @@ public record PersonalInfoResponse(
         String firstName,
         String lastName,
         String phoneNumber,
+        UUID schoolId,
         boolean isVerified,
         boolean isActive,
         boolean isFreeTier,

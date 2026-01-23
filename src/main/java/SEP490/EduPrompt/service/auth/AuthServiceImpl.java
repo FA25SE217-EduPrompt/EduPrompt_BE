@@ -557,6 +557,7 @@ public class AuthServiceImpl implements AuthService {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .phoneNumber(user.getPhoneNumber())
+                .schoolId(user.getSchoolId())
                 .isActive(user.getIsActive())
                 .isVerified(user.getIsVerified())
                 .isFreeTier(isFreeTier)
