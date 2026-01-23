@@ -1,11 +1,15 @@
 package SEP490.EduPrompt.service.school;
 
+import SEP490.EduPrompt.dto.request.school.JoinSchoolRequest;
+import SEP490.EduPrompt.dto.response.school.JoinSchoolResponse;
 import SEP490.EduPrompt.dto.response.school.SchoolResponse;
 import SEP490.EduPrompt.exception.auth.ResourceNotFoundException;
+import SEP490.EduPrompt.exception.generic.InvalidActionException;
 import SEP490.EduPrompt.model.SchoolEmail;
 import SEP490.EduPrompt.model.User;
 import SEP490.EduPrompt.repo.SchoolRepository;
 import SEP490.EduPrompt.repo.UserRepository;
+import SEP490.EduPrompt.service.auth.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -70,5 +74,18 @@ public class SchoolServiceImpl implements SchoolService {
         UUID schoolId = user.getSchoolId();
         if (schoolId == null) return null;
         return getSchoolById(schoolId);
+    }
+
+    @Override
+    public JoinSchoolResponse assignTeacherToSchool(UserPrincipal currentUser, JoinSchoolRequest request) {
+        User user = userRepository.findById(currentUser.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id " + currentUser.getUserId()));
+        if (user.getSubscriptionTierId() != null)
+            throw new InvalidActionException("You're already in school with subscription");
+        user.setSchoolId(request.schoolId());
+        userRepository.save(user);
+        return JoinSchoolResponse.builder()
+                .isSuccess(true)
+                .build();
     }
 }
