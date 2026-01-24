@@ -30,11 +30,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -405,18 +408,24 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public PageGroupResponse listMyGroups(UserPrincipal currentUser, Pageable pageable) {
         UUID currentUserId = currentUser.getUserId();
-        Page<Group> page;
 
-        if (isAdmin(currentUser)) {
-            if (Role.SYSTEM_ADMIN.name().equalsIgnoreCase(currentUser.getRole())) {
-                page = groupRepository.findAllByOrderByCreatedAtDesc(pageable);
-            } else {
-                page = groupRepository.findBySchoolIdAndIsActiveTrue(currentUser.getSchoolId(), pageable);
-            }
-        } else if (Role.TEACHER.name().equalsIgnoreCase(currentUser.getRole())) {
-            page = groupRepository.findBySchoolIdAndIsActiveTrue(currentUser.getSchoolId(), pageable);
+        // Fetch GroupMembers for the user with active status using GroupMemberRepository
+        List<GroupMember> members = groupMemberRepository.findByUserIdAndStatus(currentUserId, GroupStatus.ACTIVE.name().toLowerCase());
+
+        // Extract distinct group IDs
+        List<UUID> groupIds = members.stream()
+                .map(GroupMember::getGroup)
+                .filter(Objects::nonNull)
+                .map(Group::getId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Page<Group> page;
+        if (groupIds.isEmpty()) {
+            page = new PageImpl<>(Collections.emptyList(), pageable, 0);
         } else {
-            page = groupRepository.findByUserIdAndStatusAndIsActiveTrue(currentUserId, GroupStatus.ACTIVE.name().toLowerCase(), pageable);
+            // Fetch active groups by those IDs with paging and sorting
+            page = groupRepository.findByIdInAndIsActiveTrueOrderByCreatedAtDesc(groupIds, pageable);
         }
 
         List<GroupResponse> content = page.getContent().stream()
