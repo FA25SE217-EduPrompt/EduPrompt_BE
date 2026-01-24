@@ -41,6 +41,8 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 
     long countByCreatedByIdAndIsActiveTrue(UUID createdById);
 
+    Page<Group> findByIdInAndIsActiveTrueOrderByCreatedAtDesc(List<UUID> groupIds, Pageable pageable);
+
     boolean existsByNameAndSchoolIdAndIsActiveTrue(String name, UUID schoolId);
 
     Optional<Group> findByNameIgnoreCase(String name);
