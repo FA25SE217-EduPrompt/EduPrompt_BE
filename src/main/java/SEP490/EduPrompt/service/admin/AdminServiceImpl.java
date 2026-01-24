@@ -309,6 +309,16 @@ public class AdminServiceImpl implements AdminService {
         teacher.setSchoolId(null);
         userRepo.save(teacher);
 
+        Optional<SchoolEmail> emailOpt = schoolEmailRepo.findByEmailIgnoreCase(teacher.getEmail());
+        SchoolEmail email;
+        if (emailOpt.isPresent()) {
+            email = emailOpt.get();
+        }
+        else {
+            throw new ResourceNotFoundException("Email not found");
+        }
+        schoolEmailRepo.delete(email);
+
         UserQuota userQuota = userQuotaRepository.findByUserId(teacherId).orElseThrow(() -> new ResourceNotFoundException("user quota not found"));
         userQuota.setSchoolSubscription(null);
         userQuotaRepository.save(userQuota);
