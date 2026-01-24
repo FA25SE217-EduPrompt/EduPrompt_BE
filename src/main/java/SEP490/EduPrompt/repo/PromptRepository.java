@@ -1,5 +1,6 @@
 package SEP490.EduPrompt.repo;
 
+import SEP490.EduPrompt.dto.response.prompt.PromptResponse;
 import SEP490.EduPrompt.model.Prompt;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -131,4 +132,38 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID>, JpaSpecif
     Page<Prompt> findGroupSharedPrompts(@Param("groupIds") Set<UUID> groupIds,
                                         @Param("visibility") String visibility,
                                         Pageable pageable);
+
+    @Query(value = """
+        SELECT * FROM prompts 
+        WHERE is_deleted = false 
+          AND visibility = 'PUBLIC' 
+        ORDER BY random() 
+        LIMIT :limit
+        """, nativeQuery = true)
+    List<Prompt> findRandomPublicPrompts(@Param("limit") int limit);
+
+    // Random HIGH-SCHOOL CORE SUBJECT prompts (grades 10-12 + core VN subjects)
+    @Query(value = """
+        SELECT * FROM prompts 
+        WHERE is_deleted = false 
+          AND visibility = 'PUBLIC'
+          AND (
+            lower(title) LIKE '%toán%' OR lower(title) LIKE '%toán%' OR lower(title) LIKE '%math%'
+            OR lower(title) LIKE '%lý%' OR lower(title) LIKE '%lý%' OR lower(title) LIKE '%physics%'
+            OR lower(title) LIKE '%hóa%' OR lower(title) LIKE '%hóa%' OR lower(title) LIKE '%chemistry%'
+            OR lower(title) LIKE '%văn%' OR lower(title) LIKE '%văn%' OR lower(title) LIKE '%literature%'
+            OR lower(title) LIKE '%sinh%' OR lower(title) LIKE '%sinh%'
+            OR lower(title) LIKE '%sử%' OR lower(title) LIKE '%sử%' OR lower(title) LIKE '%history%'
+            OR lower(title) LIKE '%địa%' OR lower(title) LIKE '%địa%' OR lower(title) LIKE '%geometry%'
+          )
+          AND (
+            lower(title) LIKE '%lớp 10%' OR lower(title) LIKE '%lớp 11%' OR lower(title) LIKE '%lớp 12%'
+            OR lower(title) LIKE '%khối 10%' OR lower(title) LIKE '%khối 11%' OR lower(title) LIKE '%khối 12%'
+            OR lower(title) LIKE '%thpt%' OR lower(title) LIKE '%cấp 3%'
+            OR lower(title) LIKE '% 10' OR lower(title) LIKE '% 11' OR lower(title) LIKE '% 12'   -- catch " - 10", " [10]" etc.
+          )
+        ORDER BY random() 
+        LIMIT :limit
+        """, nativeQuery = true)
+    List<Prompt> findRandomHighSchoolCorePrompts(@Param("limit") int limit);
 }
